@@ -34,6 +34,26 @@
         border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
     }
     .register-card label { color: #64748b; font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; }
+
+    /* Validation styles */
+    .field-valid { border-color: #10b981 !important; }
+    .field-valid:focus { box-shadow: 0 0 0 3px rgba(16,185,129,0.1) !important; }
+    .field-invalid { border-color: #ef4444 !important; }
+    .field-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.1) !important; }
+    .field-msg { font-size: 0.78rem; margin-top: 4px; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
+    .field-msg.error { color: #ef4444; }
+    .field-msg.success { color: #10b981; }
+    .required-star { color: #ef4444; font-weight: 700; }
+
+    /* Password strength */
+    .pw-strength { margin-top: 8px; }
+    .pw-bar { height: 4px; border-radius: 4px; background: #e2e8f0; overflow: hidden; margin-bottom: 6px; }
+    .pw-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s, background 0.3s; width: 0; }
+    .pw-label { font-size: 0.78rem; font-weight: 600; transition: color 0.3s; }
+    .pw-rules { margin-top: 6px; }
+    .pw-rule { font-size: 0.75rem; display: flex; align-items: center; gap: 5px; line-height: 1.7; transition: color 0.2s; }
+    .pw-rule.pass { color: #10b981; }
+    .pw-rule.fail { color: #94a3b8; }
 </style>
 {% endblock %}
 
@@ -46,42 +66,61 @@
         </div>
 
         {% if error %}
-            <div class="alert alert-danger" style="background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.2)">
+            <div class="alert alert-danger" style="background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
             </div>
         {% endif %}
-        {% if success %}
-            <div class="alert alert-success" style="background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.2)">
-                <i class="bi bi-check-circle-fill me-2"></i>{{ success }}
-            </div>
-        {% endif %}
 
-        <form method="post">
+        <form method="post" id="registerForm" novalidate>
+            {# Email #}
             <div class="mb-3">
-                <label for="email"><i class="bi bi-envelope me-1"></i> Email</label>
-                <input type="email" class="form-control" id="email" name="email" placeholder="votre@email.com" required>
+                <label for="email"><i class="bi bi-envelope me-1"></i> Email <span class="required-star">*</span></label>
+                <input type="email" class="form-control" id="regEmail" name="email" placeholder="votre@email.com" required>
+                <div class="field-msg" id="emailMsg"></div>
             </div>
+
+            {# Password + Confirm #}
             <div class="row g-2 mb-3">
                 <div class="col-6">
-                    <label for="password"><i class="bi bi-lock me-1"></i> Mot de passe</label>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="••••••" required>
+                    <label for="regPassword"><i class="bi bi-lock me-1"></i> Mot de passe <span class="required-star">*</span></label>
+                    <input type="password" class="form-control" id="regPassword" name="password" placeholder="••••••" required>
                 </div>
                 <div class="col-6">
-                    <label for="confirm">Confirmer</label>
-                    <input type="password" class="form-control" id="confirm" name="confirm_password" placeholder="••••••" required>
+                    <label for="regConfirm">Confirmer <span class="required-star">*</span></label>
+                    <input type="password" class="form-control" id="regConfirm" name="confirm_password" placeholder="••••••" required>
+                    <div class="field-msg" id="confirmMsg"></div>
                 </div>
             </div>
-            <div class="mb-3">
-                <label for="role"><i class="bi bi-person-badge me-1"></i> Rôle</label>
+
+            {# Password strength meter #}
+            <div class="pw-strength" id="pwStrength" style="display:none">
+                <div class="pw-bar"><div class="pw-bar-fill" id="pwBarFill"></div></div>
+                <div class="pw-label" id="pwLabel"></div>
+                <div class="pw-rules">
+                    <div class="pw-rule fail" id="rule-len"><i class="bi bi-x-circle-fill"></i> Au moins 6 caractères</div>
+                    <div class="pw-rule fail" id="rule-num"><i class="bi bi-x-circle-fill"></i> Au moins 1 chiffre</div>
+                    <div class="pw-rule fail" id="rule-letter"><i class="bi bi-x-circle-fill"></i> Au moins 1 lettre</div>
+                    <div class="pw-rule fail" id="rule-upper"><i class="bi bi-x-circle-fill"></i> Au moins 1 majuscule</div>
+                </div>
+            </div>
+
+            {# Role #}
+            <div class="mb-3" style="margin-top:16px">
+                <label for="role"><i class="bi bi-person-badge me-1"></i> Rôle <span class="required-star">*</span></label>
                 <select name="role" class="form-select" id="role">
                     <option value="CANDIDATE">Candidat</option>
                     <option value="HR">Recruteur</option>
                 </select>
             </div>
+
+            {# reCAPTCHA #}
             <div class="mb-3" style="display:flex;justify-content:center">
                 <div class="g-recaptcha" data-sitekey="{{ recaptcha_site_key }}" data-theme="light"></div>
             </div>
-            <button type="submit" class="btn btn-primary-custom w-100"><i class="bi bi-person-plus me-2"></i>Créer mon compte</button>
+
+            <button type="submit" class="btn btn-primary-custom w-100" id="regSubmit" disabled style="opacity:0.5;transition:opacity 0.3s">
+                <i class="bi bi-person-plus me-2"></i>Créer mon compte
+            </button>
         </form>
 
         <script src="https://www.google.com/recaptcha/api.js" async defer></script>
@@ -103,4 +142,117 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    const email = document.getElementById('regEmail');
+    const pw = document.getElementById('regPassword');
+    const confirm = document.getElementById('regConfirm');
+    const emailMsg = document.getElementById('emailMsg');
+    const confirmMsg = document.getElementById('confirmMsg');
+    const submitBtn = document.getElementById('regSubmit');
+    const pwStrength = document.getElementById('pwStrength');
+    const pwBarFill = document.getElementById('pwBarFill');
+    const pwLabel = document.getElementById('pwLabel');
+
+    const rules = {
+        len: document.getElementById('rule-len'),
+        num: document.getElementById('rule-num'),
+        letter: document.getElementById('rule-letter'),
+        upper: document.getElementById('rule-upper')
+    };
+
+    function setFieldState(input, valid) {
+        input.classList.remove('field-valid', 'field-invalid');
+        if (input.value.length > 0) {
+            input.classList.add(valid ? 'field-valid' : 'field-invalid');
+        }
+    }
+
+    function setMsg(el, text, type) {
+        el.className = 'field-msg ' + type;
+        el.innerHTML = type === 'error'
+            ? '<i class="bi bi-x-circle-fill"></i> ' + text
+            : '<i class="bi bi-check-circle-fill"></i> ' + text;
+    }
+
+    function clearMsg(el) { el.className = 'field-msg'; el.innerHTML = ''; }
+
+    function setRule(el, pass) {
+        el.className = 'pw-rule ' + (pass ? 'pass' : 'fail');
+        el.querySelector('i').className = pass ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill';
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    let emailValid = false;
+
+    email.addEventListener('input', function() {
+        if (this.value.length === 0) {
+            setFieldState(this, false); clearMsg(emailMsg); emailValid = false;
+        } else if (!emailRegex.test(this.value)) {
+            setFieldState(this, false); setMsg(emailMsg, 'Format email invalide', 'error'); emailValid = false;
+        } else {
+            setFieldState(this, true); setMsg(emailMsg, 'Email valide', 'success'); emailValid = true;
+        }
+        checkForm();
+    });
+
+    // Password strength
+    let pwValid = false;
+    pw.addEventListener('input', function() {
+        const v = this.value;
+        pwStrength.style.display = v.length > 0 ? 'block' : 'none';
+
+        const hasLen = v.length >= 6;
+        const hasNum = /\d/.test(v);
+        const hasLetter = /[a-zA-Z]/.test(v);
+        const hasUpper = /[A-Z]/.test(v);
+
+        setRule(rules.len, hasLen);
+        setRule(rules.num, hasNum);
+        setRule(rules.letter, hasLetter);
+        setRule(rules.upper, hasUpper);
+
+        const score = [hasLen, hasNum, hasLetter, hasUpper].filter(Boolean).length;
+        pwValid = score === 4;
+
+        if (score <= 1) {
+            pwBarFill.style.width = '25%'; pwBarFill.style.background = '#ef4444';
+            pwLabel.textContent = 'Faible'; pwLabel.style.color = '#ef4444';
+        } else if (score <= 3) {
+            pwBarFill.style.width = '60%'; pwBarFill.style.background = '#f59e0b';
+            pwLabel.textContent = 'Moyen'; pwLabel.style.color = '#f59e0b';
+        } else {
+            pwBarFill.style.width = '100%'; pwBarFill.style.background = '#10b981';
+            pwLabel.textContent = 'Fort'; pwLabel.style.color = '#10b981';
+        }
+
+        setFieldState(this, pwValid);
+        validateConfirm();
+        checkForm();
+    });
+
+    // Confirm password
+    let confirmValid = false;
+    function validateConfirm() {
+        if (confirm.value.length === 0) {
+            setFieldState(confirm, false); clearMsg(confirmMsg); confirmValid = false;
+        } else if (confirm.value !== pw.value) {
+            setFieldState(confirm, false); setMsg(confirmMsg, 'Les mots de passe ne correspondent pas', 'error'); confirmValid = false;
+        } else {
+            setFieldState(confirm, true); setMsg(confirmMsg, 'Correspond', 'success'); confirmValid = true;
+        }
+        checkForm();
+    }
+    confirm.addEventListener('input', validateConfirm);
+
+    // Enable submit only when all valid
+    function checkForm() {
+        const allValid = emailValid && pwValid && confirmValid;
+        submitBtn.disabled = !allValid;
+        submitBtn.style.opacity = allValid ? '1' : '0.5';
+    }
+})();
+</script>
 {% endblock %}

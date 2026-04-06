@@ -46,8 +46,8 @@ class RegistrationController extends AbstractController
                 $error = 'Email et mot de passe sont obligatoires.';
             } elseif ($password !== $confirmPassword) {
                 $error = 'Les mots de passe ne correspondent pas.';
-            } elseif (strlen($password) < 6) {
-                $error = 'Le mot de passe doit contenir au moins 6 caractères.';
+            } elseif (strlen($password) < 6 || !preg_match('/\d/', $password) || !preg_match('/[a-zA-Z]/', $password) || !preg_match('/[A-Z]/', $password)) {
+                $error = 'Le mot de passe doit contenir au moins 6 caractères, 1 chiffre, 1 lettre et 1 majuscule.';
             } elseif (!$recaptchaValid) {
                 $error = 'Veuillez compléter le CAPTCHA.';
             } elseif (!in_array($role, ['CANDIDATE', 'HR'])) {

@@ -39,6 +39,16 @@
         border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
     }
     .login-card label { color: #64748b; font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; }
+
+    /* Validation styles */
+    .field-valid { border-color: #10b981 !important; }
+    .field-valid:focus { box-shadow: 0 0 0 3px rgba(16,185,129,0.1) !important; }
+    .field-invalid { border-color: #ef4444 !important; }
+    .field-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.1) !important; }
+    .field-msg { font-size: 0.78rem; margin-top: 4px; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
+    .field-msg.error { color: #ef4444; }
+    .field-msg.success { color: #10b981; }
+    .required-star { color: #ef4444; font-weight: 700; }
 </style>
 {% endblock %}
 
@@ -51,19 +61,21 @@
         </div>
 
         {% if error %}
-            <div class="alert alert-danger" style="background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.2)">
+            <div class="alert alert-danger" style="background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error.messageKey|trans(error.messageData, 'security') }}
             </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" id="loginForm" novalidate>
             <div class="mb-3">
-                <label for="email"><i class="bi bi-envelope me-1"></i> Adresse email</label>
-                <input type="email" class="form-control" id="email" name="_username" value="{{ last_username }}" placeholder="votre@email.com" required autofocus>
+                <label for="loginEmail"><i class="bi bi-envelope me-1"></i> Adresse email <span class="required-star">*</span></label>
+                <input type="email" class="form-control" id="loginEmail" name="_username" value="{{ last_username }}" placeholder="votre@email.com" required autofocus>
+                <div class="field-msg" id="loginEmailMsg"></div>
             </div>
             <div class="mb-3">
-                <label for="password"><i class="bi bi-lock me-1"></i> Mot de passe</label>
-                <input type="password" class="form-control" id="password" name="_password" placeholder="••••••••" required>
+                <label for="loginPassword"><i class="bi bi-lock me-1"></i> Mot de passe <span class="required-star">*</span></label>
+                <input type="password" class="form-control" id="loginPassword" name="_password" placeholder="••••••••" required>
+                <div class="field-msg" id="loginPwMsg"></div>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="form-check">
@@ -73,7 +85,9 @@
                 <a href="{{ path('app_forgot_password') }}" style="font-size:0.85rem;color:var(--primary);text-decoration:none;font-weight:500">Mot de passe oublié ?</a>
             </div>
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-            <button type="submit" class="btn btn-primary-custom w-100"><i class="bi bi-box-arrow-in-right me-2"></i>Se connecter</button>
+            <button type="submit" class="btn btn-primary-custom w-100" id="loginSubmit" disabled style="opacity:0.5;transition:opacity 0.3s">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter
+            </button>
         </form>
 
         <div style="display:flex;align-items:center;gap:12px;margin:20px 0">
@@ -109,4 +123,73 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    const email = document.getElementById('loginEmail');
+    const pw = document.getElementById('loginPassword');
+    const emailMsg = document.getElementById('loginEmailMsg');
+    const pwMsg = document.getElementById('loginPwMsg');
+    const submitBtn = document.getElementById('loginSubmit');
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    let emailValid = false, pwValid = false;
+
+    function setFieldState(input, valid) {
+        input.classList.remove('field-valid', 'field-invalid');
+        if (input.value.length > 0) {
+            input.classList.add(valid ? 'field-valid' : 'field-invalid');
+        }
+    }
+
+    function setMsg(el, text, type) {
+        el.className = 'field-msg ' + type;
+        el.innerHTML = type === 'error'
+            ? '<i class="bi bi-x-circle-fill"></i> ' + text
+            : '<i class="bi bi-check-circle-fill"></i> ' + text;
+    }
+
+    function clearMsg(el) { el.className = 'field-msg'; el.innerHTML = ''; }
+
+    // Email
+    email.addEventListener('input', function() {
+        if (this.value.length === 0) {
+            setFieldState(this, false); clearMsg(emailMsg); emailValid = false;
+        } else if (!emailRegex.test(this.value)) {
+            setFieldState(this, false); setMsg(emailMsg, 'Format email invalide', 'error'); emailValid = false;
+        } else {
+            setFieldState(this, true); setMsg(emailMsg, 'Email valide', 'success'); emailValid = true;
+        }
+        checkForm();
+    });
+
+    // On page load, validate if value exists (for last_username)
+    if (email.value.length > 0) {
+        emailValid = emailRegex.test(email.value);
+        setFieldState(email, emailValid);
+        if (emailValid) setMsg(emailMsg, 'Email valide', 'success');
+    }
+
+    // Password
+    pw.addEventListener('input', function() {
+        if (this.value.length === 0) {
+            setFieldState(this, false); clearMsg(pwMsg); pwValid = false;
+        } else if (this.value.length < 1) {
+            setFieldState(this, false); setMsg(pwMsg, 'Mot de passe requis', 'error'); pwValid = false;
+        } else {
+            setFieldState(this, true); clearMsg(pwMsg); pwValid = true;
+        }
+        checkForm();
+    });
+
+    function checkForm() {
+        const allValid = emailValid && pwValid;
+        submitBtn.disabled = !allValid;
+        submitBtn.style.opacity = allValid ? '1' : '0.5';
+    }
+
+    // Initial check
+    checkForm();
+})();
+</script>
 {% endblock %}
