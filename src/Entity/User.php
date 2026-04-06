@@ -48,6 +48,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'failed_attempts', type: 'integer', options: ['default' => 0])]
     private int $failedAttempts = 0;
 
+    #[ORM\Column(name: 'reset_token', length: 100, nullable: true)]
+    private ?string $resetToken = null;
+
+    #[ORM\Column(name: 'reset_token_expires_at', type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $resetTokenExpiresAt = null;
+
+    #[ORM\Column(name: 'verification_token', length: 100, nullable: true)]
+    private ?string $verificationToken = null;
+
     #[ORM\OneToOne(mappedBy: 'user', targetEntity: Profile::class, cascade: ['persist', 'remove'])]
     private ?Profile $profile = null;
 
@@ -84,6 +93,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getFailedAttempts(): int { return $this->failedAttempts; }
     public function setFailedAttempts(int $failedAttempts): static { $this->failedAttempts = $failedAttempts; return $this; }
+
+    public function getResetToken(): ?string { return $this->resetToken; }
+    public function setResetToken(?string $resetToken): static { $this->resetToken = $resetToken; return $this; }
+
+    public function getResetTokenExpiresAt(): ?\DateTimeInterface { return $this->resetTokenExpiresAt; }
+    public function setResetTokenExpiresAt(?\DateTimeInterface $dt): static { $this->resetTokenExpiresAt = $dt; return $this; }
+
+    public function getVerificationToken(): ?string { return $this->verificationToken; }
+    public function setVerificationToken(?string $token): static { $this->verificationToken = $token; return $this; }
 
     public function getProfile(): ?Profile { return $this->profile; }
     public function setProfile(?Profile $profile): static

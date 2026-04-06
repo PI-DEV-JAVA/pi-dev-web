@@ -2,10 +2,12 @@
 
 namespace App\Controller;
 
+use App\Entity\Activity;
 use App\Entity\Application;
 use App\Entity\Event;
 use App\Entity\Formation;
 use App\Entity\Interview;
+use App\Entity\Notification;
 use App\Entity\Offer;
 use App\Entity\Sync;
 use Doctrine\ORM\EntityManagerInterface;
@@ -16,7 +18,7 @@ use Symfony\Component\Routing\Annotation\Route;
 class DashboardController extends AbstractController
 {
     #[Route('/account', name: 'app_account')]
-    public function account(): Response
+    public function account(EntityManagerInterface $em): Response
     {
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
@@ -27,7 +29,28 @@ class DashboardController extends AbstractController
             return $this->redirectToRoute('admin_dashboard');
         }
 
-        return $this->render('front/account/dashboard.html.twig');
+        // Candidate dashboard data
+        $applications = $em->getRepository(Application::class)->findBy(
+            ['user' => $user], ['applicationDate' => 'DESC'], 5
+        );
+        $activities = $em->getRepository(Activity::class)->findBy(
+            ['employee' => $user], ['activityDate' => 'DESC'], 5
+        );
+        $notifications = $em->getRepository(Notification::class)->findBy(
+            ['user' => $user], ['createdAt' => 'DESC'], 5
+        );
+        $appCount = $em->getRepository(Application::class)->count(['user' => $user]);
+        $actCount = count($activities);
+        $unreadNotifs = $em->getRepository(Notification::class)->count(['user' => $user, 'isRead' => false]);
+
+        return $this->render('front/account/dashboard.html.twig', [
+            'applications' => $applications,
+            'activities' => $activities,
+            'notifications' => $notifications,
+            'appCount' => $appCount,
+            'actCount' => $actCount,
+            'unreadNotifs' => $unreadNotifs,
+        ]);
     }
 
     // Legacy redirect: old /dashboard route → new location

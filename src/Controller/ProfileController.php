@@ -95,4 +95,47 @@ class ProfileController extends AbstractController
             'profile' => $profile,
         ]);
     }
+
+    #[Route('/profile/reset', name: 'app_profile_reset', methods: ['POST'])]
+    public function resetProfile(EntityManagerInterface $em): Response
+    {
+        $user = $this->getUser();
+        $profile = $user->getProfile();
+
+        if (!$profile) {
+            $this->addFlash('warning', 'Aucun profil à réinitialiser.');
+            return $this->redirectToRoute('app_profile');
+        }
+
+        // Keep firstName & lastName, clear everything else
+        $profile->setBirthDate(null);
+        $profile->setPhoneNumber(null);
+        $profile->setLocation(null);
+        $profile->setProfessionalTitle(null);
+        $profile->setYearsOfExperience(null);
+        $profile->setSummary(null);
+
+        // Remove uploaded files from disk
+        $projectDir = $this->getParameter('kernel.project_dir');
+        if ($profile->getProfilePicturePath()) {
+            $path = $projectDir . '/public' . $profile->getProfilePicturePath();
+            if (file_exists($path)) {
+                @unlink($path);
+            }
+            $profile->setProfilePicturePath(null);
+        }
+        if ($profile->getCvPath()) {
+            $path = $projectDir . '/public' . $profile->getCvPath();
+            if (file_exists($path)) {
+                @unlink($path);
+            }
+            $profile->setCvPath(null);
+        }
+
+        // Keep profileCompleted true since name is still there
+        $em->flush();
+
+        $this->addFlash('success', 'Profil réinitialisé. Seul votre nom a été conservé.');
+        return $this->redirectToRoute('app_profile');
+    }
 }
