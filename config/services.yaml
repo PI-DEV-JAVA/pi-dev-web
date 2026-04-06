@@ -4,6 +4,11 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    app.google_client_id: '%env(GOOGLE_CLIENT_ID)%'
+    app.google_client_secret: '%env(GOOGLE_CLIENT_SECRET)%'
+    app.google_redirect_uri: '%env(GOOGLE_REDIRECT_URI)%'
+    app.recaptcha_site_key: '%env(RECAPTCHA_SITE_KEY)%'
+    app.recaptcha_secret_key: '%env(RECAPTCHA_SECRET_KEY)%'
 
 services:
     # default configuration for services in *this* file

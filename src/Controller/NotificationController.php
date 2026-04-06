@@ -39,6 +39,32 @@ class NotificationController extends AbstractController
         return $this->json(['count' => $count]);
     }
 
+    #[Route('/notifications/list', name: 'app_notifications_list')]
+    public function listJson(EntityManagerInterface $em): JsonResponse
+    {
+        if (!$this->getUser()) {
+            return $this->json([]);
+        }
+        $notifications = $em->getRepository(Notification::class)->findBy(
+            ['user' => $this->getUser()],
+            ['createdAt' => 'DESC'],
+            10
+        );
+        $items = [];
+        foreach ($notifications as $n) {
+            $items[] = [
+                'id' => $n->getId(),
+                'type' => $n->getType(),
+                'title' => $n->getTitle(),
+                'message' => $n->getMessage(),
+                'link' => $n->getLink(),
+                'isRead' => $n->isRead(),
+                'createdAt' => $n->getCreatedAt()?->format('c'),
+            ];
+        }
+        return $this->json($items);
+    }
+
     #[Route('/notifications/{id}/read', name: 'app_notification_read', requirements: ['id' => '\d+'])]
     public function markRead(Notification $notification, EntityManagerInterface $em): Response
     {

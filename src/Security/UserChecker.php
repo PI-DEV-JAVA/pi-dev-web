@@ -14,9 +14,17 @@ class UserChecker implements UserCheckerInterface
         if (!$user instanceof User)
             return;
 
+        // Check account lock (5 failed attempts)
         if (!$user->isActive()) {
             throw new CustomUserMessageAccountStatusException(
-                'Votre compte est verrouillé suite à trop de tentatives échouées. Contactez l\'administrateur.'
+                'Votre compte est verrouillé suite à trop de tentatives échouées. Utilisez "Mot de passe oublié" pour le déverrouiller.'
+            );
+        }
+
+        // Check email verification (only for LOCAL auth, not Google)
+        if ($user->getAuthProvider() === 'LOCAL' && !$user->isEmailVerified()) {
+            throw new CustomUserMessageAccountStatusException(
+                'Veuillez vérifier votre adresse email avant de vous connecter. Vérifiez votre boîte de réception.'
             );
         }
     }

@@ -514,14 +514,6 @@
     };
 
     function loadNotifications() {
-        fetch('/notifications?_format=panel')
-            .then(r => r.text())
-            .then(html => {
-                // Parse the full page to extract notification data
-                // We'll use the count endpoint and build UI from it
-                notifLoaded = true;
-            }).catch(() => {});
-        // Use a simpler approach: fetch from a JSON endpoint
         fetch('/notifications/list')
             .then(r => r.json())
             .then(items => {

@@ -40,6 +40,9 @@ security:
     - { path: ^/login, roles: PUBLIC_ACCESS }
     - { path: ^/register, roles: PUBLIC_ACCESS }
     - { path: ^/forgot-password, roles: PUBLIC_ACCESS }
+    - { path: ^/reset-password, roles: PUBLIC_ACCESS }
+    - { path: ^/verify-email, roles: PUBLIC_ACCESS }
+    - { path: ^/connect/google, roles: PUBLIC_ACCESS }
     - { path: ^/offers, roles: PUBLIC_ACCESS }
     - { path: ^/events, roles: PUBLIC_ACCESS }
     - { path: ^/courses, roles: PUBLIC_ACCESS }
@@ -53,6 +56,7 @@ security:
     - { path: ^/interviews, roles: IS_AUTHENTICATED_FULLY }
     - { path: ^/support, roles: IS_AUTHENTICATED_FULLY }
     - { path: ^/notifications/count, roles: PUBLIC_ACCESS }
+    - { path: ^/notifications/list, roles: PUBLIC_ACCESS }
     - { path: ^/notifications, roles: IS_AUTHENTICATED_FULLY }
     - { path: ^/activities, roles: IS_AUTHENTICATED_FULLY }
     - { path: ^/quiz, roles: IS_AUTHENTICATED_FULLY }

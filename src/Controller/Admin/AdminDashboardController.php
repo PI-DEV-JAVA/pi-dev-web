@@ -604,6 +604,34 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_users');
     }
 
+    #[Route('/users/{id}/delete', name: 'admin_user_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function userDelete(User $user, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        // Prevent admin from deleting themselves
+        if ($user === $this->getUser()) {
+            $this->addFlash('danger', 'Vous ne pouvez pas supprimer votre propre compte.');
+            return $this->redirectToRoute('admin_users');
+        }
+
+        $email = $user->getEmail();
+
+        // Remove profile first if exists
+        $profile = $user->getProfile();
+        if ($profile) {
+            $em->remove($profile);
+        }
+
+        $em->remove($user);
+        $em->flush();
+
+        $this->addFlash('success', 'Utilisateur ' . $email . ' supprimé avec succès.');
+        return $this->redirectToRoute('admin_users');
+    }
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  OFFER APPLICATIONS (view & decision)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
