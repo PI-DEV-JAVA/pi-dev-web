@@ -1,0 +1,121 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}{{ event.title }} — Talentos{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="mb-3">
+        <a href="{{ path('app_events') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem">
+            <i class="bi bi-arrow-left me-1"></i> Retour aux évènements
+        </a>
+    </div>
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+    {% endfor %}
+    {% for message in app.flashes('info') %}
+        <div class="alert" style="background:rgba(6,182,212,0.15);color:var(--accent);border:none;border-radius:12px"><i class="bi bi-info-circle-fill me-2"></i>{{ message }}</div>
+    {% endfor %}
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="stat-card" style="margin-bottom:16px">
+                {% if event.coverImage %}
+                    <img src="{{ event.coverImage }}" alt="{{ event.title }}"
+                         style="width:100%;height:250px;object-fit:cover;border-radius:12px;margin-bottom:16px">
+                {% endif %}
+
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    {% if event.eventType %}
+                        <span class="badge" style="background:rgba(245,158,11,0.15);color:var(--warning);padding:5px 12px;border-radius:8px">{{ event.eventType }}</span>
+                    {% endif %}
+                    {% if event.status %}
+                        <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent);padding:5px 12px;border-radius:8px">{{ event.status }}</span>
+                    {% endif %}
+                </div>
+
+                <h3 style="font-weight:700;margin-bottom:12px">{{ event.title }}</h3>
+                <div style="color:var(--text-secondary);line-height:1.8;white-space:pre-line">{{ event.description|default('Aucune description.') }}</div>
+            </div>
+
+            {# Comments #}
+            <div class="stat-card">
+                <h5 style="font-weight:600;margin-bottom:16px"><i class="bi bi-chat-dots me-2" style="color:var(--accent)"></i>Commentaires ({{ comments|length }})</h5>
+
+                <form method="post" action="{{ path('app_event_comment', {id: event.id}) }}" class="mb-4">
+                    <div class="d-flex gap-2">
+                        <input type="text" name="content" class="form-control" placeholder="Ajouter un commentaire..."
+                               style="background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px" required>
+                        <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:8px 16px;border-radius:10px;white-space:nowrap">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                </form>
+
+                {% for c in comments %}
+                    <div class="d-flex gap-3 mb-3">
+                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));
+                                    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;flex-shrink:0;color:white">
+                            {{ c.user.email|first|upper }}
+                        </div>
+                        <div>
+                            <div style="font-weight:600;font-size:0.85rem">{{ c.user.email }}
+                                <span style="color:var(--text-secondary);font-weight:400;font-size:0.75rem;margin-left:8px">{{ c.createdAt|date('d/m/Y H:i') }}</span>
+                            </div>
+                            <div style="color:var(--text-secondary);font-size:0.9rem;margin-top:2px">{{ c.content }}</div>
+                        </div>
+                    </div>
+                {% else %}
+                    <p style="color:var(--text-secondary);font-size:0.9rem">Aucun commentaire.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Sidebar #}
+        <div class="col-md-4">
+            <div class="stat-card" style="margin-bottom:16px">
+                <h5 style="font-weight:600;margin-bottom:16px">Détails</h5>
+                <div class="mb-3">
+                    <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Date de début</div>
+                    <div style="font-weight:500">{{ event.eventDate ? event.eventDate|date('d/m/Y à H:i') : '—' }}</div>
+                </div>
+                <div class="mb-3">
+                    <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Date de fin</div>
+                    <div style="font-weight:500">{{ event.endDate ? event.endDate|date('d/m/Y à H:i') : '—' }}</div>
+                </div>
+                {% if event.location %}
+                    <div class="mb-3">
+                        <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Lieu</div>
+                        <div style="font-weight:500"><i class="bi bi-geo-alt me-1"></i>{{ event.location }}</div>
+                    </div>
+                {% endif %}
+                <div class="mb-3">
+                    <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Capacité</div>
+                    <div style="font-weight:500">{{ event.maxCapacity ?: 'Illimitée' }}</div>
+                </div>
+            </div>
+
+            {# Actions #}
+            <div class="stat-card" style="margin-bottom:16px">
+                <div class="d-flex gap-2 mb-3">
+                    <a href="{{ path('app_event_participate', {id: event.id}) }}"
+                       class="btn {{ participation ? 'btn-outline-light' : 'btn-primary-custom' }}" style="flex:1;border-radius:10px;padding:10px">
+                        <i class="bi bi-{{ participation ? 'x-circle' : 'check-circle' }} me-1"></i>
+                        {{ participation ? 'Annuler' : 'Participer' }}
+                    </a>
+                    <a href="{{ path('app_event_like', {id: event.id}) }}"
+                       class="btn btn-outline-light" style="border-radius:10px;padding:10px;width:60px;text-align:center">
+                        <i class="bi bi-heart{{ liked ? '-fill' : '' }}" style="color:{{ liked ? 'var(--danger)' : 'var(--text-secondary)' }}"></i>
+                    </a>
+                </div>
+                <div style="text-align:center;color:var(--text-secondary);font-size:0.85rem">
+                    <i class="bi bi-heart-fill me-1" style="color:var(--danger)"></i>{{ likesCount }} j'aime
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

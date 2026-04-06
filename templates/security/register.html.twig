@@ -1,0 +1,76 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Inscription — Talentos{% endblock %}
+
+{% block body %}
+<div class="auth-container">
+    <div class="auth-card" style="max-width:480px">
+        <div class="auth-logo">
+            <h1><i class="bi bi-briefcase-fill"></i> Talentos</h1>
+            <p>Créez votre compte</p>
+        </div>
+
+        {% if error %}
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+            </div>
+        {% endif %}
+
+        {% if success %}
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle-fill me-2"></i>{{ success }}
+                <a href="{{ path('app_login') }}" class="d-block mt-2" style="color:#6ee7b7">
+                    → Se connecter maintenant
+                </a>
+            </div>
+        {% endif %}
+
+        <form method="post">
+            <div class="form-floating">
+                <input type="email" class="form-control" id="email" name="email"
+                       placeholder="Email" required autofocus>
+                <label for="email"><i class="bi bi-envelope me-1"></i> Adresse email</label>
+            </div>
+
+            <div class="row">
+                <div class="col-6">
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="password" name="password"
+                               placeholder="Mot de passe" required minlength="6">
+                        <label for="password"><i class="bi bi-lock me-1"></i> Mot de passe</label>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                               placeholder="Confirmer" required>
+                        <label for="confirm_password"><i class="bi bi-lock-fill me-1"></i> Confirmer</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-floating mb-3">
+                <select class="form-select" id="role" name="role">
+                    <option value="CANDIDATE">Candidat</option>
+                    <option value="HR">Recruteur (RH)</option>
+                </select>
+                <label for="role"><i class="bi bi-person-badge me-1"></i> Rôle</label>
+            </div>
+
+            <div class="form-floating">
+                <input type="number" class="form-control" id="captcha" name="captcha"
+                       placeholder="CAPTCHA" required>
+                <label for="captcha"><i class="bi bi-shield-check me-1"></i> {{ captcha_question }}</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary-custom">
+                <i class="bi bi-person-plus me-2"></i>Créer mon compte
+            </button>
+        </form>
+
+        <div class="auth-link">
+            Déjà un compte ? <a href="{{ path('app_login') }}">Se connecter</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

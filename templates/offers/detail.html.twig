@@ -1,0 +1,127 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}{{ offer.title }} — Talentos{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="mb-3">
+        <a href="{{ path('app_offers') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem">
+            <i class="bi bi-arrow-left me-1"></i> Retour aux offres
+        </a>
+    </div>
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+    {% endfor %}
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}</div>
+    {% endfor %}
+
+    <div class="row g-4">
+        {# Main Info #}
+        <div class="col-md-8">
+            <div class="stat-card" style="margin-bottom:16px">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div>
+                        <h3 style="font-weight:700;margin-bottom:4px">{{ offer.title }}</h3>
+                        <p style="color:var(--text-secondary);margin-bottom:0">{{ offer.department ?: '' }}</p>
+                    </div>
+                    <a href="{{ path('app_offer_bookmark', {id: offer.id}) }}"
+                       style="color:{{ bookmarked ? 'var(--warning)' : 'var(--text-secondary)' }};font-size:1.5rem;text-decoration:none"
+                       title="{{ bookmarked ? 'Retirer des favoris' : 'Ajouter aux favoris' }}">
+                        <i class="bi bi-{{ bookmarked ? 'bookmark-fill' : 'bookmark' }}"></i>
+                    </a>
+                </div>
+
+                <div class="d-flex flex-wrap gap-3 mb-4" style="font-size:0.85rem">
+                    {% if offer.contractType %}
+                        <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent);padding:6px 14px;border-radius:8px;font-weight:500">
+                            <i class="bi bi-briefcase me-1"></i>{{ offer.contractType }}
+                        </span>
+                    {% endif %}
+                    {% if offer.experienceLevel %}
+                        <span class="badge" style="background:rgba(79,70,229,0.15);color:var(--primary-light);padding:6px 14px;border-radius:8px;font-weight:500">
+                            <i class="bi bi-bar-chart me-1"></i>{{ offer.experienceLevel }}
+                        </span>
+                    {% endif %}
+                    {% if offer.location %}
+                        <span class="badge" style="background:rgba(16,185,129,0.15);color:var(--success);padding:6px 14px;border-radius:8px;font-weight:500">
+                            <i class="bi bi-geo-alt me-1"></i>{{ offer.location }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <h5 style="font-weight:600;margin-bottom:12px">Description</h5>
+                <div style="color:var(--text-secondary);line-height:1.8;white-space:pre-line">{{ offer.description|default('Aucune description disponible.') }}</div>
+            </div>
+        </div>
+
+        {# Sidebar Info #}
+        <div class="col-md-4">
+            <div class="stat-card" style="margin-bottom:16px">
+                <h5 style="font-weight:600;margin-bottom:16px">Détails</h5>
+                <div class="mb-3">
+                    <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Salaire</div>
+                    <div style="font-weight:600;color:var(--success)">
+                        {% if offer.salaryMin and offer.salaryMax %}
+                            {{ offer.salaryMin|number_format(0) }} – {{ offer.salaryMax|number_format(0) }} DT
+                        {% else %}
+                            Non communiqué
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Postes disponibles</div>
+                    <div style="font-weight:500">{{ offer.positionsAvailable }}</div>
+                </div>
+                <div class="mb-3">
+                    <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Candidatures reçues</div>
+                    <div style="font-weight:500">{{ offer.applicationsReceived }}</div>
+                </div>
+                <div class="mb-3">
+                    <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Date de publication</div>
+                    <div style="font-weight:500">{{ offer.publishDate ? offer.publishDate|date('d/m/Y') : '—' }}</div>
+                </div>
+                <div>
+                    <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Date limite</div>
+                    <div style="font-weight:500">{{ offer.closingDate ? offer.closingDate|date('d/m/Y') : '—' }}</div>
+                </div>
+            </div>
+
+            {# Apply Section #}
+            {% if alreadyApplied %}
+                <div class="stat-card text-center" style="border-color:var(--success)">
+                    <i class="bi bi-check-circle" style="font-size:2rem;color:var(--success)"></i>
+                    <p class="mt-2 mb-1" style="font-weight:600;color:var(--success)">Candidature envoyée</p>
+                    <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">
+                        Statut : <strong>{{ application.status }}</strong>
+                    </p>
+                </div>
+            {% else %}
+                <div class="stat-card">
+                    <h5 style="font-weight:600;margin-bottom:16px">Postuler</h5>
+                    <form method="post" action="{{ path('app_offer_apply', {id: offer.id}) }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">Lettre de motivation</label>
+                            <textarea name="motivation" rows="4" class="form-control"
+                                      placeholder="Pourquoi cette offre vous intéresse..."
+                                      style="background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">CV (PDF)</label>
+                            <input type="file" name="cv" accept=".pdf" class="form-control"
+                                   style="background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px;font-size:0.85rem">
+                        </div>
+                        <button type="submit" class="btn btn-primary-custom">
+                            <i class="bi bi-send me-2"></i>Envoyer ma candidature
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</main>
+{% endblock %}

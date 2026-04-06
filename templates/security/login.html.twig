@@ -1,0 +1,55 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion — Talentos{% endblock %}
+
+{% block body %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <h1><i class="bi bi-briefcase-fill"></i> Talentos</h1>
+            <p>Connectez-vous à votre espace</p>
+        </div>
+
+        {% if error %}
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error.messageKey|trans(error.messageData, 'security') }}
+            </div>
+        {% endif %}
+
+        <form method="post">
+            <div class="form-floating">
+                <input type="email" class="form-control" id="email" name="_username"
+                       value="{{ last_username }}" placeholder="Email" required autofocus>
+                <label for="email"><i class="bi bi-envelope me-1"></i> Adresse email</label>
+            </div>
+
+            <div class="form-floating">
+                <input type="password" class="form-control" id="password" name="_password"
+                       placeholder="Mot de passe" required>
+                <label for="password"><i class="bi bi-lock me-1"></i> Mot de passe</label>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="remember_me" name="_remember_me">
+                    <label class="form-check-label text-secondary" for="remember_me" style="font-size:0.85rem">
+                        Se souvenir de moi
+                    </label>
+                </div>
+                <a href="{{ path('app_forgot_password') }}" style="font-size:0.85rem;color:var(--primary-light);text-decoration:none">
+                    Mot de passe oublié ?
+                </a>
+            </div>
+
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+            <button type="submit" class="btn btn-primary-custom">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter
+            </button>
+        </form>
+
+        <div class="auth-link">
+            Pas encore de compte ? <a href="{{ path('app_register') }}">S'inscrire</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

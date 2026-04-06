@@ -1,0 +1,44 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}{{ quiz.titre }} — Quiz{% endblock %}
+
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <a href="{{ path('app_course_detail', {id: quiz.formation.id}) }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500">
+            <i class="bi bi-arrow-left me-1"></i> Retour à la formation
+        </a>
+        <h1 class="mt-2">{{ quiz.titre }}</h1>
+        <p>{{ questions|length }} question{{ questions|length > 1 ? 's' }}</p>
+    </div>
+</div>
+
+<section class="fo-section" style="padding-top:40px">
+    <div class="container" style="max-width:750px">
+        <form method="post" action="{{ path('app_quiz_submit', {id: quiz.id}) }}" class="fo-form">
+            {% for question in questions %}
+                <div class="fo-card mb-3">
+                    <h6 style="font-weight:700;margin-bottom:12px">
+                        <span style="color:var(--primary);margin-right:8px">Q{{ loop.index }}.</span>
+                        {{ question.texte }}
+                    </h6>
+                    <div class="d-flex flex-column gap-2">
+                        {% for choix in question.loadedChoices %}
+                            <label class="d-flex align-items-center gap-3 p-3 rounded-3" style="cursor:pointer;border:1.5px solid var(--fo-border);transition:all 0.2s"
+                                   onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(79,70,229,0.03)'"
+                                   onmouseout="this.style.borderColor='var(--fo-border)';this.style.background='transparent'">
+                                <input type="radio" name="q_{{ question.id }}" value="{{ choix.id }}" required class="form-check-input" style="margin:0">
+                                <span style="font-size:0.9rem">{{ choix.texte }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:14px 48px"><i class="bi bi-send me-2"></i>Soumettre</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

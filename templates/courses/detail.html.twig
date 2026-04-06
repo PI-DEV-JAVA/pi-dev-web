@@ -1,0 +1,91 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}{{ formation.titre }} — Talentos{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="mb-3">
+        <a href="{{ path('app_courses') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem">
+            <i class="bi bi-arrow-left me-1"></i> Retour aux formations
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="stat-card" style="margin-bottom:16px">
+                <h3 style="font-weight:700;margin-bottom:8px">{{ formation.titre }}</h3>
+                <div class="d-flex gap-3 mb-3" style="font-size:0.85rem">
+                    {% if formation.niveau %}
+                        <span class="badge" style="background:rgba(79,70,229,0.15);color:var(--primary-light);padding:5px 12px;border-radius:8px">
+                            {{ formation.niveau }}
+                        </span>
+                    {% endif %}
+                    {% if formation.duree %}
+                        <span class="badge" style="background:rgba(6,182,212,0.15);color:var(--accent);padding:5px 12px;border-radius:8px">
+                            <i class="bi bi-clock me-1"></i>{{ formation.duree }}h
+                        </span>
+                    {% endif %}
+                </div>
+                <div style="color:var(--text-secondary);line-height:1.8;white-space:pre-line">
+                    {{ formation.description|default('Aucune description.') }}
+                </div>
+            </div>
+
+            {# Sessions #}
+            <div class="stat-card">
+                <h5 style="font-weight:600;margin-bottom:16px"><i class="bi bi-calendar3 me-2" style="color:var(--accent)"></i>Séances ({{ seances|length }})</h5>
+                {% if seances is empty %}
+                    <p style="color:var(--text-secondary)">Aucune séance planifiée.</p>
+                {% else %}
+                    {% for s in seances %}
+                        <div class="d-flex align-items-center gap-3 p-3 mb-2" style="background:var(--bg-input);border-radius:12px">
+                            <div style="width:48px;height:48px;border-radius:10px;
+                                        background:{{ s.type == 'EN_LIGNE' ? 'rgba(6,182,212,0.15)' : 'rgba(79,70,229,0.15)' }};
+                                        display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                <i class="bi bi-{{ s.type == 'EN_LIGNE' ? 'camera-video' : 'geo-alt' }}"
+                                   style="color:{{ s.type == 'EN_LIGNE' ? 'var(--accent)' : 'var(--primary-light)' }};font-size:1.2rem"></i>
+                            </div>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:600;font-size:0.9rem">{{ s.titre }}</div>
+                                <div style="color:var(--text-secondary);font-size:0.8rem">
+                                    {{ s.dateDebut|date('d/m/Y H:i') }} — {{ s.dateFin|date('H:i') }}
+                                    {% if s.adresse %} · {{ s.adresse }}{% endif %}
+                                </div>
+                            </div>
+                            <span class="badge" style="font-size:0.7rem;padding:3px 8px;border-radius:5px;
+                                                        background:{{ s.statut == 'TERMINEE' ? 'rgba(16,185,129,0.15)' : (s.statut == 'EN_COURS' ? 'rgba(245,158,11,0.15)' : 'rgba(148,163,184,0.15)') }};
+                                                        color:{{ s.statut == 'TERMINEE' ? 'var(--success)' : (s.statut == 'EN_COURS' ? 'var(--warning)' : 'var(--text-secondary)') }}">
+                                {{ s.statut }}
+                            </span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        {# Sidebar: Quizzes #}
+        <div class="col-md-4">
+            <div class="stat-card">
+                <h5 style="font-weight:600;margin-bottom:16px"><i class="bi bi-patch-question me-2" style="color:var(--warning)"></i>Quiz</h5>
+                {% if quizzes is empty %}
+                    <p style="color:var(--text-secondary);font-size:0.9rem">Aucun quiz disponible.</p>
+                {% else %}
+                    {% for q in quizzes %}
+                        <a href="{{ path('app_quiz', {id: q.id}) }}" class="text-decoration-none d-block mb-2">
+                            <div class="p-3" style="background:var(--bg-input);border-radius:10px;transition:all 0.2s">
+                                <div style="font-weight:600;color:var(--text-primary);font-size:0.9rem">{{ q.titre }}</div>
+                                <div style="color:var(--text-secondary);font-size:0.8rem;margin-top:4px">
+                                    <i class="bi bi-arrow-right-circle me-1"></i>Commencer le quiz
+                                </div>
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Gestion des évènements{% endblock %}
+{% block title %}Évènements — Admin{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 style="font-weight:700;margin:0">Évènements ({{ events|length }})</h5>
+    <a href="{{ path('admin_event_new') }}" class="bo-btn bo-btn-primary"><i class="bi bi-plus-lg me-1"></i> Nouvel évènement</a>
+</div>
+<div class="bo-card">
+    <table class="bo-table">
+        <thead><tr><th>Titre</th><th>Type</th><th>Date</th><th>Lieu</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody>
+            {% for event in events %}
+                <tr>
+                    <td style="font-weight:600">{{ event.title }}</td>
+                    <td><span class="bo-badge bo-badge-primary">{{ event.eventType }}</span></td>
+                    <td style="color:var(--bo-text-secondary)">{{ event.eventDate ? event.eventDate|date('d/m/Y') : '—' }}</td>
+                    <td style="color:var(--bo-text-secondary)">{{ event.location ?: '—' }}</td>
+                    <td><span class="bo-badge bo-badge-success">{{ event.status }}</span></td>
+                    <td>
+                        <a href="{{ path('admin_event_edit', {id: event.id}) }}" class="bo-action-btn"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ path('admin_event_delete', {id: event.id}) }}" class="bo-action-btn danger" onclick="return confirm('Supprimer ?')"><i class="bi bi-trash"></i></a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="text-center" style="padding:30px;color:var(--bo-text-secondary)">Aucun évènement.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

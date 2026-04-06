@@ -1,0 +1,54 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}Mes candidatures — Talentos{% endblock %}
+
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <h1>Mes candidatures</h1>
+        <p>Suivez l'état de vos candidatures</p>
+    </div>
+</div>
+
+<section class="fo-section" style="padding-top:40px">
+    <div class="container">
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success mb-3"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+        {% endfor %}
+
+        {% if applications is empty %}
+            <div class="fo-card text-center" style="padding:60px">
+                <i class="bi bi-file-earmark-x" style="font-size:3rem;color:var(--fo-text-secondary)"></i>
+                <p class="mt-3" style="color:var(--fo-text-secondary)">Aucune candidature pour le moment.</p>
+                <a href="{{ path('app_offers') }}" class="btn btn-primary-custom mt-2" style="display:inline-block;width:auto">Explorer les offres</a>
+            </div>
+        {% else %}
+            <div class="row g-3">
+                {% for app_item in applications %}
+                    <div class="col-md-6">
+                        <div class="fo-card">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 style="font-weight:700;margin:0">{{ app_item.offer ? app_item.offer.title : 'Offre supprimée' }}</h6>
+                                <span class="fo-badge fo-badge-{{ app_item.status == 'Acceptée' ? 'success' : (app_item.status == 'Refusée' ? 'warning' : 'primary') }}">
+                                    {{ app_item.status }}
+                                </span>
+                            </div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.85rem">
+                                <i class="bi bi-calendar3 me-1"></i>{{ app_item.applicationDate ? app_item.applicationDate|date('d/m/Y') : '—' }}
+                                {% if app_item.offer and app_item.offer.contractType %}
+                                    · {{ app_item.offer.contractType }}
+                                {% endif %}
+                            </div>
+                            {% if app_item.offer %}
+                                <a href="{{ path('app_offer_detail', {id: app_item.offer.id}) }}" style="color:var(--primary);font-size:0.85rem;font-weight:500;text-decoration:none;display:inline-block;margin-top:10px">
+                                    Voir l'offre <i class="bi bi-arrow-right"></i>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

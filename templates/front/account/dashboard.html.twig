@@ -1,0 +1,82 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}Mon espace — Talentos{% endblock %}
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <h1>Bonjour {{ app.user.email|split('@')[0] }} 👋</h1>
+        <p>Bienvenue dans votre espace personnel</p>
+    </div>
+</div>
+<section class="fo-section" style="padding-top:40px">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-md-4 col-6">
+                <a href="{{ path('app_my_applications') }}" class="text-decoration-none">
+                    <div class="fo-card text-center" style="cursor:pointer">
+                        <div style="width:56px;height:56px;border-radius:14px;background:rgba(79,70,229,0.08);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--primary);margin:0 auto 12px">
+                            <i class="bi bi-file-text"></i>
+                        </div>
+                        <h6 style="font-weight:700;color:var(--fo-text)">Candidatures</h6>
+                        <p style="color:var(--fo-text-secondary);font-size:0.8rem;margin:0">Suivez vos candidatures</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4 col-6">
+                <a href="{{ path('app_my_circle') }}" class="text-decoration-none">
+                    <div class="fo-card text-center" style="cursor:pointer">
+                        <div style="width:56px;height:56px;border-radius:14px;background:rgba(6,182,212,0.08);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--accent);margin:0 auto 12px">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <h6 style="font-weight:700;color:var(--fo-text)">Mon Cercle</h6>
+                        <p style="color:var(--fo-text-secondary);font-size:0.8rem;margin:0">Vos connexions</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4 col-6">
+                <a href="{{ path('app_interviews') }}" class="text-decoration-none">
+                    <div class="fo-card text-center" style="cursor:pointer">
+                        <div style="width:56px;height:56px;border-radius:14px;background:rgba(16,185,129,0.08);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--success);margin:0 auto 12px">
+                            <i class="bi bi-camera-video"></i>
+                        </div>
+                        <h6 style="font-weight:700;color:var(--fo-text)">Entretiens</h6>
+                        <p style="color:var(--fo-text-secondary);font-size:0.8rem;margin:0">Planifiés</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4 col-6">
+                <a href="{{ path('app_support') }}" class="text-decoration-none">
+                    <div class="fo-card text-center" style="cursor:pointer">
+                        <div style="width:56px;height:56px;border-radius:14px;background:rgba(245,158,11,0.08);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--warning);margin:0 auto 12px">
+                            <i class="bi bi-headset"></i>
+                        </div>
+                        <h6 style="font-weight:700;color:var(--fo-text)">Support</h6>
+                        <p style="color:var(--fo-text-secondary);font-size:0.8rem;margin:0">Besoin d'aide ?</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4 col-6">
+                <a href="{{ path('app_profile') }}" class="text-decoration-none">
+                    <div class="fo-card text-center" style="cursor:pointer">
+                        <div style="width:56px;height:56px;border-radius:14px;background:rgba(239,68,68,0.08);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--danger);margin:0 auto 12px">
+                            <i class="bi bi-person-gear"></i>
+                        </div>
+                        <h6 style="font-weight:700;color:var(--fo-text)">Mon Profil</h6>
+                        <p style="color:var(--fo-text-secondary);font-size:0.8rem;margin:0">Gérer mes infos</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4 col-6">
+                <a href="{{ path('app_offers') }}" class="text-decoration-none">
+                    <div class="fo-card text-center" style="cursor:pointer">
+                        <div style="width:56px;height:56px;border-radius:14px;background:rgba(99,102,241,0.08);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#6366f1;margin:0 auto 12px">
+                            <i class="bi bi-search"></i>
+                        </div>
+                        <h6 style="font-weight:700;color:var(--fo-text)">Explorer</h6>
+                        <p style="color:var(--fo-text-secondary);font-size:0.8rem;margin:0">Parcourir les offres</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

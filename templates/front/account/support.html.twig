@@ -1,0 +1,59 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}Support — Talentos{% endblock %}
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <h1>Support 🎧</h1>
+        <p>Besoin d'aide ? Créez un ticket</p>
+    </div>
+</div>
+<section class="fo-section" style="padding-top:40px">
+    <div class="container">
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success mb-3"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+        {% endfor %}
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="fo-card">
+                    <h5 style="font-weight:700;margin-bottom:16px">Nouveau ticket</h5>
+                    <form method="post" action="{{ path('app_support_new') }}" class="fo-form">
+                        <div class="mb-3">
+                            <label>Sujet</label>
+                            <input type="text" name="subject" class="form-control" required placeholder="Décrivez votre problème...">
+                        </div>
+                        <div class="mb-3">
+                            <label>Message</label>
+                            <textarea name="message" class="form-control" rows="4" required placeholder="Détails..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary-custom w-100"><i class="bi bi-send me-2"></i>Envoyer</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <h5 style="font-weight:700;margin-bottom:16px">Mes tickets</h5>
+                {% if tickets is empty %}
+                    <div class="fo-card text-center" style="padding:40px">
+                        <p style="color:var(--fo-text-secondary)">Aucun ticket créé.</p>
+                    </div>
+                {% else %}
+                    {% for ticket in tickets %}
+                        <a href="{{ path('app_support_detail', {id: ticket.id}) }}" class="text-decoration-none d-block mb-2">
+                            <div class="fo-card d-flex align-items-center gap-3">
+                                <div style="width:40px;height:40px;border-radius:10px;background:{{ ticket.status == 'OPEN' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)' }};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                    <i class="bi bi-{{ ticket.status == 'OPEN' ? 'exclamation-circle' : 'check-circle' }}" style="color:{{ ticket.status == 'OPEN' ? 'var(--warning)' : 'var(--success)' }}"></i>
+                                </div>
+                                <div style="flex:1;min-width:0">
+                                    <div style="font-weight:600;font-size:0.9rem;color:var(--fo-text)">{{ ticket.subject }}</div>
+                                    <div style="color:var(--fo-text-secondary);font-size:0.8rem">{{ ticket.createdAt ? ticket.createdAt|date('d/m/Y H:i') : '' }}</div>
+                                </div>
+                                <span class="fo-badge fo-badge-{{ ticket.status == 'OPEN' ? 'warning' : 'success' }}">{{ ticket.status }}</span>
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
