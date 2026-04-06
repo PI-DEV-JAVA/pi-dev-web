@@ -1,0 +1,107 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Liste des Événements | PIWEB{% endblock %}
+
+{% block body %}
+<div class="sm:flex sm:items-center">
+    <div class="sm:flex-auto">
+        <h1 class="text-2xl font-semibold text-gray-900">Événements RH</h1>
+        <p class="mt-2 text-sm text-gray-700">Gérez vos événements, formations, et ateliers.</p>
+    </div>
+    <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+        <a href="{{ path('app_evenement_new') }}" class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
+            Ajouter un événement
+        </a>
+    </div>
+</div>
+
+<div class="mt-6">
+    <form method="get" class="flex flex-col sm:flex-row gap-4 mb-4">
+        <div class="flex-1">
+            <label for="titre" class="sr-only">Titre</label>
+            <input type="text" name="titre" id="titre" value="{{ search_titre }}" placeholder="Rechercher par titre..." class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+        </div>
+        <div class="w-full sm:w-48">
+            <label for="type" class="sr-only">Type</label>
+            <select name="type" id="type" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <option value="">Tous les types</option>
+                <option value="Formation" {% if search_type == 'Formation' %}selected{% endif %}>Formation</option>
+                <option value="Atelier" {% if search_type == 'Atelier' %}selected{% endif %}>Atelier</option>
+                <option value="Séminaire" {% if search_type == 'Séminaire' %}selected{% endif %}>Séminaire</option>
+                <option value="Réunion" {% if search_type == 'Réunion' %}selected{% endif %}>Réunion</option>
+            </select>
+        </div>
+        <div class="w-full sm:w-48">
+            <label for="statut" class="sr-only">Statut</label>
+            <select name="statut" id="statut" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <option value="">Tous les statuts</option>
+                <option value="Planifié" {% if search_statut == 'Planifié' %}selected{% endif %}>Planifié</option>
+                <option value="En cours" {% if search_statut == 'En cours' %}selected{% endif %}>En cours</option>
+                <option value="Terminé" {% if search_statut == 'Terminé' %}selected{% endif %}>Terminé</option>
+                <option value="Annulé" {% if search_statut == 'Annulé' %}selected{% endif %}>Annulé</option>
+            </select>
+        </div>
+        <div>
+            <button type="submit" class="inline-flex items-center justify-center rounded-md border border-transparent bg-gray-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-700 w-full">
+                Filtrer
+            </button>
+        </div>
+        {% if search_titre or search_type or search_statut %}
+        <div>
+            <a href="{{ path('app_evenement_index') }}" class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 w-full">
+                Réinitialiser
+            </a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<div class="mt-4 flex flex-col">
+    <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                <table class="min-w-full divide-y divide-gray-300">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Titre</th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Type</th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Date</th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Lieu</th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Statut</th>
+                            <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                                <span class="sr-only">Actions</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                    {% for evenement in evenements %}
+                        <tr>
+                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{{ evenement.titre }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ evenement.typeEvent }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ evenement.dateEvent ? evenement.dateEvent|date('d/m/Y') : '' }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ evenement.lieu }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                <span class="inline-flex rounded-full bg-blue-100 px-2 text-xs font-semibold leading-5 text-blue-800">{{ evenement.statut }}</span>
+                            </td>
+                            <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                <a href="{{ path('app_evenement_edit', {'idEvent': evenement.idEvent}) }}" class="text-indigo-600 hover:text-indigo-900 mr-4">Modifier</a>
+                                <button type="button" onclick="confirmDelete('event-{{ evenement.idEvent }}')" class="text-red-600 hover:text-red-900">Supprimer</button>
+                                <form id="delete-form-event-{{ evenement.idEvent }}" action="{{ path('app_evenement_delete', {'idEvent': evenement.idEvent}) }}" method="post" style="display: none;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ evenement.idEvent) }}">
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-center text-gray-500 sm:pl-6">
+                                Aucun événement trouvé.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ajouter un Feedback | PIWEB{% endblock %}
+
+{% block body %}
+    <div class="mb-6 flex items-center justify-between">
+        <h1 class="text-2xl font-semibold text-gray-900">Ajouter un Feedback</h1>
+        <a href="{{ path('app_feedback_index') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">Retour à la liste</a>
+    </div>
+
+    {{ include('feedback/_form.html.twig') }}
+{% endblock %}

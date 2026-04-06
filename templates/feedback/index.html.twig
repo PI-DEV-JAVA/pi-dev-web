@@ -1,0 +1,78 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Feedbacks | PIWEB{% endblock %}
+
+{% block body %}
+<div class="sm:flex sm:items-center">
+    <div class="sm:flex-auto">
+        <h1 class="text-2xl font-semibold text-gray-900">Feedbacks & Évaluations</h1>
+        <p class="mt-2 text-sm text-gray-700">Notes et commentaires des participants.</p>
+    </div>
+    <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+        <a href="{{ path('app_feedback_new') }}" class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
+            Ajouter un feedback
+        </a>
+    </div>
+</div>
+
+<div class="mt-8 flex flex-col">
+    <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                <table class="min-w-full divide-y divide-gray-300">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Événement</th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Participant</th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Note</th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Commentaire</th>
+                            <th scope="col" class="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">Recommandé</th>
+                            <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                                <span class="sr-only">Actions</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                    {% for feedback in feedbacks %}
+                        <tr>
+                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{{ feedback.participation.evenement.titre ?? '' }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ feedback.participation.user.prenom ?? '' }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                {% for i in 1..5 %}
+                                    {% if i <= feedback.note %}
+                                        <span class="text-yellow-400">★</span>
+                                    {% else %}
+                                        <span class="text-gray-300">★</span>
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td class="px-3 py-4 text-sm text-gray-500 truncate max-w-xs">{{ feedback.commentaire }}</td>
+                            <td class="whitespace-nowrap px-3 py-4 text-sm text-center">
+                                {% if feedback.recommanderait %}
+                                    <span class="text-green-500 font-bold">✓</span>
+                                {% else %}
+                                    <span class="text-red-500 font-bold">✗</span>
+                                {% endif %}
+                            </td>
+                            <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex justify-end gap-3 items-center">
+                                <a href="{{ path('app_feedback_edit', {'idFeedback': feedback.idFeedback}) }}" class="text-indigo-600 hover:text-indigo-900">Modifier</a>
+                                <form id="delete-form-fb-{{ feedback.idFeedback }}" action="{{ path('app_feedback_delete', {'idFeedback': feedback.idFeedback}) }}" method="post">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ feedback.idFeedback) }}">
+                                    <button type="button" onclick="confirmDelete('fb-{{ feedback.idFeedback }}')" class="text-red-600 hover:text-red-900">Supprimer</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-center text-gray-500 sm:pl-6">
+                                Aucun feedback trouvé.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

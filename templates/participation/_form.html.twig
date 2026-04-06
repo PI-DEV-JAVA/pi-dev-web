@@ -1,0 +1,28 @@
+{{ form_start(form, {'attr': {'class': 'space-y-6'}}) }}
+    <div class="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
+        <div class="md:grid md:grid-cols-3 md:gap-6">
+            <div class="md:col-span-1">
+                <h3 class="text-lg font-medium leading-6 text-gray-900">Informations de participation</h3>
+            </div>
+            <div class="mt-5 md:col-span-2 md:mt-0 space-y-6">
+                <div>
+                    {{ form_label(form.evenement, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700'}}) }}
+                    {{ form_widget(form.evenement) }}
+                </div>
+                <div>
+                    {{ form_label(form.user, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700'}}) }}
+                    {{ form_widget(form.user) }}
+                </div>
+                <div>
+                    {{ form_label(form.statut, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700'}}) }}
+                    {{ form_widget(form.statut) }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex justify-end gap-3 mt-4">
+        <a href="{{ path('app_participation_index') }}" class="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Annuler</a>
+        <button class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">{{ button_label|default('Enregistrer') }}</button>
+    </div>
+{{ form_end(form) }}

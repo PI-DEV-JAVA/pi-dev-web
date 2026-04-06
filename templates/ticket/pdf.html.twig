@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Ticket #{{ ticket.id }}</title>
+    <style>
+        body { font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif; color: #333; }
+        .ticket-box {
+            max-width: 800px; margin: auto; padding: 30px;
+            border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, .15);
+            font-size: 16px; line-height: 24px;
+        }
+        .header { text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 20px; margin-bottom: 20px; }
+        .header h1 { color: #4f46e5; margin: 0; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .info-label { font-weight: bold; color: #555; }
+        .qr-box { text-align: center; margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 8px; }
+        .footer { text-align: center; margin-top: 50px; font-size: 12px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="ticket-box">
+        <div class="header">
+            <h1>PIWEB Events - Billet d'entrée</h1>
+            <p>Facture & Accès Événement</p>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <p><span class="info-label">Événement :</span> {{ event.titre }}</p>
+            <p><span class="info-label">Date :</span> {{ event.dateEvent ? event.dateEvent|date('d/m/Y') : 'Non définie' }}</p>
+            <p><span class="info-label">Lieu :</span> {{ event.lieu }}</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <p><span class="info-label">Participant :</span> {{ user.prenom }} {{ user.nom }}</p>
+            <p><span class="info-label">Prix acquitté :</span> {{ ticket.price }} €</p>
+            <p><span class="info-label">Statut du paiement :</span> {{ ticket.paymentStatus }}</p>
+        </div>
+
+        <div class="qr-box">
+            <h3>Votre code d'accès sécurisé</h3>
+            <p style="font-family: monospace; font-size: 20px; letter-spacing: 2px; color: #4f46e5;">
+                {{ ticket.qrCodeContent }}
+            </p>
+            <p style="font-size: 14px; color: #666;">Présentez ce code lors de l'accueil de l'événement.</p>
+        </div>
+
+        <div class="footer">
+            Document généré le {{ ticket.createdAt|date('d/m/Y H:i') }} par PIWEB Ticketing API.
+        </div>
+    </div>
+</body>
+</html>

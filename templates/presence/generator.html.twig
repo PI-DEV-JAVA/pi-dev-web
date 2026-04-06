@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Générateur QR | PIWEB{% endblock %}
+
+{% block body %}
+<div class="max-w-2xl mx-auto mt-10">
+    <div class="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6 text-center" x-data="{ qrText: 'PIWEB-2024' }">
+        <h3 class="text-xl font-bold leading-6 text-gray-900 mb-2">Générateur de QR Code Instantané</h3>
+        <p class="text-sm text-gray-500 mb-8">Saisissez n'importe quel texte pour générer automatiquement son QR Code.</p>
+
+        <div class="mb-8">
+            <input type="text" x-model="qrText" class="mt-1 block w-2/3 mx-auto rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-lg text-center font-mono" placeholder="Tapez votre texte ici...">
+        </div>
+
+        <div class="flex justify-center p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 w-64 h-64 mx-auto items-center">
+            <!-- La source de l'image pointe dynamiquement vers notre API PHP -->
+            <img x-show="qrText.length > 0" :src="'{{ path('app_presence_qr', {code: 'REPLACE_ME'}) }}'.replace('REPLACE_ME', encodeURIComponent(qrText))" alt="QR Code" class="w-full h-full object-contain mix-blend-multiply drop-shadow-md transition-opacity duration-300">
+            
+            <p x-show="qrText.length === 0" class="text-gray-400 italic">En attente de texte...</p>
+        </div>
+
+        <div class="mt-8">
+            <a :href="'{{ path('app_presence_qr_download', {code: 'REPLACE_ME'}) }}'.replace('REPLACE_ME', encodeURIComponent(qrText))" class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
+                <svg class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Télécharger l'image PNG
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

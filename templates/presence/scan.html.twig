@@ -1,0 +1,45 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Scanner QR Code | PIWEB{% endblock %}
+
+{% block body %}
+<div class="max-w-2xl mx-auto mt-10">
+    <div class="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
+        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Scanner un QR Code</h3>
+        <p class="text-sm text-gray-500 mb-6">Simulation du scan de code QR pour valider la présence.</p>
+
+        <div id="reader" class="mb-6 w-full mx-auto rounded overflow-hidden shadow border-2 border-indigo-100"></div>
+
+        <form id="scan-form" action="{{ path('app_presence_scan') }}" method="POST" class="space-y-4">
+            <div>
+                <label for="code_qr" class="block text-sm font-medium text-gray-700">Code lu par la caméra (ou saisie manuelle)</label>
+                <input type="text" name="code_qr" id="code_qr" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="En attente du focus caméra..." required>
+            </div>
+            <button type="submit" class="w-full justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">Valider manuellement</button>
+        </form>
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            // Un code a été scanné ! On l'injecte dans le champ texte
+            document.getElementById('code_qr').value = decodedText;
+            
+            // On stoppe la caméra pour éviter de rescanner en boucle et on envoie le formulaire
+            html5QrcodeScanner.clear().then(_ => {
+                document.getElementById('scan-form').submit();
+            }).catch(error => {
+                console.error("Failed to clear scanner. ", error);
+            });
+        }
+
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader",
+            { fps: 10, qrbox: {width: 250, height: 250} },
+            false);
+            
+        html5QrcodeScanner.render(onScanSuccess);
+    </script>
+
+</div>
+{% endblock %}
