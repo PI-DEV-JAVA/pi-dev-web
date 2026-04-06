@@ -1,0 +1,62 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Candidatures — {{ offer.title }}{% endblock %}
+{% block content %}
+<div class="mb-3"><a href="{{ path('admin_offers') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour aux offres</a></div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h5 style="font-weight:700;margin:0">{{ offer.title }}</h5>
+        <span style="color:var(--bo-text-secondary);font-size:0.85rem">{{ applications|length }} candidature(s)</span>
+    </div>
+</div>
+
+<div class="bo-card">
+    <table class="bo-table">
+        <thead><tr><th>Candidat</th><th>Date</th><th>CV</th><th>Score</th><th>Statut</th><th>Décision</th></tr></thead>
+        <tbody>
+            {% for app in applications %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.75rem;color:white;flex-shrink:0">
+                                {{ app.user ? app.user.email|first|upper : '?' }}
+                            </div>
+                            <span style="font-weight:600;font-size:0.85rem">{{ app.user ? app.user.email : '—' }}</span>
+                        </div>
+                    </td>
+                    <td style="color:var(--bo-text-secondary);font-size:0.85rem">{{ app.applicationDate ? app.applicationDate|date('d/m/Y') : '—' }}</td>
+                    <td>
+                        {% if app.cvFilePath %}
+                            <a href="{{ app.cvFilePath }}" target="_blank" class="bo-action-btn" title="Voir le CV"><i class="bi bi-file-earmark-pdf"></i></a>
+                        {% else %}
+                            <span style="color:var(--bo-text-secondary)">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if app.score > 0 %}
+                            <span class="bo-badge bo-badge-{{ app.score >= 70 ? 'success' : (app.score >= 40 ? 'warning' : 'danger') }}">{{ app.score }}%</span>
+                        {% else %}
+                            <span style="color:var(--bo-text-secondary)">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="bo-badge bo-badge-{{ app.status == 'Acceptée' ? 'success' : (app.status == 'Refusée' ? 'danger' : (app.status == 'Entretien' ? 'primary' : 'warning')) }}">{{ app.status }}</span>
+                    </td>
+                    <td>
+                        <form method="post" action="{{ path('admin_application_status', {id: app.id}) }}" style="display:inline">
+                            <select name="status" class="form-select form-select-sm" style="background:var(--bo-bg-input);border-color:var(--bo-border);color:var(--bo-text);width:130px;border-radius:8px;font-size:0.8rem" onchange="this.form.submit()">
+                                <option value="En attente" {{ app.status == 'En attente' or app.status == 'Nouvelle' ? 'selected' }}>En attente</option>
+                                <option value="Entretien" {{ app.status == 'Entretien' ? 'selected' }}>Entretien</option>
+                                <option value="Acceptée" {{ app.status == 'Acceptée' ? 'selected' }}>Acceptée</option>
+                                <option value="Refusée" {{ app.status == 'Refusée' ? 'selected' }}>Refusée</option>
+                            </select>
+                        </form>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="text-center" style="padding:30px;color:var(--bo-text-secondary)">Aucune candidature.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

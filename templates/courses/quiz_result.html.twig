@@ -1,0 +1,53 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}Résultat — {{ quiz.titre }}{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="stat-card" style="max-width:750px;margin:0 auto">
+        <div class="text-center mb-4">
+            <div style="width:100px;height:100px;border-radius:50%;margin:0 auto 16px;
+                        background:{{ score >= 70 ? 'rgba(16,185,129,0.15)' : (score >= 50 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)') }};
+                        display:flex;align-items:center;justify-content:center">
+                <span style="font-size:2rem;font-weight:800;color:{{ score >= 70 ? 'var(--success)' : (score >= 50 ? 'var(--warning)' : 'var(--danger)') }}">
+                    {{ score }}%
+                </span>
+            </div>
+            <h3 style="font-weight:700">
+                {% if score >= 70 %}Bravo ! 🎉{% elseif score >= 50 %}Pas mal ! 👍{% else %}Continuez ! 💪{% endif %}
+            </h3>
+            <p style="color:var(--text-secondary)">{{ correct }}/{{ total }} réponses correctes</p>
+        </div>
+
+        <hr style="border-color:var(--border)">
+
+        {% for r in results %}
+            <div class="p-3 mb-2" style="background:var(--bg-input);border-radius:10px;
+                        border-left:3px solid {{ r.isCorrect ? 'var(--success)' : 'var(--danger)' }}">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-{{ r.isCorrect ? 'check-circle-fill' : 'x-circle-fill' }}"
+                       style="color:{{ r.isCorrect ? 'var(--success)' : 'var(--danger)' }};margin-top:2px"></i>
+                    <div>
+                        <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px">{{ r.question.texte }}</div>
+                        {% if not r.isCorrect %}
+                            <div style="font-size:0.8rem;color:var(--danger)">Votre réponse : {{ r.userAnswer ? r.userAnswer.texte : 'Non répondu' }}</div>
+                            <div style="font-size:0.8rem;color:var(--success)">Bonne réponse : {{ r.correctAnswer ? r.correctAnswer.texte : '—' }}</div>
+                        {% else %}
+                            <div style="font-size:0.8rem;color:var(--success)">{{ r.correctAnswer.texte }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+
+        <div class="text-center mt-4">
+            <a href="{{ path('app_course_detail', {id: quiz.formation.id}) }}" class="btn btn-primary-custom" style="width:auto;padding:12px 32px">
+                <i class="bi bi-arrow-left me-2"></i>Retour à la formation
+            </a>
+        </div>
+    </div>
+</main>
+{% endblock %}

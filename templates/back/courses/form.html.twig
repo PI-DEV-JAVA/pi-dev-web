@@ -1,0 +1,23 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}{{ formation ? 'Modifier la formation' : 'Nouvelle formation' }}{% endblock %}
+{% block content %}
+<div class="mb-3"><a href="{{ path('admin_courses') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour</a></div>
+<div class="bo-card bo-form" style="max-width:700px">
+    <form method="post">
+        <div class="row g-3">
+            <div class="col-12"><label>Titre *</label><input type="text" name="titre" class="form-control" value="{{ formation ? formation.titre : '' }}" required></div>
+            <div class="col-12"><label>Description</label><textarea name="description" class="form-control" rows="4">{{ formation ? formation.description : '' }}</textarea></div>
+            <div class="col-md-4"><label>Durée (heures)</label><input type="number" name="duree" class="form-control" value="{{ formation ? formation.duree : 1 }}" min="1"></div>
+            <div class="col-md-4"><label>Niveau</label>
+                <select name="niveau" class="form-select">
+                    <option value="Débutant" {{ formation and formation.niveau == 'Débutant' ? 'selected' }}>Débutant</option>
+                    <option value="Intermédiaire" {{ formation and formation.niveau == 'Intermédiaire' ? 'selected' }}>Intermédiaire</option>
+                    <option value="Avancé" {{ formation and formation.niveau == 'Avancé' ? 'selected' }}>Avancé</option>
+                </select>
+            </div>
+            <div class="col-md-4"><label>Date de début</label><input type="date" name="dateDebut" class="form-control" value="{{ formation and formation.dateDebut ? formation.dateDebut|date('Y-m-d') : '' }}"></div>
+        </div>
+        <div class="mt-4"><button type="submit" class="bo-btn bo-btn-primary"><i class="bi bi-check-lg me-1"></i> {{ formation ? 'Enregistrer' : 'Créer' }}</button></div>
+    </form>
+</div>
+{% endblock %}

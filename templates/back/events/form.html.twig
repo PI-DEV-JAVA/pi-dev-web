@@ -1,0 +1,24 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}{{ event ? 'Modifier l\'évènement' : 'Nouvel évènement' }}{% endblock %}
+{% block content %}
+<div class="mb-3"><a href="{{ path('admin_events') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour</a></div>
+<div class="bo-card bo-form" style="max-width:700px">
+    <form method="post">
+        <div class="row g-3">
+            <div class="col-12"><label>Titre *</label><input type="text" name="title" class="form-control" value="{{ event ? event.title : '' }}" required></div>
+            <div class="col-12"><label>Description</label><textarea name="description" class="form-control" rows="4">{{ event ? event.description : '' }}</textarea></div>
+            <div class="col-md-6"><label>Type</label>
+                <select name="eventType" class="form-select">
+                    <option value="CONFERENCE" {{ event and event.eventType == 'CONFERENCE' ? 'selected' }}>Conférence</option>
+                    <option value="WORKSHOP" {{ event and event.eventType == 'WORKSHOP' ? 'selected' }}>Workshop</option>
+                    <option value="MEETUP" {{ event and event.eventType == 'MEETUP' ? 'selected' }}>Meetup</option>
+                </select>
+            </div>
+            <div class="col-md-6"><label>Date</label><input type="datetime-local" name="eventDate" class="form-control" value="{{ event and event.eventDate ? event.eventDate|date('Y-m-d\\TH:i') : '' }}"></div>
+            <div class="col-md-8"><label>Lieu</label><input type="text" name="location" class="form-control" value="{{ event ? event.location : '' }}"></div>
+            <div class="col-md-4"><label>Capacité max</label><input type="number" name="maxCapacity" class="form-control" value="{{ event ? event.maxCapacity : '' }}" min="1"></div>
+        </div>
+        <div class="mt-4"><button type="submit" class="bo-btn bo-btn-primary"><i class="bi bi-check-lg me-1"></i> {{ event ? 'Enregistrer' : 'Créer' }}</button></div>
+    </form>
+</div>
+{% endblock %}

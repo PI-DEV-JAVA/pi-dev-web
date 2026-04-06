@@ -1,0 +1,47 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}Mon Cercle — Talentos{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="page-header">
+        <h2>Mon Cercle 🤝</h2>
+        <p>Vos connexions et conversations</p>
+    </div>
+
+    {% if syncs is empty %}
+        <div class="stat-card text-center" style="padding:60px">
+            <i class="bi bi-people" style="font-size:3rem;color:var(--text-secondary)"></i>
+            <p class="mt-3" style="color:var(--text-secondary)">Aucune connexion pour le moment.</p>
+        </div>
+    {% else %}
+        <div class="row g-3">
+            {% for sync in syncs %}
+                {% set other = (sync.sender == app.user) ? sync.receiver : sync.sender %}
+                <div class="col-md-6 col-lg-4">
+                    <a href="{{ path('app_chat', {id: sync.id}) }}" class="text-decoration-none">
+                        <div class="stat-card d-flex align-items-center gap-3" style="cursor:pointer;padding:20px">
+                            <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));
+                                        display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;color:white;flex-shrink:0">
+                                {{ other.email|first|upper }}
+                            </div>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:600;color:var(--text-primary);font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                    {{ other.email }}
+                                </div>
+                                <div style="color:var(--text-secondary);font-size:0.8rem">
+                                    {{ sync.status ?: 'Connecté' }}
+                                </div>
+                            </div>
+                            <i class="bi bi-chat-dots" style="color:var(--primary-light);font-size:1.2rem"></i>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</main>
+{% endblock %}

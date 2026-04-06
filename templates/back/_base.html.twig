@@ -1,0 +1,321 @@
+{% extends 'base.html.twig' %}
+
+{% block base_stylesheets %}
+<style>
+    /* ═══════════════════════════════════════════
+       BACK OFFICE — Dark Admin Panel
+       ═══════════════════════════════════════════ */
+
+    :root {
+        --bo-bg: #0f172a;
+        --bo-bg-card: #1e293b;
+        --bo-bg-input: #334155;
+        --bo-text: #f8fafc;
+        --bo-text-secondary: #94a3b8;
+        --bo-border: rgba(71,85,105,0.3);
+        --bo-sidebar-w: 260px;
+    }
+
+    body {
+        background: var(--bo-bg);
+        color: var(--bo-text);
+        min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .bo-sidebar {
+        position: fixed; top: 0; left: 0;
+        width: var(--bo-sidebar-w); height: 100vh;
+        background: var(--bo-bg-card);
+        border-right: 1px solid var(--bo-border);
+        display: flex; flex-direction: column;
+        z-index: 100;
+    }
+    .bo-sidebar-header {
+        padding: 24px 20px;
+        border-bottom: 1px solid var(--bo-border);
+    }
+    .bo-sidebar-logo {
+        font-size: 1.4rem; font-weight: 800;
+        background: linear-gradient(135deg, var(--primary-light), var(--accent));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .bo-sidebar-label {
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px;
+        color: var(--bo-text-secondary); margin-top: 4px;
+    }
+    .bo-sidebar-nav {
+        flex: 1; padding: 12px; overflow-y: auto;
+    }
+    .bo-nav-section {
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px;
+        color: var(--bo-text-secondary); padding: 16px 12px 6px;
+        font-weight: 600;
+    }
+    .bo-nav-link {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 12px; border-radius: 10px;
+        color: var(--bo-text-secondary); text-decoration: none;
+        font-weight: 500; font-size: 0.88rem;
+        transition: all 0.2s; margin-bottom: 2px;
+    }
+    .bo-nav-link:hover {
+        background: rgba(79,70,229,0.1); color: var(--primary-light);
+    }
+    .bo-nav-link.active {
+        background: rgba(79,70,229,0.15); color: var(--primary-light);
+    }
+    .bo-nav-link i { font-size: 1.15rem; width: 22px; text-align: center; }
+    .bo-nav-badge {
+        margin-left: auto; background: var(--primary);
+        color: white; font-size: 0.65rem; font-weight: 700;
+        padding: 2px 8px; border-radius: 50px;
+    }
+
+    .bo-sidebar-user {
+        border-top: 1px solid var(--bo-border);
+        padding: 14px 16px;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .bo-user-avatar {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.85rem; color: white; flex-shrink: 0;
+    }
+
+    /* ── Top Bar ── */
+    .bo-topbar {
+        position: fixed; top: 0;
+        left: var(--bo-sidebar-w); right: 0;
+        height: 64px; z-index: 90;
+        background: rgba(15,23,42,0.85);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--bo-border);
+        display: flex; align-items: center;
+        padding: 0 28px;
+    }
+    .bo-topbar-title {
+        font-weight: 700; font-size: 1.1rem;
+    }
+    .bo-topbar-actions {
+        margin-left: auto;
+        display: flex; align-items: center; gap: 12px;
+    }
+    .bo-topbar-btn {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--bo-border);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--bo-text-secondary); transition: all 0.2s;
+        text-decoration: none; cursor: pointer;
+    }
+    .bo-topbar-btn:hover {
+        background: rgba(79,70,229,0.15); color: var(--primary-light);
+        border-color: rgba(79,70,229,0.3);
+    }
+
+    /* ── Main Content ── */
+    .bo-main {
+        margin-left: var(--bo-sidebar-w);
+        padding: 88px 28px 28px;
+        min-height: 100vh;
+    }
+
+    /* ── Cards ── */
+    .bo-card {
+        background: var(--bo-bg-card);
+        border: 1px solid var(--bo-border);
+        border-radius: 16px;
+        padding: 24px;
+        transition: all 0.3s;
+    }
+    .bo-card:hover {
+        border-color: rgba(79,70,229,0.2);
+    }
+    .bo-stat-card .stat-icon {
+        width: 48px; height: 48px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; margin-bottom: 16px;
+    }
+    .bo-stat-card .stat-value {
+        font-size: 2rem; font-weight: 700;
+    }
+    .bo-stat-card .stat-label {
+        color: var(--bo-text-secondary);
+        font-size: 0.85rem; margin-top: 4px;
+    }
+
+    /* ── Tables ── */
+    .bo-table {
+        width: 100%; border-collapse: separate; border-spacing: 0;
+    }
+    .bo-table th {
+        background: rgba(255,255,255,0.03);
+        color: var(--bo-text-secondary);
+        font-weight: 600; font-size: 0.8rem;
+        text-transform: uppercase; letter-spacing: 0.5px;
+        padding: 12px 16px; border-bottom: 1px solid var(--bo-border);
+    }
+    .bo-table td {
+        padding: 14px 16px; border-bottom: 1px solid var(--bo-border);
+        font-size: 0.9rem; vertical-align: middle;
+    }
+    .bo-table tr:hover td {
+        background: rgba(79,70,229,0.03);
+    }
+    .bo-table .bo-action-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border-radius: 8px;
+        border: 1px solid var(--bo-border); background: transparent;
+        color: var(--bo-text-secondary); transition: all 0.2s;
+        cursor: pointer; text-decoration: none;
+    }
+    .bo-table .bo-action-btn:hover {
+        background: rgba(79,70,229,0.15); color: var(--primary-light);
+        border-color: var(--primary);
+    }
+    .bo-table .bo-action-btn.danger:hover {
+        background: rgba(239,68,68,0.15); color: var(--danger);
+        border-color: var(--danger);
+    }
+
+    /* ── Forms ── */
+    .bo-form .form-control, .bo-form .form-select, .bo-form textarea.form-control {
+        background: var(--bo-bg-input);
+        border: 1px solid var(--bo-border);
+        color: var(--bo-text); border-radius: 10px;
+        padding: 10px 16px; font-size: 0.9rem;
+    }
+    .bo-form .form-control:focus, .bo-form .form-select:focus {
+        background: var(--bo-bg-input);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79,70,229,0.2);
+        color: var(--bo-text);
+    }
+    .bo-form label {
+        font-size: 0.85rem; font-weight: 600;
+        color: var(--bo-text-secondary); margin-bottom: 6px;
+    }
+
+    /* ── Badges ── */
+    .bo-badge {
+        display: inline-block; padding: 4px 10px;
+        border-radius: 6px; font-size: 0.7rem; font-weight: 600;
+    }
+    .bo-badge-success { background: rgba(16,185,129,0.15); color: #34d399; }
+    .bo-badge-warning { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    .bo-badge-danger { background: rgba(239,68,68,0.15); color: #f87171; }
+    .bo-badge-primary { background: rgba(79,70,229,0.15); color: var(--primary-light); }
+    .bo-badge-neutral { background: rgba(148,163,184,0.15); color: #94a3b8; }
+
+    /* ── Buttons ── */
+    .bo-btn {
+        border-radius: 10px; font-weight: 600;
+        font-size: 0.85rem; padding: 10px 20px;
+        transition: all 0.2s; border: none;
+    }
+    .bo-btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+    }
+    .bo-btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(79,70,229,0.4);
+        color: white;
+    }
+    .bo-btn-outline {
+        background: transparent;
+        border: 1px solid var(--bo-border);
+        color: var(--bo-text-secondary);
+    }
+    .bo-btn-outline:hover {
+        border-color: var(--primary); color: var(--primary-light);
+    }
+
+    .alert-danger { background: rgba(239,68,68,0.15); color: #fca5a5; border: none; }
+    .alert-success { background: rgba(16,185,129,0.15); color: #6ee7b7; border: none; }
+    .alert-info { background: rgba(6,182,212,0.15); color: #67e8f9; border: none; }
+</style>
+{% endblock %}
+
+{% block body %}
+{# ── Sidebar ── #}
+<aside class="bo-sidebar">
+    <div class="bo-sidebar-header">
+        <div class="bo-sidebar-logo"><i class="bi bi-briefcase-fill me-1"></i> Talentos</div>
+        <div class="bo-sidebar-label">Administration</div>
+    </div>
+
+    <nav class="bo-sidebar-nav">
+        <div class="bo-nav-section">Principal</div>
+        <a href="{{ path('admin_dashboard') }}" class="bo-nav-link {{ app.request.attributes.get('_route') == 'admin_dashboard' ? 'active' : '' }}">
+            <i class="bi bi-grid-1x2-fill"></i> Dashboard
+        </a>
+
+        <div class="bo-nav-section">Gestion</div>
+        <a href="{{ path('admin_offers') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_offer' ? 'active' : '' }}">
+            <i class="bi bi-megaphone"></i> Offres
+        </a>
+        <a href="{{ path('admin_events') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_event' ? 'active' : '' }}">
+            <i class="bi bi-calendar-event"></i> Évènements
+        </a>
+        <a href="{{ path('admin_projects') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_project' ? 'active' : '' }}">
+            <i class="bi bi-kanban"></i> Projets
+        </a>
+        <a href="{{ path('admin_activities') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_activit' ? 'active' : '' }}">
+            <i class="bi bi-clipboard-data"></i> Activités
+        </a>
+
+        {% if app.user.role == 'ADMIN' %}
+        <a href="{{ path('admin_courses') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_course' ? 'active' : '' }}">
+            <i class="bi bi-book"></i> Formations
+        </a>
+
+        <div class="bo-nav-section">Administration</div>
+        <a href="{{ path('admin_users') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_user' ? 'active' : '' }}">
+            <i class="bi bi-people-fill"></i> Utilisateurs
+        </a>
+        <a href="{{ path('admin_support') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_support' ? 'active' : '' }}">
+            <i class="bi bi-headset"></i> Tickets
+        </a>
+        {% endif %}
+
+        <hr style="border-color:var(--bo-border);margin:8px 0">
+        <a href="{{ path('app_home') }}" class="bo-nav-link">
+            <i class="bi bi-box-arrow-up-right"></i> Voir le site
+        </a>
+    </nav>
+
+
+    <div class="bo-sidebar-user">
+        <div class="bo-user-avatar">{{ app.user.email|first|upper }}</div>
+        <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:0.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ app.user.email }}</div>
+            <div style="font-size:0.7rem;color:var(--bo-text-secondary)">{{ app.user.role }}</div>
+        </div>
+        <a href="{{ path('app_logout') }}" class="bo-topbar-btn" title="Déconnexion">
+            <i class="bi bi-box-arrow-right" style="font-size:0.9rem"></i>
+        </a>
+    </div>
+</aside>
+
+{# ── Top Bar ── #}
+<header class="bo-topbar">
+    <div class="bo-topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+    <div class="bo-topbar-actions">
+        <a href="{{ path('app_home') }}" class="bo-topbar-btn" title="Voir le site"><i class="bi bi-box-arrow-up-right"></i></a>
+        <a href="{{ path('app_logout') }}" class="bo-topbar-btn" title="Déconnexion"><i class="bi bi-power"></i></a>
+    </div>
+</header>
+
+{# ── Main Content ── #}
+<main class="bo-main">
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label }} mb-3"><i class="bi bi-{{ label == 'success' ? 'check-circle-fill' : (label == 'danger' ? 'exclamation-circle-fill' : 'info-circle-fill') }} me-2"></i>{{ message }}</div>
+        {% endfor %}
+    {% endfor %}
+    {% block content %}{% endblock %}
+</main>
+{% endblock %}

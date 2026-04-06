@@ -1,0 +1,327 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}Talentos — Trouvez votre emploi idéal{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .hero {
+        min-height: 92vh;
+        display: flex; align-items: center;
+        background: linear-gradient(160deg, #ffffff 0%, #eef2ff 40%, #f0f9ff 70%, #f8fafc 100%);
+        position: relative; overflow: hidden;
+    }
+    .hero::before {
+        content: ''; position: absolute;
+        width: 700px; height: 700px;
+        background: radial-gradient(circle, rgba(79,70,229,0.08) 0%, transparent 70%);
+        top: -200px; right: -150px; border-radius: 50%;
+    }
+    .hero::after {
+        content: ''; position: absolute;
+        width: 500px; height: 500px;
+        background: radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 70%);
+        bottom: -150px; left: -100px; border-radius: 50%;
+    }
+    .hero-content { position: relative; z-index: 2; }
+    .hero h1 {
+        font-size: 3.5rem; font-weight: 900;
+        line-height: 1.1; letter-spacing: -1.5px;
+        margin-bottom: 20px;
+    }
+    .hero h1 .gradient-text {
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+        font-size: 1.2rem; color: var(--fo-text-secondary);
+        line-height: 1.7; max-width: 500px; margin-bottom: 32px;
+    }
+    .hero-search {
+        display: flex; gap: 8px;
+        background: white; border-radius: 16px;
+        padding: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid var(--fo-border);
+        max-width: 540px;
+    }
+    .hero-search input {
+        flex: 1; border: none; padding: 14px 20px;
+        font-size: 1rem; outline: none; border-radius: 10px;
+        background: transparent;
+    }
+    .hero-search button {
+        padding: 14px 28px; border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white; border: none; font-weight: 600;
+        display: flex; align-items: center; gap: 8px;
+        transition: all 0.2s; white-space: nowrap;
+    }
+    .hero-search button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(79,70,229,0.3);
+    }
+    .hero-stats {
+        display: flex; gap: 40px; margin-top: 48px;
+    }
+    .hero-stat-value {
+        font-size: 2rem; font-weight: 800;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-stat-label {
+        font-size: 0.85rem; color: var(--fo-text-secondary); margin-top: 2px;
+    }
+    .hero-visual {
+        position: relative; z-index: 2;
+    }
+    .hero-float-card {
+        background: white; border-radius: 16px;
+        padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+        border: 1px solid var(--fo-border);
+        animation: float 6s ease-in-out infinite;
+    }
+    .hero-float-card:nth-child(2) { animation-delay: -2s; }
+    .hero-float-card:nth-child(3) { animation-delay: -4s; }
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-12px); }
+    }
+
+    /* ── Feature Cards ── */
+    .feature-icon {
+        width: 56px; height: 56px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; margin-bottom: 20px;
+    }
+
+    /* ── Offer Cards ── */
+    .offer-preview {
+        display: flex; align-items: center; gap: 16px;
+        padding: 16px 20px; border-radius: 12px;
+        background: white; border: 1px solid var(--fo-border);
+        transition: all 0.2s; text-decoration: none; color: var(--fo-text);
+    }
+    .offer-preview:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-color: rgba(79,70,229,0.2);
+        color: var(--fo-text);
+    }
+    .offer-icon {
+        width: 44px; height: 44px; border-radius: 10px;
+        background: linear-gradient(135deg, rgba(79,70,229,0.1), rgba(6,182,212,0.08));
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; color: var(--primary);
+    }
+
+    @media (max-width: 992px) {
+        .hero h1 { font-size: 2.5rem; }
+        .hero-stats { gap: 24px; }
+        .hero-visual { display: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# ════════ HERO ════════ #}
+<section class="hero">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 hero-content">
+                <div class="fo-badge fo-badge-primary mb-3">🚀 Plateforme #1 en Tunisie</div>
+                <h1>
+                    Trouvez votre<br>
+                    <span class="gradient-text">emploi idéal</span>
+                </h1>
+                <p>
+                    Explorez des centaines d'offres d'emploi, développez vos compétences avec nos formations, et connectez-vous avec les recruteurs les plus innovants.
+                </p>
+
+                <form action="{{ path('app_offers') }}" method="get" class="hero-search">
+                    <input type="text" name="q" placeholder="Titre, compétence, entreprise...">
+                    <button type="submit"><i class="bi bi-search"></i> Rechercher</button>
+                </form>
+
+                <div class="hero-stats">
+                    <div>
+                        <div class="hero-stat-value">{{ offersCount }}+</div>
+                        <div class="hero-stat-label">Offres actives</div>
+                    </div>
+                    <div>
+                        <div class="hero-stat-value">{{ eventsCount }}+</div>
+                        <div class="hero-stat-label">Évènements</div>
+                    </div>
+                    <div>
+                        <div class="hero-stat-value">{{ coursesCount }}+</div>
+                        <div class="hero-stat-label">Formations</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5 offset-lg-1 hero-visual d-none d-lg-block">
+                <div class="hero-float-card mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="offer-icon"><i class="bi bi-briefcase"></i></div>
+                        <div>
+                            <div style="font-weight:700;font-size:0.95rem">{{ featuredOffer ? featuredOffer.title : 'Senior Developer' }}</div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">
+                                {{ featuredOffer ? (featuredOffer.contractType ?: 'CDI') ~ ' · ' ~ (featuredOffer.location ?: 'Paris') : 'CDI · Paris' }}
+                            </div>
+                        </div>
+                        <span class="fo-badge fo-badge-success ms-auto">Nouvelle</span>
+                    </div>
+                </div>
+                <div class="hero-float-card mb-3" style="margin-left:40px">
+                    <div class="d-flex align-items-center gap-3">
+                        <div style="width:44px;height:44px;border-radius:10px;background:rgba(16,185,129,0.1);display:flex;align-items:center;justify-content:center;color:var(--success)">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:0.95rem">{{ featuredEvent ? featuredEvent.title : 'Tech Meetup' }}</div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">
+                                {{ featuredEvent ? featuredEvent.eventDate|date('d/m/Y') : 'Bientôt' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-float-card" style="margin-left:20px">
+                    <div class="d-flex align-items-center gap-3">
+                        <div style="width:44px;height:44px;border-radius:10px;background:rgba(245,158,11,0.1);display:flex;align-items:center;justify-content:center;color:var(--warning)">
+                            <i class="bi bi-mortarboard"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:0.95rem">{{ coursesCount }} formations</div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">Développez vos skills</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# ════════ FEATURES ════════ #}
+<section class="fo-section">
+    <div class="container">
+        <div class="text-center">
+            <div class="fo-badge fo-badge-accent mb-3">Comment ça marche</div>
+            <h2 class="fo-section-title">Tout pour réussir votre carrière</h2>
+            <p class="fo-section-subtitle mx-auto" style="max-width:600px">Talentos réunit tout ce dont vous avez besoin au même endroit</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="fo-card text-center h-100">
+                    <div class="feature-icon mx-auto" style="background:rgba(79,70,229,0.08);color:var(--primary)">
+                        <i class="bi bi-search-heart"></i>
+                    </div>
+                    <h5 style="font-weight:700;margin-bottom:8px">Offres d'emploi</h5>
+                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">Parcourez des offres ciblées et postulez en quelques clics avec suivi en temps réel.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="fo-card text-center h-100">
+                    <div class="feature-icon mx-auto" style="background:rgba(16,185,129,0.08);color:var(--success)">
+                        <i class="bi bi-calendar-heart"></i>
+                    </div>
+                    <h5 style="font-weight:700;margin-bottom:8px">Évènements</h5>
+                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">Meetups, conférences et workshops pour élargir votre réseau professionnel.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="fo-card text-center h-100">
+                    <div class="feature-icon mx-auto" style="background:rgba(245,158,11,0.08);color:var(--warning)">
+                        <i class="bi bi-lightbulb"></i>
+                    </div>
+                    <h5 style="font-weight:700;margin-bottom:8px">Formations</h5>
+                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">Cours en ligne et quiz interactifs pour booster vos compétences techniques.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# ════════ RECENT OFFERS ════════ #}
+{% if recentOffers|length > 0 %}
+<section class="fo-section fo-section-alt">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="fo-section-title">Offres récentes 🔥</h2>
+                <p style="color:var(--fo-text-secondary);font-size:1rem">Les dernières opportunités publiées</p>
+            </div>
+            <a href="{{ path('app_offers') }}" class="btn btn-primary-custom" style="padding:10px 24px;font-size:0.9rem">
+                Voir tout <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="row g-3">
+            {% for offer in recentOffers %}
+                <div class="col-md-6">
+                    <a href="{{ path('app_offer_detail', {id: offer.id}) }}" class="offer-preview">
+                        <div class="offer-icon"><i class="bi bi-briefcase"></i></div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:600;font-size:0.95rem">{{ offer.title }}</div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">
+                                {{ offer.contractType ?: 'CDI' }} · {{ offer.location ?: 'Non spécifié' }}
+                                {% if offer.salaryMin and offer.salaryMax %} · {{ offer.salaryMin|number_format(0,',',' ') }}–{{ offer.salaryMax|number_format(0,',',' ') }} DT{% endif %}
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right" style="color:var(--fo-text-secondary)"></i>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# ════════ UPCOMING EVENTS ════════ #}
+{% if upcomingEvents|length > 0 %}
+<section class="fo-section">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="fo-section-title">Évènements à venir 📅</h2>
+                <p style="color:var(--fo-text-secondary);font-size:1rem">Rejoignez la communauté</p>
+            </div>
+            <a href="{{ path('app_events') }}" class="btn btn-primary-custom" style="padding:10px 24px;font-size:0.9rem">
+                Tous les évènements <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="row g-4">
+            {% for event in upcomingEvents %}
+                <div class="col-md-4">
+                    <a href="{{ path('app_event_detail', {id: event.id}) }}" class="text-decoration-none">
+                        <div class="fo-card h-100">
+                            <div class="fo-badge fo-badge-{{ event.eventType == 'CONFERENCE' ? 'primary' : (event.eventType == 'WORKSHOP' ? 'warning' : 'accent') }} mb-3">
+                                {{ event.eventType }}
+                            </div>
+                            <h5 style="font-weight:700;color:var(--fo-text);margin-bottom:8px">{{ event.title }}</h5>
+                            <div style="color:var(--fo-text-secondary);font-size:0.85rem">
+                                <div class="mb-1"><i class="bi bi-calendar3 me-1"></i>{{ event.eventDate|date('d/m/Y à H:i') }}</div>
+                                {% if event.location %}
+                                    <div><i class="bi bi-geo-alt me-1"></i>{{ event.location }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# ════════ CTA ════════ #}
+<section style="padding:80px 0;background:linear-gradient(135deg,#4f46e5 0%,#4338ca 50%,#3730a3 100%);color:white;text-align:center">
+    <div class="container" style="max-width:700px">
+        <h2 style="font-size:2.25rem;font-weight:800;margin-bottom:12px;letter-spacing:-0.5px">Prêt à lancer votre carrière ?</h2>
+        <p style="font-size:1.1rem;opacity:0.85;margin-bottom:32px;line-height:1.7">Rejoignez des milliers de candidats qui ont trouvé leur emploi idéal sur Talentos</p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a href="{{ path('app_register') }}" class="btn" style="background:white;color:var(--primary);font-weight:700;padding:14px 32px;border-radius:12px;font-size:1rem;transition:all 0.2s">
+                Créer un compte gratuit <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+            <a href="{{ path('app_offers') }}" class="btn" style="border:2px solid rgba(255,255,255,0.3);color:white;font-weight:600;padding:14px 32px;border-radius:12px;font-size:1rem;transition:all 0.2s">
+                Explorer les offres
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Projets{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 style="font-weight:700;margin:0">Mes projets ({{ projects|length }})</h5>
+    <a href="{{ path('admin_project_new') }}" class="bo-btn bo-btn-primary"><i class="bi bi-plus-lg me-1"></i> Nouveau projet</a>
+</div>
+<div class="bo-card">
+    <table class="bo-table">
+        <thead><tr><th>Nom</th><th>Statut</th><th>Début</th><th>Fin</th><th>Budget</th><th>Actions</th></tr></thead>
+        <tbody>
+            {% for p in projects %}
+                <tr>
+                    <td style="font-weight:600">{{ p.name }}</td>
+                    <td>
+                        <span class="bo-badge bo-badge-{{ p.status == 'DONE' ? 'success' : (p.status == 'IN_PROGRESS' ? 'primary' : (p.status == 'ON_HOLD' ? 'danger' : 'warning')) }}">{{ p.status }}</span>
+                    </td>
+                    <td style="color:var(--bo-text-secondary)">{{ p.startDate ? p.startDate|date('d/m/Y') : '—' }}</td>
+                    <td style="color:var(--bo-text-secondary)">{{ p.endDate ? p.endDate|date('d/m/Y') : '—' }}</td>
+                    <td>{{ p.budget ? p.budget ~ ' DT' : '—' }}</td>
+                    <td>
+                        <a href="{{ path('admin_project_edit', {id: p.id}) }}" class="bo-action-btn" title="Modifier / Activités"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ path('admin_project_delete', {id: p.id}) }}" class="bo-action-btn danger" onclick="return confirm('Supprimer ce projet et ses activités ?')"><i class="bi bi-trash"></i></a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="text-center" style="padding:30px;color:var(--bo-text-secondary)">Aucun projet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

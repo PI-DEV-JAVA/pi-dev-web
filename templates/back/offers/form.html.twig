@@ -1,0 +1,35 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}{{ offer ? 'Modifier l\'offre' : 'Nouvelle offre' }}{% endblock %}
+{% block title %}{{ offer ? 'Modifier' : 'Nouvelle' }} offre — Admin{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{{ path('admin_offers') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour</a>
+</div>
+
+<div class="bo-card bo-form" style="max-width:700px">
+    <form method="post">
+        <div class="row g-3">
+            <div class="col-12"><label>Titre *</label><input type="text" name="title" class="form-control" value="{{ offer ? offer.title : '' }}" required></div>
+            <div class="col-12"><label>Description</label><textarea name="description" class="form-control" rows="4">{{ offer ? offer.description : '' }}</textarea></div>
+            <div class="col-md-6"><label>Type de contrat</label>
+                <select name="contractType" class="form-select">
+                    <option value="CDI" {{ offer and offer.contractType == 'CDI' ? 'selected' }}>CDI</option>
+                    <option value="CDD" {{ offer and offer.contractType == 'CDD' ? 'selected' }}>CDD</option>
+                    <option value="Stage" {{ offer and offer.contractType == 'Stage' ? 'selected' }}>Stage</option>
+                    <option value="Freelance" {{ offer and offer.contractType == 'Freelance' ? 'selected' }}>Freelance</option>
+                </select>
+            </div>
+            <div class="col-md-6"><label>Localisation</label><input type="text" name="location" class="form-control" value="{{ offer ? offer.location : '' }}"></div>
+            <div class="col-md-6"><label>Département</label><input type="text" name="department" class="form-control" value="{{ offer ? offer.department : '' }}"></div>
+            <div class="col-md-6"><label>Niveau d'expérience</label><input type="text" name="experienceLevel" class="form-control" value="{{ offer ? offer.experienceLevel : '' }}"></div>
+            <div class="col-md-4"><label>Postes disponibles</label><input type="number" name="positionsAvailable" class="form-control" value="{{ offer ? offer.positionsAvailable : 1 }}" min="1"></div>
+            <div class="col-md-4"><label>Salaire min</label><input type="number" name="salaryMin" class="form-control" value="{{ offer ? offer.salaryMin : '' }}"></div>
+            <div class="col-md-4"><label>Salaire max</label><input type="number" name="salaryMax" class="form-control" value="{{ offer ? offer.salaryMax : '' }}"></div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="bo-btn bo-btn-primary"><i class="bi bi-check-lg me-1"></i> {{ offer ? 'Enregistrer' : 'Créer' }}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

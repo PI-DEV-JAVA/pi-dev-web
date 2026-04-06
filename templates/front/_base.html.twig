@@ -1,0 +1,592 @@
+{% extends 'base.html.twig' %}
+
+{% block base_stylesheets %}
+<style>
+    /* ═══════════════════════════════════════════
+       FRONT OFFICE — Modern Light Theme
+       ═══════════════════════════════════════════ */
+
+    :root {
+        --fo-bg: #ffffff;
+        --fo-bg-alt: #f8fafc;
+        --fo-bg-section: #f1f5f9;
+        --fo-text: #0f172a;
+        --fo-text-secondary: #64748b;
+        --fo-border: #e2e8f0;
+        --fo-card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+        --fo-card-shadow-hover: 0 20px 40px rgba(0,0,0,0.1);
+    }
+
+    body {
+        background: var(--fo-bg);
+        color: var(--fo-text);
+    }
+
+    /* ── Navbar ── */
+    .fo-navbar {
+        position: fixed; top: 0; left: 0; right: 0;
+        z-index: 1000;
+        padding: 16px 0;
+        transition: all 0.3s ease;
+        background: transparent;
+    }
+    .fo-navbar.scrolled {
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--fo-border);
+        padding: 10px 0;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .fo-navbar .navbar-brand {
+        font-size: 1.5rem; font-weight: 800;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .fo-navbar .nav-link {
+        color: var(--fo-text); font-weight: 500; font-size: 0.95rem;
+        padding: 8px 16px !important; border-radius: 8px; transition: all 0.2s;
+    }
+    .fo-navbar .nav-link:hover, .fo-navbar .nav-link.active {
+        color: var(--primary); background: rgba(79,70,229,0.06);
+    }
+    .fo-navbar .btn-login {
+        border: 1.5px solid var(--fo-border); border-radius: 10px;
+        padding: 8px 20px; font-weight: 600; color: var(--fo-text);
+        background: transparent; transition: all 0.2s;
+    }
+    .fo-navbar .btn-login:hover {
+        border-color: var(--primary); color: var(--primary);
+    }
+    .fo-navbar .btn-register {
+        background: var(--primary); border-radius: 10px;
+        padding: 8px 20px; font-weight: 600; color: white;
+        border: none; transition: all 0.2s;
+    }
+    .fo-navbar .btn-register:hover {
+        background: var(--primary-dark); transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(79,70,229,0.3);
+    }
+    .fo-navbar .user-menu-btn {
+        display: flex; align-items: center; gap: 8px;
+        border: 1.5px solid var(--fo-border); border-radius: 50px;
+        padding: 6px 16px 6px 6px; background: white; transition: all 0.2s;
+        text-decoration: none; color: var(--fo-text);
+    }
+    .fo-navbar .user-menu-btn:hover {
+        border-color: var(--primary); box-shadow: 0 2px 8px rgba(79,70,229,0.1);
+    }
+    .fo-navbar .user-avatar-sm {
+        width: 32px; height: 32px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.8rem; color: white;
+    }
+
+    /* ── Content ── */
+    .fo-content { padding-top: 80px; }
+
+    /* ── Cards ── */
+    .fo-card {
+        background: var(--fo-bg);
+        border: 1px solid var(--fo-border);
+        border-radius: 16px;
+        padding: 24px;
+        transition: all 0.3s ease;
+        box-shadow: var(--fo-card-shadow);
+    }
+    .fo-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--fo-card-shadow-hover);
+        border-color: rgba(79,70,229,0.2);
+    }
+
+    /* ── Section Headers ── */
+    .fo-section {
+        padding: 80px 0;
+    }
+    .fo-section-alt {
+        background: var(--fo-bg-section);
+    }
+    .fo-section-title {
+        font-size: 2rem; font-weight: 800;
+        margin-bottom: 8px; letter-spacing: -0.5px;
+    }
+    .fo-section-subtitle {
+        color: var(--fo-text-secondary);
+        font-size: 1.1rem;
+        margin-bottom: 48px;
+    }
+
+    /* ── Badges ── */
+    .fo-badge {
+        display: inline-block; padding: 4px 12px;
+        border-radius: 50px; font-size: 0.75rem;
+        font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .fo-badge-primary { background: rgba(79,70,229,0.1); color: var(--primary); }
+    .fo-badge-accent { background: rgba(6,182,212,0.1); color: var(--accent); }
+    .fo-badge-success { background: rgba(16,185,129,0.1); color: var(--success); }
+    .fo-badge-warning { background: rgba(245,158,11,0.1); color: var(--warning); }
+
+    /* ── Footer ── */
+    .fo-footer {
+        background: #0f172a; color: #cbd5e1; padding: 64px 0 0;
+    }
+    .fo-footer h6 {
+        color: white; font-weight: 700; margin-bottom: 20px;
+        font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .fo-footer a {
+        color: #94a3b8; text-decoration: none;
+        font-size: 0.9rem; transition: color 0.2s;
+        display: block; margin-bottom: 10px;
+    }
+    .fo-footer a:hover { color: var(--primary-light); }
+    .fo-footer-bottom {
+        border-top: 1px solid rgba(71,85,105,0.3);
+        padding: 20px 0; margin-top: 48px;
+        font-size: 0.85rem; color: #64748b;
+    }
+    .fo-footer-social a {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px; border-radius: 8px;
+        background: rgba(255,255,255,0.06); color: #94a3b8;
+        margin-right: 8px; transition: all 0.2s; font-size: 1rem;
+    }
+    .fo-footer-social a:hover {
+        background: var(--primary); color: white; transform: translateY(-2px);
+    }
+
+    /* ── Page Header ── */
+    .fo-page-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f0f9ff 100%);
+        padding: 48px 0; border-bottom: 1px solid var(--fo-border);
+    }
+    .fo-page-header h1 {
+        font-size: 2.25rem; font-weight: 800; letter-spacing: -0.5px;
+    }
+    .fo-page-header p {
+        color: var(--fo-text-secondary); font-size: 1.1rem; margin-top: 4px;
+    }
+
+    /* ── Form Styles ── */
+    .fo-form .form-control, .fo-form .form-select {
+        border: 1.5px solid var(--fo-border); border-radius: 10px;
+        padding: 12px 16px; font-size: 0.95rem; transition: all 0.2s;
+    }
+    .fo-form .form-control:focus, .fo-form .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+
+    /* ── Notification Bell ── */
+    .notif-bell {
+        position: relative; display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px; border-radius: 50%;
+        border: 1.5px solid var(--fo-border); background: white;
+        color: var(--fo-text); transition: all 0.2s;
+        text-decoration: none; font-size: 1.1rem; cursor: pointer;
+    }
+    .notif-bell:hover {
+        border-color: var(--primary); color: var(--primary);
+        box-shadow: 0 2px 8px rgba(79,70,229,0.15);
+    }
+    .notif-badge {
+        position: absolute; top: -2px; right: -2px;
+        background: #ef4444; color: white;
+        font-size: 0.65rem; font-weight: 700;
+        min-width: 18px; height: 18px; border-radius: 50px;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0 4px; border: 2px solid white;
+        animation: notifPulse 2s infinite;
+    }
+    @keyframes notifPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+
+    /* ── Notification Panel (LinkedIn-style) ── */
+    .notif-panel {
+        position: absolute; top: 52px; right: 0;
+        width: 400px; max-height: 520px;
+        background: white; border: 1px solid var(--fo-border);
+        border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        z-index: 2000; overflow: hidden;
+        opacity: 0; transform: translateY(-8px) scale(0.97);
+        pointer-events: none;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .notif-panel.open {
+        opacity: 1; transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+    .notif-panel-header {
+        padding: 16px 20px; border-bottom: 1px solid var(--fo-border);
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .notif-panel-header h6 { font-weight: 800; font-size: 1rem; margin: 0; }
+    .notif-panel-body {
+        overflow-y: auto; max-height: 400px;
+        scrollbar-width: thin; scrollbar-color: #e2e8f0 transparent;
+    }
+    .notif-panel-body::-webkit-scrollbar { width: 4px; }
+    .notif-panel-body::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+    .notif-item {
+        display: flex; align-items: flex-start; gap: 12px;
+        padding: 14px 20px; text-decoration: none; color: var(--fo-text);
+        transition: background 0.15s; border-bottom: 1px solid rgba(226,232,240,0.5);
+        position: relative;
+    }
+    .notif-item:hover { background: #f8fafc; }
+    .notif-item.unread { background: rgba(79,70,229,0.03); }
+    .notif-item.unread::before {
+        content: ''; position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+        width: 6px; height: 6px; border-radius: 50%; background: var(--primary);
+    }
+    .notif-icon {
+        width: 40px; height: 40px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
+    }
+    .notif-panel-footer {
+        padding: 12px 20px; border-top: 1px solid var(--fo-border);
+        text-align: center;
+    }
+    .notif-panel-footer a {
+        color: var(--primary); font-weight: 600; font-size: 0.85rem;
+        text-decoration: none;
+    }
+    .notif-panel-footer a:hover { text-decoration: underline; }
+    .notif-overlay {
+        display: none; position: fixed; inset: 0; z-index: 1999;
+    }
+    .notif-overlay.open { display: block; }
+
+    /* ── Chat Widget (Messenger-style) ── */
+    .chat-fab {
+        position: fixed; bottom: 24px; right: 24px; z-index: 1500;
+        width: 56px; height: 56px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        border: none; color: white; font-size: 1.4rem;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; box-shadow: 0 4px 20px rgba(79,70,229,0.35);
+        transition: all 0.3s ease;
+    }
+    .chat-fab:hover {
+        transform: scale(1.08); box-shadow: 0 6px 28px rgba(79,70,229,0.45);
+    }
+    .chat-widget {
+        position: fixed; bottom: 92px; right: 24px; z-index: 1500;
+        width: 380px; height: 500px;
+        background: white; border: 1px solid var(--fo-border);
+        border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        overflow: hidden; display: flex; flex-direction: column;
+        opacity: 0; transform: translateY(20px) scale(0.95);
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .chat-widget.open {
+        opacity: 1; transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+    .chat-widget-header {
+        padding: 16px 20px; background: linear-gradient(135deg, var(--primary), #6366f1);
+        color: white; display: flex; justify-content: space-between; align-items: center;
+    }
+    .chat-widget-header h6 { font-weight: 700; margin: 0; color: white; }
+    .chat-contact-list {
+        flex: 1; overflow-y: auto; padding: 8px;
+    }
+    .chat-contact {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 12px; border-radius: 12px; text-decoration: none;
+        color: var(--fo-text); transition: background 0.15s;
+    }
+    .chat-contact:hover { background: #f1f5f9; }
+    .chat-contact-avatar {
+        width: 40px; height: 40px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.8rem; color: white; flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+        .notif-panel { width: 100vw; right: -16px; border-radius: 0 0 16px 16px; }
+        .chat-widget { width: calc(100vw - 32px); right: 16px; height: 60vh; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+        .fo-section { padding: 48px 0; }
+        .fo-section-title { font-size: 1.5rem; }
+        .fo-page-header h1 { font-size: 1.75rem; }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+{# ── Navbar ── #}
+<nav class="fo-navbar" id="foNavbar">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between">
+            <a href="{{ path('app_home') }}" class="navbar-brand text-decoration-none">
+                <i class="bi bi-briefcase-fill me-1"></i> Talentos
+            </a>
+
+            <div class="d-none d-md-flex align-items-center gap-1">
+                <a href="{{ path('app_offers') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_offer' ? 'active' : '' }}">Offres</a>
+                <a href="{{ path('app_events') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_event' ? 'active' : '' }}">Évènements</a>
+                <a href="{{ path('app_courses') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_course' ? 'active' : '' }}">Formations</a>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                {% if app.user %}
+                    {# Messaging Icon #}
+                    <div class="notif-bell" id="chatToggleNav" title="Messages">
+                        <i class="bi bi-chat-dots"></i>
+                    </div>
+
+                    {# Notification Bell + Panel #}
+                    <div style="position:relative">
+                        <div class="notif-bell" id="notifBellBtn" title="Notifications">
+                            <i class="bi bi-bell"></i>
+                            <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+                        </div>
+                        <div class="notif-overlay" id="notifOverlay"></div>
+                        <div class="notif-panel" id="notifPanel">
+                            <div class="notif-panel-header">
+                                <h6>Notifications</h6>
+                                <a href="{{ path('app_notifications_read_all') }}" style="font-size:0.8rem;color:var(--primary);text-decoration:none;font-weight:600">Tout marquer lu</a>
+                            </div>
+                            <div class="notif-panel-body" id="notifPanelBody">
+                                <div style="padding:40px 20px;text-align:center;color:var(--fo-text-secondary)">
+                                    <i class="bi bi-bell" style="font-size:1.5rem;opacity:0.3"></i>
+                                    <p style="margin:8px 0 0;font-size:0.85rem">Chargement...</p>
+                                </div>
+                            </div>
+                            <div class="notif-panel-footer">
+                                <a href="{{ path('app_notifications') }}">Voir toutes les notifications</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dropdown">
+                        <a href="#" class="user-menu-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none">
+                            <div class="user-avatar-sm">{{ app.user.email|first|upper }}</div>
+                            <span style="font-weight:600;font-size:0.85rem">Mon compte</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" style="border-radius:12px;border:1px solid var(--fo-border);box-shadow:var(--fo-card-shadow-hover);padding:8px;min-width:200px">
+                            <li><a class="dropdown-item" href="{{ path('app_account') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-grid me-2"></i>Dashboard</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_profile') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-person me-2"></i>Profil</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_my_applications') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-file-text me-2"></i>Candidatures</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_activities') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-clipboard-data me-2"></i>Activités</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_my_circle') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-people me-2"></i>Mon Cercle</a></li>
+                            {% if app.user.role in ['ADMIN', 'HR'] %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ path('admin_dashboard') }}" style="border-radius:8px;padding:10px 16px;color:var(--primary)"><i class="bi bi-gear me-2"></i>Administration</a></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ path('app_logout') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-box-arrow-right me-2"></i>Déconnexion</a></li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <a href="{{ path('app_login') }}" class="btn-login">Se connecter</a>
+                    <a href="{{ path('app_register') }}" class="btn-register">S'inscrire</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+
+{% if app.user %}
+{# ── Chat Floating Widget (Messenger-style) ── #}
+<button class="chat-fab" id="chatFab" title="Messages">
+    <i class="bi bi-chat-dots-fill"></i>
+</button>
+<div class="chat-widget" id="chatWidget">
+    <div class="chat-widget-header">
+        <h6><i class="bi bi-chat-dots me-2"></i>Messages</h6>
+        <button onclick="document.getElementById('chatWidget').classList.remove('open')" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;padding:0"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="chat-contact-list" id="chatContactList">
+        <div style="padding:40px 20px;text-align:center;color:var(--fo-text-secondary)">
+            <i class="bi bi-chat-square-text" style="font-size:2rem;opacity:0.3"></i>
+            <p style="margin:12px 0 4px;font-weight:600;font-size:0.9rem">Vos conversations</p>
+            <p style="font-size:0.8rem;margin:0">Cliquez sur un contact dans <a href="{{ path('app_my_circle') }}" style="color:var(--primary)">Mon Cercle</a> pour démarrer</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ── Page Content ── #}
+<div class="fo-content">
+    {% block content %}{% endblock %}
+</div>
+
+{# ── Footer ── #}
+<footer class="fo-footer">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6">
+                <div style="font-size:1.5rem;font-weight:800;margin-bottom:16px">
+                    <span style="background:linear-gradient(135deg,var(--primary-light),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+                        <i class="bi bi-briefcase-fill me-1"></i> Talentos
+                    </span>
+                </div>
+                <p style="font-size:0.9rem;line-height:1.7;color:#94a3b8">
+                    La plateforme de recrutement nouvelle génération. Trouvez votre emploi idéal, développez vos compétences et connectez-vous avec les meilleurs recruteurs.
+                </p>
+                <div class="fo-footer-social mt-3">
+                    <a href="#"><i class="bi bi-linkedin"></i></a>
+                    <a href="#"><i class="bi bi-twitter-x"></i></a>
+                    <a href="#"><i class="bi bi-github"></i></a>
+                    <a href="#"><i class="bi bi-instagram"></i></a>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <h6>Plateforme</h6>
+                <a href="{{ path('app_offers') }}">Offres d'emploi</a>
+                <a href="{{ path('app_events') }}">Évènements</a>
+                <a href="{{ path('app_courses') }}">Formations</a>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <h6>Candidat</h6>
+                <a href="{{ path('app_register') }}">Créer un compte</a>
+                <a href="{{ path('app_login') }}">Se connecter</a>
+                <a href="#">FAQ</a>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <h6>Newsletter</h6>
+                <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:16px">Recevez les dernières offres et actualités</p>
+                <div class="d-flex gap-2">
+                    <input type="email" placeholder="Votre email" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(71,85,105,0.3);border-radius:10px;padding:10px 16px;color:white;font-size:0.9rem">
+                    <button class="btn-primary-custom" style="padding:10px 20px;white-space:nowrap;border-radius:10px">
+                        <i class="bi bi-send"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="fo-footer-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>© 2026 Talentos. Tous droits réservés.</span>
+            <div class="d-flex gap-3">
+                <a href="#" style="margin:0">Confidentialité</a>
+                <a href="#" style="margin:0">Conditions</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+{# ── Navbar Scroll Effect ── #}
+{% block javascripts %}
+<script>
+    const nav = document.getElementById('foNavbar');
+    window.addEventListener('scroll', () => {
+        nav.classList.toggle('scrolled', window.scrollY > 30);
+    });
+    if (window.scrollY > 30) nav.classList.add('scrolled');
+
+    // ── Notification Panel ──
+    const notifBellBtn = document.getElementById('notifBellBtn');
+    const notifPanel = document.getElementById('notifPanel');
+    const notifOverlay = document.getElementById('notifOverlay');
+    const notifPanelBody = document.getElementById('notifPanelBody');
+    let notifLoaded = false;
+
+    function toggleNotifPanel() {
+        const isOpen = notifPanel?.classList.toggle('open');
+        notifOverlay?.classList.toggle('open', isOpen);
+        if (isOpen && !notifLoaded) loadNotifications();
+    }
+    notifBellBtn?.addEventListener('click', toggleNotifPanel);
+    notifOverlay?.addEventListener('click', () => {
+        notifPanel?.classList.remove('open');
+        notifOverlay?.classList.remove('open');
+    });
+
+    const notifTypeConfig = {
+        OFFER_DECISION: { icon: 'briefcase', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
+        REPLY: { icon: 'chat-dots', bg: 'rgba(6,182,212,0.1)', color: '#06b6d4' },
+        INTERVIEW: { icon: 'camera-video', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+        ACTIVITY: { icon: 'clipboard-data', bg: 'rgba(99,102,241,0.1)', color: '#818cf8' },
+        EVENT: { icon: 'calendar-event', bg: 'rgba(236,72,153,0.1)', color: '#ec4899' },
+        GENERAL: { icon: 'bell', bg: 'rgba(79,70,229,0.1)', color: '#4f46e5' }
+    };
+
+    function loadNotifications() {
+        fetch('/notifications?_format=panel')
+            .then(r => r.text())
+            .then(html => {
+                // Parse the full page to extract notification data
+                // We'll use the count endpoint and build UI from it
+                notifLoaded = true;
+            }).catch(() => {});
+        // Use a simpler approach: fetch from a JSON endpoint
+        fetch('/notifications/list')
+            .then(r => r.json())
+            .then(items => {
+                if (!notifPanelBody) return;
+                if (items.length === 0) {
+                    notifPanelBody.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#94a3b8"><i class="bi bi-bell-slash" style="font-size:2rem;opacity:0.4"></i><p style="margin:12px 0 0;font-size:0.85rem">Aucune notification</p></div>';
+                    return;
+                }
+                notifPanelBody.innerHTML = items.slice(0, 8).map(n => {
+                    const cfg = notifTypeConfig[n.type] || notifTypeConfig.GENERAL;
+                    const timeAgo = formatTimeAgo(n.createdAt);
+                    return `<a href="/notifications/${n.id}/read" class="notif-item ${n.isRead ? '' : 'unread'}">
+                        <div class="notif-icon" style="background:${cfg.bg};color:${cfg.color}"><i class="bi bi-${cfg.icon}"></i></div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:${n.isRead ? 500 : 700};font-size:0.85rem;line-height:1.3">${n.title}</div>
+                            ${n.message ? `<div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.message}</div>` : ''}
+                            <div style="font-size:0.72rem;color:#94a3b8;margin-top:4px">${timeAgo}</div>
+                        </div>
+                    </a>`;
+                }).join('');
+                notifLoaded = true;
+            }).catch(() => {
+                if (notifPanelBody) notifPanelBody.innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8;font-size:0.85rem">Impossible de charger</div>';
+            });
+    }
+
+    function formatTimeAgo(dateStr) {
+        const d = new Date(dateStr);
+        const now = new Date();
+        const diff = Math.floor((now - d) / 1000);
+        if (diff < 60) return "À l'instant";
+        if (diff < 3600) return Math.floor(diff/60) + ' min';
+        if (diff < 86400) return Math.floor(diff/3600) + ' h';
+        if (diff < 604800) return Math.floor(diff/86400) + ' j';
+        return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    }
+
+    // Badge polling
+    function updateNotifBadge() {
+        fetch('/notifications/count')
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('notifBadge');
+                if (badge) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count > 9 ? '9+' : data.count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            }).catch(() => {});
+    }
+    updateNotifBadge();
+    setInterval(() => { updateNotifBadge(); notifLoaded = false; }, 30000);
+
+    // ── Chat Widget ──
+    const chatFab = document.getElementById('chatFab');
+    const chatWidget = document.getElementById('chatWidget');
+    const chatToggleNav = document.getElementById('chatToggleNav');
+    function toggleChat() {
+        chatWidget?.classList.toggle('open');
+    }
+    chatFab?.addEventListener('click', toggleChat);
+    chatToggleNav?.addEventListener('click', toggleChat);
+</script>
+{% endblock %}
+{% endblock %}

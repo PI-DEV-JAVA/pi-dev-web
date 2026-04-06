@@ -1,0 +1,29 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Gestion des formations{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 style="font-weight:700;margin:0">Formations ({{ formations|length }})</h5>
+    <a href="{{ path('admin_course_new') }}" class="bo-btn bo-btn-primary"><i class="bi bi-plus-lg me-1"></i> Nouvelle formation</a>
+</div>
+<div class="bo-card">
+    <table class="bo-table">
+        <thead><tr><th>Titre</th><th>Durée</th><th>Niveau</th><th>Début</th><th>Actions</th></tr></thead>
+        <tbody>
+            {% for f in formations %}
+                <tr>
+                    <td style="font-weight:600">{{ f.titre }}</td>
+                    <td>{{ f.duree }}h</td>
+                    <td><span class="bo-badge bo-badge-warning">{{ f.niveau ?: 'Tous' }}</span></td>
+                    <td style="color:var(--bo-text-secondary)">{{ f.dateDebut ? f.dateDebut|date('d/m/Y') : '—' }}</td>
+                    <td>
+                        <a href="{{ path('admin_course_edit', {id: f.id}) }}" class="bo-action-btn"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ path('admin_course_delete', {id: f.id}) }}" class="bo-action-btn danger" onclick="return confirm('Supprimer ?')"><i class="bi bi-trash"></i></a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="text-center" style="padding:30px;color:var(--bo-text-secondary)">Aucune formation.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
