@@ -1,0 +1,64 @@
+{# templates/activity/_form.html.twig #}
+{{ form_start(form, {'attr': {'class': 'needs-validation'}}) }}
+    <div class="mb-4">
+        {{ form_label(form.activityDate, 'Activity Date', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.activityDate, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.activityDate) }}
+    </div>
+    
+    <div class="mb-4">
+        {{ form_label(form.description, 'Description', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.description, {'attr': {'class': 'form-control', 'rows': 3, 'placeholder': 'What work was done?'}}) }}
+        {{ form_errors(form.description) }}
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            {{ form_label(form.hoursWorked, 'Hours Worked', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+            {{ form_widget(form.hoursWorked, {'attr': {'class': 'form-control', 'placeholder': 'e.g., 2.5'}}) }}
+            {{ form_errors(form.hoursWorked) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_label(form.totalTrackedSeconds, 'Total Tracked Seconds', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+            {{ form_widget(form.totalTrackedSeconds, {'attr': {'class': 'form-control', 'placeholder': 'seconds'}}) }}
+            {{ form_errors(form.totalTrackedSeconds) }}
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            {{ form_label(form.isTracking, 'Tracking Status', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+            <div class="form-check form-switch">
+                {{ form_widget(form.isTracking, {'attr': {'class': 'form-check-input', 'role': 'switch'}}) }}
+                <label class="form-check-label" for="{{ form.isTracking.vars.id }}">
+                    {{ form.isTracking.vars.data ? 'Currently Tracking' : 'Not Tracking' }}
+                </label>
+            </div>
+            {{ form_errors(form.isTracking) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_label(form.lastActivityTime, 'Last Activity Time', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+            {{ form_widget(form.lastActivityTime, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.lastActivityTime) }}
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        {{ form_label(form.Project, 'Associated Project', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.Project, {'attr': {'class': 'form-select'}}) }}
+        <small class="text-muted">Select the project this activity belongs to</small>
+        {{ form_errors(form.Project) }}
+    </div>
+    
+    <div class="mb-4">
+        {{ form_label(form.employee, 'Employee', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.employee, {'attr': {'class': 'form-select'}}) }}
+        <small class="text-muted">Select the employee who performed this activity</small>
+        {{ form_errors(form.employee) }}
+    </div>
+    
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <a href="{{ path('app_activity_index') }}" class="btn btn-outline-secondary rounded-pill px-4">Cancel</a>
+        <button class="btn btn-primary rounded-pill px-5">{{ button_label|default('Create Activity') }}</button>
+    </div>
+{{ form_end(form) }}

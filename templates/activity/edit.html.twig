@@ -1,0 +1,19 @@
+{# templates/activity/edit.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Edit Activity | Talentos{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card-modern p-4 p-lg-5">
+            <h1 class="fw-bold mb-1">Edit Activity</h1>
+            <p class="text-muted mb-4">Update time entry for <strong>{{ activity.activityDate ? activity.activityDate|date('F j, Y') : 'date not set' }}</strong></p>
+            {{ include('activity/_form.html.twig', {'button_label': 'Save Changes'}) }}
+            <div class="text-center mt-3">
+                <a href="{{ path('app_activity_index') }}" class="text-muted">Cancel & go back</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

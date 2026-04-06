@@ -1,0 +1,85 @@
+{# templates/activity/index.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Activities | Talentos{% endblock %}
+
+{% block body %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1 class="display-6 fw-bold mb-0"><i class="bi bi-clock-history text-primary me-2"></i> Activities</h1>
+        <p class="text-muted mt-1">Track time entries, hours worked, and project progress</p>
+    </div>
+    <a href="{{ path('app_activity_new') }}" class="btn btn-primary mt-3 mt-sm-0">
+        <i class="bi bi-plus-circle"></i> New Activity
+    </a>
+</div>
+
+<div class="list-group shadow-sm rounded-4 overflow-hidden">
+    {% for activity in activities %}
+        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3 bg-white border-0 border-bottom">
+            <div class="d-flex flex-column flex-md-row align-items-md-center gap-3 w-100">
+                <div class="flex-grow-1">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill fw-semibold">
+                            <i class="bi bi-stopwatch"></i> {{ activity.hoursWorked }} hours
+                        </span>
+                        {% if activity.project %}
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">
+                                <i class="bi bi-folder"></i> {{ activity.project.name }}
+                            </span>
+                        {% endif %}
+                        {% if activity.isTracking %}
+                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill">
+                                <i class="bi bi-play-circle"></i> Active
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill">
+                                <i class="bi bi-pause-circle"></i> Paused
+                            </span>
+                        {% endif %}
+                    </div>
+                    <h5 class="mb-1 fw-bold">{{ activity.activityDate ? activity.activityDate|date('M d, Y') : 'Date not set' }}</h5>
+                    <p class="mb-0 text-secondary small">{{ activity.description|default('No description provided')|slice(0, 100) }}</p>
+                    <small class="text-muted">
+                        <i class="bi bi-person-circle"></i> {{ activity.employee ? activity.employee.email : '—' }} | 
+                        <i class="bi bi-clock"></i> {{ activity.totalTrackedSeconds ? (activity.totalTrackedSeconds / 3600)|number_format(2) : 0 }} hrs tracked
+                    </small>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{{ path('app_activity_show', {'id': activity.id}) }}" class="btn btn-sm btn-outline-primary rounded-pill me-2 px-3">View</a>
+                    <a href="{{ path('app_activity_edit', {'id': activity.id}) }}" class="btn btn-sm btn-outline-secondary rounded-pill me-2 px-3">Edit</a>
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#delModal{{ activity.id }}">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Modal for activity -->
+        <div class="modal fade" id="delModal{{ activity.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title">Confirm deletion</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        Delete activity from <strong>{{ activity.activityDate ? activity.activityDate|date('M d, Y') : 'date' }}</strong> ({{ activity.hoursWorked }} hours) permanently?
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                        <form method="post" action="{{ path('app_activity_delete', {'id': activity.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ activity.id) }}">
+                            <button class="btn btn-danger rounded-pill">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-calendar-x display-1 text-muted"></i>
+            <h4 class="mt-2">No activities recorded</h4>
+            <a href="{{ path('app_activity_new') }}" class="btn btn-primary mt-2 rounded-pill">Create first activity</a>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

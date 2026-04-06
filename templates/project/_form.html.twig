@@ -1,0 +1,45 @@
+{# templates/project/_form.html.twig #}
+{{ form_start(form, {'attr': {'class': 'needs-validation', 'novalidate': 'novalidate'}}) }}
+    <div class="mb-4">
+        {{ form_label(form.name, 'Project Name', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.name, {'attr': {'class': 'form-control', 'placeholder': 'e.g., Website Redesign'}}) }}
+        <div class="invalid-feedback">{{ form_errors(form.name) }}</div>
+    </div>
+    
+    <div class="mb-4">
+        {{ form_label(form.description, 'Description', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.description, {'attr': {'class': 'form-control', 'rows': 4, 'placeholder': 'Describe the project goals, deliverables, and key milestones...'}}) }}
+        {{ form_errors(form.description) }}
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            {{ form_label(form.status, 'Status', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+            {{ form_widget(form.status, {'attr': {'class': 'form-select'}}) }}
+            {{ form_errors(form.status) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_label(form.budget, 'Budget (USD)', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+            {{ form_widget(form.budget, {'attr': {'class': 'form-control', 'placeholder': 'e.g., 50000.00'}}) }}
+            {{ form_errors(form.budget) }}
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            {{ form_label(form.startDate, 'Start Date', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+            {{ form_widget(form.startDate, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.startDate) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_label(form.endDate, 'End Date', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+            {{ form_widget(form.endDate, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.endDate) }}
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <a href="{{ path('app_project_index') }}" class="btn btn-light rounded-pill px-4">Cancel</a>
+        <button class="btn btn-primary rounded-pill px-5">{{ button_label|default('Create Project') }}</button>
+    </div>
+{{ form_end(form) }}

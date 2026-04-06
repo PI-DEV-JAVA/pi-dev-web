@@ -1,0 +1,88 @@
+{# templates/activity/show.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Activity Details | Talentos{% endblock %}
+
+{% block body %}
+<div class="mb-4">
+    <a href="{{ path('app_activity_index') }}" class="text-decoration-none text-secondary"><i class="bi bi-arrow-left"></i> Back to list</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card-modern p-4">
+            <div class="d-flex justify-content-between flex-wrap gap-3 border-bottom pb-3 mb-4">
+                <div>
+                    <span class="badge bg-info bg-opacity-10 text-info px-3 py-2 rounded-pill">Activity #{{ activity.id }}</span>
+                    <h1 class="fw-bold mt-2">{{ activity.activityDate ? activity.activityDate|date('F j, Y') : 'Date not set' }}</h1>
+                </div>
+                <div>
+                    <a href="{{ path('app_activity_edit', {'id': activity.id}) }}" class="btn btn-outline-primary rounded-pill">✏️ Edit</a>
+                    <button class="btn btn-outline-danger rounded-pill ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal">🗑️ Delete</button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-8">
+                    <h5 class="fw-semibold">Description</h5>
+                    <p class="text-secondary">{{ activity.description|default('— No description provided —') }}</p>
+                    
+                    <div class="mt-4">
+                        <h5 class="fw-semibold">Time Tracking</h5>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <div class="bg-light p-3 rounded-4 text-center">
+                                    <small class="text-muted">Hours Worked</small>
+                                    <h3 class="fw-bold mb-0">{{ activity.hoursWorked }}</h3>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="bg-light p-3 rounded-4 text-center">
+                                    <small class="text-muted">Total Tracked</small>
+                                    <h3 class="fw-bold mb-0">{{ activity.totalTrackedSeconds ? (activity.totalTrackedSeconds / 3600)|number_format(2) : 0 }} hrs</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="bg-light p-3 rounded-4">
+                        <h6 class="fw-bold">Activity Info</h6>
+                        <ul class="list-unstyled small">
+                            <li><i class="bi bi-folder"></i> <strong>Project:</strong> {{ activity.project ? activity.project.name : '—' }}</li>
+                            <li class="mt-2"><i class="bi bi-person"></i> <strong>Employee:</strong> {{ activity.employee ? activity.employee.email : '—' }}</li>
+                            <li class="mt-2"><i class="bi bi-play-circle"></i> <strong>Status:</strong> 
+                                {% if activity.isTracking %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </li>
+                            <li class="mt-2"><i class="bi bi-calendar-plus"></i> <strong>Last Activity:</strong> {{ activity.lastActivityTime ? activity.lastActivityTime|date('Y-m-d H:i:s') : '—' }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal delete -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <div class="modal-body text-center p-4">
+                <i class="bi bi-exclamation-triangle fs-1 text-warning"></i>
+                <h5 class="mt-2">Delete this activity?</h5>
+                <p class="mb-0">This action is irreversible. All time tracking data will be lost.</p>
+            </div>
+            <div class="modal-footer justify-content-center border-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{{ path('app_activity_delete', {'id': activity.id}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ activity.id) }}">
+                    <button class="btn btn-danger rounded-pill px-4">Yes, delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
