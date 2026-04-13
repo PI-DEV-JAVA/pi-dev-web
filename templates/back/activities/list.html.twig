@@ -29,11 +29,15 @@
                     <textarea name="description" class="form-control" rows="3" required placeholder="Décrire l'activité..."></textarea>
                 </div>
                 <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label>Date</label>
-                        <input type="date" name="activityDate" class="form-control" value="{{ 'now'|date('Y-m-d') }}">
+                    <div class="col-4">
+                        <label>Date *</label>
+                        <input type="date" name="activityDate" class="form-control" value="{{ 'now'|date('Y-m-d') }}" required>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
+                        <label>Deadline (optionnel)</label>
+                        <input type="date" name="deadline" class="form-control">
+                    </div>
+                    <div class="col-4">
                         <label>Heures</label>
                         <input type="number" step="0.5" name="hoursWorked" class="form-control" placeholder="Ex: 4">
                     </div>
@@ -56,6 +60,12 @@
                         {% if a.project %} · <i class="bi bi-kanban me-1"></i>{{ a.project.name }}{% endif %}
                         {% if a.hoursWorked %} · {{ a.hoursWorked }}h{% endif %}
                         · {{ a.activityDate ? a.activityDate|date('d/m/Y') : '—' }}
+                    </div>
+                </div>
+                <div>
+                    <div style="text-align:right">
+                        <span class="badge {% if a.status == 'APPROVED' %}bg-success{% elseif a.status == 'REJECTED' %}bg-danger{% else %}bg-warning{% endif %} mb-1">{{ a.status }}</span><br>
+                        <a href="{{ path('admin_activity_review', {id: a.id}) }}" class="bo-btn bo-btn-outline" style="padding:4px 12px;font-size:0.8rem">Gérer</a>
                     </div>
                 </div>
             </div>

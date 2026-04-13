@@ -1,0 +1,127 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Kanban — {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <a href="{{ path('admin_projects') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem">
+        <i class="bi bi-arrow-left me-1"></i> Retour aux projets
+    </a>
+</div>
+
+<h4 style="font-weight:800; margin-bottom:24px"><i class="bi bi-kanban me-2" style="color:var(--primary)"></i> Board Kanban: {{ project.name }}</h4>
+
+<p style="color:var(--bo-text-secondary); margin-bottom:30px; font-size:0.9rem;">
+    Glissez et déposez les activités entre les colonnes pour mettre à jour instantanément leur statut.
+</p>
+
+{% set cols = {
+    'PENDING': { title: 'À Faire', icon: 'bi-hourglass-split', accent: 'var(--bo-text-secondary)', items: [] },
+    'IN_PROGRESS': { title: 'En Cours', icon: 'bi-play-circle', accent: 'var(--primary)', items: [] },
+    'REVIEW': { title: 'En Révision', icon: 'bi-search', accent: 'var(--warning)', items: [] },
+    'APPROVED': { title: 'Terminé', icon: 'bi-check-circle', accent: 'var(--success)', items: [] }
+} %}
+
+{% for a in activities %}
+    {% set key = a.status %}
+    {% if key == 'REJECTED' %}{% set key = 'IN_PROGRESS' %}{% endif %}
+    {% if key not in cols|keys %}{% set key = 'PENDING' %}{% endif %}
+    {% set cols = cols|merge({(key): cols[key]|merge({items: cols[key].items|merge([a])})}) %}
+{% endfor %}
+
+<div class="row g-3 flex-nowrap" style="overflow-x:auto; padding-bottom:20px; min-height:600px;">
+    {% for key, col in cols %}
+        <div class="col-11 col-md-4 col-lg-3">
+            <div class="bo-card kanban-column" data-status="{{ key }}" style="background:rgba(255,255,255,0.02); border-top:4px solid {{ col.accent }}; display:flex; flex-direction:column; height:100%;" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <h6 style="font-weight:700; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="bi {{ col.icon }} me-1" style="color:{{ col.accent }}"></i> {{ col.title }}</span>
+                    <span class="badge" style="background:{{ col.accent }}">{{ col.items|length }}</span>
+                </h6>
+                <div class="kanban-items" style="flex:1; min-height:200px;">
+                    {% for a in col.items %}
+                        <div class="bo-card mb-3 kanban-card" data-id="{{ a.id }}" draggable="true" ondragstart="drag(event)" style="padding:15px; cursor:grab; background:var(--bo-bg); border-left:3px solid {% if a.status == 'REJECTED' %}#ef4444{% else %}var(--bo-border){% endif %}; transition:transform 0.1s;">
+                            <div style="font-size:0.85rem; font-weight:700; margin-bottom:8px;">{{ a.description }}</div>
+                            <div style="font-size:0.75rem; color:var(--bo-text-secondary); margin-bottom:8px;">
+                                <i class="bi bi-person-circle me-1"></i> {{ a.employee.email|split('@')[0] }}
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--bo-text-secondary); font-size:0.65rem;">
+                                    <i class="bi bi-calendar me-1"></i> {{ a.activityDate|date('d M') }}
+                                </span>
+                                {% if a.status == 'REJECTED' %}
+                                    <span class="badge bg-danger" style="font-size:0.65rem;">REJETÉ</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<style>
+.kanban-card:active { cursor: grabbing !important; }
+.kanban-card.dragging { opacity: 0.5; border:2px dashed var(--primary) !important; background:rgba(79,70,229,0.1) !important;}
+.kanban-column { transition: background 0.2s; }
+.kanban-column.drag-over { background: rgba(255,255,255,0.06) !important; }
+</style>
+
+<script>
+function allowDrop(ev) {
+    ev.preventDefault();
+    ev.currentTarget.classList.add('drag-over');
+}
+
+document.addEventListener('dragleave', function(ev) {
+    if(ev.target.classList && ev.target.classList.contains('kanban-column')){
+        ev.target.classList.remove('drag-over');
+    }
+});
+
+function drag(ev) {
+    ev.dataTransfer.setData("text/plain", ev.currentTarget.dataset.id);
+    ev.currentTarget.classList.add('dragging');
+}
+
+document.addEventListener('dragend', function(ev) {
+    if(ev.target.classList) ev.target.classList.remove('dragging');
+    document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+});
+
+function drop(ev) {
+    ev.preventDefault();
+    var col = ev.currentTarget.closest('.kanban-column');
+    col.classList.remove('drag-over');
+    
+    var id = ev.dataTransfer.getData("text/plain");
+    var el = document.querySelector('[data-id="'+id+'"]');
+    
+    if (col && el) {
+        var list = col.querySelector('.kanban-items');
+        list.appendChild(el);
+        
+        // Update item count badges visually
+        updateCounts();
+
+        // Server flush via AJAX
+        var status = col.dataset.status;
+        fetch('/admin/activities/'+id+'/kanban-update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: status})
+        }).then(r => r.json()).then(res => {
+            if(!res.success) alert("Échec de la mise à jour !");
+        }).catch(e => {
+            alert("Erreur réseau");
+        });
+    }
+}
+
+function updateCounts() {
+    document.querySelectorAll('.kanban-column').forEach(c => {
+        var count = c.querySelectorAll('.kanban-card').length;
+        c.querySelector('h6 .badge').textContent = count;
+    });
+}
+</script>
+{% endblock %}

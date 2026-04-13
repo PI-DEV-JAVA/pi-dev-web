@@ -1,0 +1,75 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Revue d'Activité{% endblock %}
+{% block content %}
+<div class="row w-100 justify-content-center">
+    <div class="col-lg-8">
+        <a href="{{ path('admin_activities') }}" class="bo-btn bo-btn-outline mb-4"><i class="bi bi-arrow-left me-2"></i>Retour aux activités</a>
+
+        <div class="bo-card mb-4" style="padding:30px">
+            <h4 style="font-weight:700">Détails de l'activité</h4>
+            
+            <table class="table table-borderless mt-4">
+                <tr>
+                    <td class="text-muted" style="width:200px">Description :</td>
+                    <td style="font-weight:600">{{ activity.description }}</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Candidat :</td>
+                    <td>{{ activity.employee.email }}</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Projet :</td>
+                    <td>{{ activity.project ? activity.project.name : '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Date :</td>
+                    <td>{{ activity.activityDate ? activity.activityDate|date('d/m/Y') : '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Heures travaillées :</td>
+                    <td>{{ activity.hoursWorked ?? '0' }}h</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Statut actuel :</td>
+                    <td>
+                        <span class="badge {% if activity.status == 'APPROVED' %}bg-success{% elseif activity.status == 'REJECTED' %}bg-danger{% else %}bg-warning{% endif %}">
+                            {{ activity.status }}
+                        </span>
+                    </td>
+                </tr>
+            </table>
+
+            <hr style="opacity:0.1;margin:30px 0;">
+
+            <h5 style="font-weight:700;margin-bottom:16px"><i class="bi bi-journal-text me-2" style="color:var(--accent)"></i>Rapport du candidat</h5>
+            <div class="p-3 mb-4" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); border-radius:12px; white-space:pre-wrap; min-height:100px;">
+                {% if activity.employeeReport %}
+                    {{ activity.employeeReport }}
+                {% else %}
+                    <span class="text-muted">Le candidat n'a pas encore soumis son rapport.</span>
+                {% endif %}
+            </div>
+
+            <form method="post" action="{{ path('admin_activity_review', {id: activity.id}) }}">
+                <div class="mb-3">
+                    <label style="font-weight:600;margin-bottom:8px">Votre réponse / feedback</label>
+                    <textarea name="adminResponse" class="form-control" rows="5" placeholder="Saisir des remarques ou suggestions...">{{ activity.adminResponse }}</textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label style="font-weight:600;margin-bottom:8px">Décision</label>
+                    <select name="status" class="form-select">
+                        <option value="PENDING" {% if activity.status == 'PENDING' %}selected{% endif %}>En attente (PENDING)</option>
+                        <option value="APPROVED" {% if activity.status == 'APPROVED' %}selected{% endif %}>Approuver (APPROVED)</option>
+                        <option value="REJECTED" {% if activity.status == 'REJECTED' %}selected{% endif %}>Rejeter (REJECTED)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="bo-btn bo-btn-primary w-100">
+                    <i class="bi bi-save me-2"></i>Enregistrer la décision
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

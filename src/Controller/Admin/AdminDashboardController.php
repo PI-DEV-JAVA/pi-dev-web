@@ -18,6 +18,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 
 #[Route('/admin')]
 class AdminDashboardController extends AbstractController
@@ -373,6 +375,54 @@ class AdminDashboardController extends AbstractController
         ]);
     }
 
+    #[Route('/projects/{id}/logs', name: 'admin_project_logs', requirements: ['id' => '\d+'])]
+    public function projectLogs(Project $project, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $project->getProjectManagerId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $logs = $em->getRepository(Activity::class)->getProjectLogs($project);
+
+        return $this->render('back/projects/logs.html.twig', [
+            'project' => $project,
+            'logs' => $logs,
+        ]);
+    }
+
+    #[Route('/projects/{id}/kanban', name: 'admin_project_kanban', requirements: ['id' => '\d+'])]
+    public function projectKanban(Project $project, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $project->getProjectManagerId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $activities = $em->getRepository(Activity::class)->findBy(['project' => $project], ['activityDate' => 'DESC']);
+
+        return $this->render('back/projects/kanban.html.twig', [
+            'project' => $project,
+            'activities' => $activities,
+        ]);
+    }
+
+    #[Route('/activities/{id}/kanban-update', name: 'admin_activity_kanban_update', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function activityKanbanUpdate(Activity $activity, Request $request, EntityManagerInterface $em): Response
+    {
+        $project = $activity->getProject();
+        if ($project && !$this->isAdmin() && $project->getProjectManagerId() !== $this->getUser()->getId()) {
+            return $this->json(['error' => 'Access Denied'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        if (isset($data['status'])) {
+            $activity->setStatus($data['status']);
+            $em->flush();
+            return $this->json(['success' => true]);
+        }
+
+        return $this->json(['error' => 'Invalid data'], 400);
+    }
+
     #[Route('/projects/{id}/delete', name: 'admin_project_delete', requirements: ['id' => '\d+'])]
     public function projectDelete(Project $project, EntityManagerInterface $em): Response
     {
@@ -386,7 +436,7 @@ class AdminDashboardController extends AbstractController
     }
 
     #[Route('/projects/{id}/activity/new', name: 'admin_project_activity_new', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function projectActivityNew(Project $project, Request $request, EntityManagerInterface $em): Response
+    public function projectActivityNew(Project $project, Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
     {
         if (!$this->isAdmin() && $project->getProjectManagerId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
@@ -395,6 +445,7 @@ class AdminDashboardController extends AbstractController
         $desc = trim($request->request->get('description', ''));
         $hours = $request->request->get('hoursWorked');
         $dateStr = $request->request->get('activityDate');
+        $deadlineStr = $request->request->get('deadline');
 
         if ($desc) {
             $activity = new Activity();
@@ -403,8 +454,36 @@ class AdminDashboardController extends AbstractController
             $activity->setDescription($desc);
             if ($hours) $activity->setHoursWorked($hours);
             $activity->setActivityDate($dateStr ? new \DateTime($dateStr) : new \DateTime());
+            if ($deadlineStr) $activity->setDeadline(new \DateTime($deadlineStr));
             $em->persist($activity);
             $em->flush();
+
+            // Send Email Notification
+            try {
+                $emailMsg = (new Email())
+                    ->from('talentos.pidev@gmail.com')
+                    ->to($this->getUser()->getEmail())
+                    ->subject('Talentos — Nouvelle activité enregistrée')
+                    ->html(
+                        '<div style="font-family: \'Segoe UI\', Arial, sans-serif; max-width: 480px; margin: 0 auto;'
+                        . 'padding: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);'
+                        . 'border-radius: 16px;">'
+                        . '<div style="background: white; border-radius: 12px; padding: 32px; text-align: center;">'
+                        . '<h1 style="color: #111827; font-size: 24px; margin: 0 0 8px;">Talentos</h1>'
+                        . '<p style="color: #6b7280; font-size: 14px; margin: 0 0 24px;">Nouvelle activité enregistrée</p>'
+                        . '<div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 0 0 24px; text-align: left;">'
+                        . '<p style="color: #111827; font-weight: 600; font-size: 14px; margin: 0 0 8px;">Détails :</p>'
+                        . '<p style="color: #6b7280; font-size: 14px; margin: 0 0 8px;">' . htmlspecialchars($desc) . '</p>'
+                        . '<p style="color: #6366f1; font-weight: bold; font-size: 14px; margin: 0;">Projet : ' . htmlspecialchars($project->getName()) . '</p>'
+                        . '</div>'
+                        . '<p style="color: #9ca3af; font-size: 12px; margin: 0;">Connectez-vous à votre tableau de bord pour plus de détails.</p>'
+                        . '</div></div>'
+                    );
+                $mailer->send($emailMsg);
+            } catch (\Exception $e) {
+                $this->addFlash('danger', 'L\'activité a été assignée, mais l\'email a échoué: ' . $e->getMessage());
+            }
+
             $this->addFlash('success', 'Activité ajoutée.');
         }
 
@@ -455,7 +534,7 @@ class AdminDashboardController extends AbstractController
     }
 
     #[Route('/activities/new', name: 'admin_activity_new', methods: ['POST'])]
-    public function activityNew(Request $request, EntityManagerInterface $em): Response
+    public function activityNew(Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
     {
         $user = $this->getUser();
         $candidateId = (int)$request->request->get('candidateId');
@@ -463,6 +542,7 @@ class AdminDashboardController extends AbstractController
         $desc = trim($request->request->get('description', ''));
         $hours = $request->request->get('hoursWorked');
         $dateStr = $request->request->get('activityDate');
+        $deadlineStr = $request->request->get('deadline');
 
         $candidate = $em->getRepository(User::class)->find($candidateId);
         $project = $projectId ? $em->getRepository(Project::class)->find($projectId) : null;
@@ -479,6 +559,7 @@ class AdminDashboardController extends AbstractController
             $activity->setDescription($desc);
             if ($hours) $activity->setHoursWorked($hours);
             $activity->setActivityDate($dateStr ? new \DateTime($dateStr) : new \DateTime());
+            if ($deadlineStr) $activity->setDeadline(new \DateTime($deadlineStr));
             $em->persist($activity);
             $em->flush();
 
@@ -487,10 +568,66 @@ class AdminDashboardController extends AbstractController
             $pName = $project ? ' (' . $project->getName() . ')' : '';
             $ns->notify($candidate, 'ACTIVITY', 'Nouvelle activité assignée', $desc . $pName, '/activities');
 
+            // Send Email
+            try {
+                $emailMsg = (new Email())
+                    ->from('talentos.pidev@gmail.com')
+                    ->to($candidate->getEmail())
+                    ->subject('Talentos — Nouvelle activité assignée')
+                    ->html(
+                        '<div style="font-family: \'Segoe UI\', Arial, sans-serif; max-width: 480px; margin: 0 auto;'
+                        . 'padding: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);'
+                        . 'border-radius: 16px;">'
+                        . '<div style="background: white; border-radius: 12px; padding: 32px; text-align: center;">'
+                        . '<h1 style="color: #111827; font-size: 24px; margin: 0 0 8px;">Talentos</h1>'
+                        . '<p style="color: #6b7280; font-size: 14px; margin: 0 0 24px;">Nouvelle activité assignée</p>'
+                        . '<div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 0 0 24px; text-align: left;">'
+                        . '<p style="color: #111827; font-weight: 600; font-size: 14px; margin: 0 0 8px;">Description de la tâche :</p>'
+                        . '<p style="color: #6b7280; font-size: 14px; margin: 0 0 8px;">' . htmlspecialchars($desc) . '</p>'
+                        . '<p style="color: #6366f1; font-weight: bold; font-size: 14px; margin: 0;">' . ($project ? 'Projet : ' . htmlspecialchars($project->getName()) : 'Aucun projet spécifique') . '</p>'
+                        . '</div>'
+                        . '<p style="color: #9ca3af; font-size: 12px; margin: 0;">Connectez-vous à votre espace candidat pour soumettre votre rapport.</p>'
+                        . '</div></div>'
+                    );
+                $mailer->send($emailMsg);
+            } catch (\Exception $e) {
+                $this->addFlash('danger', 'L\'activité a été assignée, mais l\'email a échoué: ' . $e->getMessage());
+            }
+
             $this->addFlash('success', 'Activité assignée à ' . $candidate->getEmail());
         }
 
         return $this->redirectToRoute('admin_activities');
+    }
+
+    #[Route('/activities/{id}/review', name: 'admin_activity_review', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    public function activityReview(Activity $activity, Request $request, EntityManagerInterface $em): Response
+    {
+        $user = $this->getUser();
+        $project = $activity->getProject();
+        
+        if (!$this->isAdmin() && $project && $project->getProjectManagerId() !== $user->getId()) {
+             throw $this->createAccessDeniedException();
+        }
+
+        if ($request->isMethod('POST')) {
+            $status = $request->request->get('status');
+            $responseTxt = $request->request->get('adminResponse');
+            
+            if (in_array($status, ['APPROVED', 'REJECTED', 'PENDING'])) {
+                $activity->setStatus($status);
+            }
+            if ($responseTxt !== null) {
+                $activity->setAdminResponse(trim($responseTxt));
+            }
+            $em->flush();
+            $this->addFlash('success', 'Activité mise à jour: ' . $activity->getStatus());
+            return $this->redirectToRoute('admin_activity_review', ['id' => $activity->getId()]);
+        }
+
+        return $this->render('back/activities/review.html.twig', [
+            'activity' => $activity,
+        ]);
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

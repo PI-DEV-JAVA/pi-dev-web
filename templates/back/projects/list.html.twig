@@ -7,19 +7,34 @@
 </div>
 <div class="bo-card">
     <table class="bo-table">
-        <thead><tr><th>Nom</th><th>Statut</th><th>Début</th><th>Fin</th><th>Budget</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Nom & Priorité</th><th>Statut & Prog.</th><th>Début</th><th>Fin & Durée</th><th>Budget & Heures</th><th>Actions</th></tr></thead>
         <tbody>
             {% for p in projects %}
                 <tr>
-                    <td style="font-weight:600">{{ p.name }}</td>
+                    <td style="font-weight:600">
+                        {{ p.name }}
+                        {% if p.priority == 'HIGH' %}<span class="badge bg-danger ms-1" style="font-size:0.7em">High</span>{% endif %}
+                        {% if p.isOverdue() %}<span class="badge bg-warning ms-1" style="font-size:0.7em" title="En retard"><i class="bi bi-exclamation-triangle"></i></span>{% endif %}
+                    </td>
                     <td>
                         <span class="bo-badge bo-badge-{{ p.status == 'DONE' ? 'success' : (p.status == 'IN_PROGRESS' ? 'primary' : (p.status == 'ON_HOLD' ? 'danger' : 'warning')) }}">{{ p.status }}</span>
+                        <div class="progress mt-2" style="height: 5px; width: 80px; background: rgba(0,0,0,0.1)">
+                            <div class="progress-bar bg-{{ p.status == 'DONE' ? 'success' : 'primary' }}" role="progressbar" style="width: {{ p.getProgressPercentage() }}%;"></div>
+                        </div>
                     </td>
                     <td style="color:var(--bo-text-secondary)">{{ p.startDate ? p.startDate|date('d/m/Y') : '—' }}</td>
-                    <td style="color:var(--bo-text-secondary)">{{ p.endDate ? p.endDate|date('d/m/Y') : '—' }}</td>
-                    <td>{{ p.budget ? p.budget ~ ' DT' : '—' }}</td>
+                    <td style="color:var(--bo-text-secondary)">
+                        {{ p.endDate ? p.endDate|date('d/m/Y') : '—' }}
+                        {% if p.getDurationInDays() %}<div style="font-size:0.8em;margin-top:2px">{{ p.getDurationInDays() }} jours</div>{% endif %}
+                    </td>
+                    <td>
+                        {{ p.budget ? p.budget ~ ' DT' : '—' }}
+                        {% if p.getTotalHoursLogged() > 0 %}<div style="font-size:0.8em;color:var(--bo-text-secondary);margin-top:2px"><i class="bi bi-clock me-1"></i>{{ p.getTotalHoursLogged() }}h totales</div>{% endif %}
+                    </td>
                     <td>
                         <a href="{{ path('admin_project_edit', {id: p.id}) }}" class="bo-action-btn" title="Modifier / Activités"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ path('admin_project_logs', {id: p.id}) }}" class="bo-action-btn" title="Project Logs & Performances"><i class="bi bi-bar-chart-line"></i></a>
+                        <a href="{{ path('admin_project_kanban', {id: p.id}) }}" class="bo-action-btn" title="Kanban Board"><i class="bi bi-kanban"></i></a>
                         <a href="{{ path('admin_project_delete', {id: p.id}) }}" class="bo-action-btn danger" onclick="return confirm('Supprimer ce projet et ses activités ?')"><i class="bi bi-trash"></i></a>
                     </td>
                 </tr>
