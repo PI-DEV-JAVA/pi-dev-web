@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meet - {{ meet.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --bg-color: #202124;
+            --sidebar-color: #ffffff;
+            --text-color: #ffffff;
+            --btn-bg: #3c4043;
+            --btn-hover: #4a4d51;
+            --danger-bg: #ea4335;
+        }
+        body, html {
+            height: 100%;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        
+        /* ── Name Prompt Overlay ── */
+        #namePromptOverlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(32, 33, 36, 0.95);
+            z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .prompt-card {
+            background: white; color: #202124;
+            padding: 40px; border-radius: 16px;
+            width: 100%; max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+
+        /* ── Layout ── */
+        .meet-container {
+            display: flex;
+            height: calc(100vh - 80px); /* 80px for bottom bar */
+        }
+        .video-area {
+            flex: 1;
+            padding: 16px;
+            display: grid;
+            gap: 16px;
+            /* Grid layout will be updated dynamically via JS */
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .video-box {
+            position: relative;
+            background: #3c4043;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            min-height: 250px;
+        }
+        .video-box video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+        .video-label {
+            position: absolute; bottom: 12px; left: 12px;
+            background: rgba(0,0,0,0.6); color: white;
+            padding: 4px 10px; border-radius: 6px;
+            font-size: 0.85rem; font-weight: 500;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ── Sidebar (Chat) ── */
+        .sidebar {
+            width: 360px;
+            background: white;
+            color: #202124;
+            display: flex; flex-direction: column;
+            border-radius: 16px 0 0 16px;
+            transition: transform 0.3s ease;
+            transform: translateX(100%);
+            position: absolute; right: 0; top: 0; bottom: 80px;
+            z-index: 1000;
+        }
+        .sidebar.active {
+            transform: translateX(0);
+        }
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .sidebar-header h5 { margin: 0; font-weight: 600; font-size: 1.1rem; }
+        .close-sidebar {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.2rem; color: #5f6368;
+        }
+        .chat-messages {
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .chat-msg {
+            background: #f1f3f4; padding: 10px 14px;
+            border-radius: 2px 14px 14px 14px;
+            width: fit-content; max-width: 85%;
+        }
+        .chat-msg.self {
+            background: #e8f0fe;
+            align-self: flex-end;
+            border-radius: 14px 2px 14px 14px;
+        }
+        .chat-msg-author {
+            font-size: 0.75rem; font-weight: 600; color: #5f6368; margin-bottom: 4px;
+        }
+        .chat-input-area {
+            padding: 16px; border-top: 1px solid #e0e0e0;
+        }
+        .chat-input-wrapper {
+            display: flex; gap: 8px; background: #f1f3f4;
+            border-radius: 24px; padding: 6px 16px;
+        }
+        .chat-input-wrapper input {
+            border: none; background: transparent; flex: 1;
+            outline: none; font-size: 0.9rem; color: #202124;
+        }
+        .chat-send-btn {
+            background: none; border: none; color: #1a73e8;
+            cursor: pointer; font-size: 1.2rem;
+        }
+
+        /* ── Bottom Bar ── */
+        .bottom-bar {
+            height: 80px;
+            background: var(--bg-color);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 24px;
+        }
+        .meet-info { font-weight: 500; font-size: 1rem; width: 250px;}
+        
+        .controls { display: flex; gap: 12px; align-items: center; justify-content: center; flex: 1;}
+        .ctrl-btn {
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            background: var(--btn-bg);
+            border: none; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ctrl-btn:hover { background: var(--btn-hover); }
+        .ctrl-btn.off { background: var(--danger-bg); }
+        .ctrl-btn.leave { background: var(--danger-bg); padding: 0 24px; border-radius: 24px; width: auto; font-size: 1.1rem; gap: 8px; font-weight: 500;}
+        .ctrl-btn.leave:hover { filter: brightness(0.9); }
+        
+        .side-controls { display: flex; gap: 12px; width: 250px; justify-content: flex-end;}
+        
+        #inviteLinkToast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: #fff; color: #333; padding: 12px 24px;
+            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none; font-weight: 500; z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Name Prompt for unauthenticated or first-time guests -->
+<div id="namePromptOverlay" style="display: {{ userName ? 'none' : 'flex' }}">
+    <div class="prompt-card">
+        <h3 class="mb-4 text-dark" style="font-weight:700">Rejoindre la réunion</h3>
+        <p class="text-muted mb-4">Veuillez saisir votre nom pour rejoindre la visioconférence.</p>
+        <form id="nameForm">
+            <input type="text" id="guestNameInput" class="form-control form-control-lg mb-3" placeholder="Votre nom complet" required minlength="2">
+            <button type="submit" class="btn btn-primary btn-lg w-100" style="background: #1a73e8; border:none; border-radius: 24px;">Demander à participer</button>
+        </form>
+    </div>
+</div>
+
+<div class="meet-container">
+    <div class="video-area" id="videoArea">
+        <!-- Local Video -->
+        <div class="video-box" id="localVideoContainer">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <div class="video-label">Vous (<span id="displayNameLabel">{{ userName|default('Anonyme') }}</span>)</div>
+        </div>
+        <!-- Remote Videos will be appended here -->
+    </div>
+
+    <!-- Chat Sidebar -->
+    <div class="sidebar" id="chatSidebar">
+        <div class="sidebar-header">
+            <h5>Messages dans l'appel</h5>
+            <button class="close-sidebar" onclick="toggleChat()"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="text-center text-muted" style="font-size:0.8rem; margin-top:20px;">
+                Les messages ne sont visibles que par les participants connectés.
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <form id="chatForm" class="chat-input-wrapper">
+                <input type="text" id="chatInput" placeholder="Envoyer un message..." autocomplete="off" required>
+                <button type="submit" class="chat-send-btn"><i class="bi bi-send-fill"></i></button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-bar">
+    <div class="meet-info">
+        <span id="clock" style="font-weight:600; margin-right: 12px;"></span> | <span style="margin-left:12px; font-weight:400; color:#ddd">{{ meet.roomId }}</span>
+    </div>
+    
+    <div class="controls">
+        <button class="ctrl-btn" id="btnMic" onclick="toggleMic()" title="Désactiver le micro"><i class="bi bi-mic-fill"></i></button>
+        <button class="ctrl-btn" id="btnCam" onclick="toggleCam()" title="Désactiver la caméra"><i class="bi bi-camera-video-fill"></i></button>
+        <button class="ctrl-btn leave" onclick="leaveRoom()"><i class="bi bi-telephone-x-fill"></i> Quitter</button>
+    </div>
+    
+    <div class="side-controls">
+        <button class="ctrl-btn" style="background:transparent; color:#e8eaed" onclick="copyInviteLink()" title="Copier le lien d'invitation"><i class="bi bi-info-circle"></i></button>
+        <button class="ctrl-btn" style="background:transparent; color:#e8eaed" onclick="toggleChat()" title="Ouvrir le chat"><i class="bi bi-chat-left-text-fill"></i></button>
+    </div>
+</div>
+
+<div id="inviteLinkToast">Lien de la réunion copié !</div>
+
+<script>
+    // --- Global Config ---
+    const ROOM_ID = '{{ meet.roomId }}';
+    const JANUS_SERVER = 'http://4.233.136.0:8088/janus'; // Standard HTTP REST API
+    const WS_CHAT_SERVER = 'ws://4.233.136.0:3000';
+    let DISPLAY_NAME = '{{ userName|escape('js') }}' || '';
+    
+    // Convert string Room ID to a numeric ID for Janus (if janus is configured for numeric rooms)
+    // We'll hash the roomId to a 53-bit integer.
+    const NUMERIC_ROOM_ID = Math.abs(roomIdHash(ROOM_ID));
+
+    function roomIdHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            let char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return hash === 0 ? 1234 : hash;
+    }
+
+    // --- DOM Elements ---
+    const localVideo = document.getElementById('localVideo');
+    const localVideoContainer = document.getElementById('localVideoContainer');
+    const videoArea = document.getElementById('videoArea');
+    const btnMic = document.getElementById('btnMic');
+    const btnCam = document.getElementById('btnCam');
+    const chatSidebar = document.getElementById('chatSidebar');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const chatInput = document.getElementById('chatInput');
+    const nameForm = document.getElementById('nameForm');
+
+    // --- State ---
+    let localStream = null;
+    let micEnabled = true;
+    let camEnabled = true;
+
+    // --- Name Prompt Logic ---
+    if (!DISPLAY_NAME) {
+        nameForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            DISPLAY_NAME = document.getElementById('guestNameInput').value.trim();
+            if (DISPLAY_NAME) {
+                document.getElementById('namePromptOverlay').style.display = 'none';
+                document.getElementById('displayNameLabel').innerText = DISPLAY_NAME;
+                initApp();
+            }
+        });
+    } else {
+        initApp();
+    }
+
+    function initApp() {
+        startLocalStream().then(() => {
+            initWebSocketChat();
+            startJanusWebRTC();
+        });
+    }
+
+    // --- UI Logic ---
+    setInterval(() => {
+        const d = new Date();
+        document.getElementById('clock').innerText = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }, 1000);
+
+    function toggleChat() {
+        chatSidebar.classList.toggle('active');
+    }
+
+    function copyInviteLink() {
+        navigator.clipboard.writeText(window.location.href);
+        const toast = document.getElementById('inviteLinkToast');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+    }
+
+    function leaveRoom() {
+        if(confirm("Voulez-vous vraiment quitter l'appel ?")) {
+            window.location.href = "{{ path('app_interviews') }}";
+        }
+    }
+
+    // --- Local Media Handling ---
+    async function startLocalStream() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            localVideo.srcObject = localStream;
+        } catch (e) {
+            console.error("Erreur gUM: ", e);
+            alert("Erreur d'accès à la caméra/micro. Vérifiez vos permissions.");
+        }
+    }
+
+    function toggleMic() {
+        if (!localStream) return;
+        micEnabled = !micEnabled;
+        localStream.getAudioTracks().forEach(track => track.enabled = micEnabled);
+        btnMic.className = micEnabled ? 'ctrl-btn' : 'ctrl-btn off';
+        btnMic.innerHTML = micEnabled ? '<i class="bi bi-mic-fill"></i>' : '<i class="bi bi-mic-mute-fill"></i>';
+    }
+
+    function toggleCam() {
+        if (!localStream) return;
+        camEnabled = !camEnabled;
+        localStream.getVideoTracks().forEach(track => track.enabled = camEnabled);
+        btnCam.className = camEnabled ? 'ctrl-btn' : 'ctrl-btn off';
+        btnCam.innerHTML = camEnabled ? '<i class="bi bi-camera-video-fill"></i>' : '<i class="bi bi-camera-video-off-fill"></i>';
+    }
+
+    // --- Custom WebSocket Chat ---
+    let ws;
+    function initWebSocketChat() {
+        try {
+            ws = new WebSocket(WS_CHAT_SERVER);
+            ws.onopen = () => {
+                console.log("Connecté au WebSockets.");
+                ws.send(JSON.stringify({ type: "join", room: ROOM_ID }));
+            };
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "chat" && data.room === ROOM_ID) {
+                        appendMessage(data.user, data.text, false);
+                    }
+                } catch (e) {}
+            };
+        } catch (e) {
+            console.error("WS error", e);
+        }
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (text && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "chat", room: ROOM_ID, user: DISPLAY_NAME, text: text }));
+                appendMessage(DISPLAY_NAME, text, true);
+                chatInput.value = '';
+            }
+        });
+    }
+
+    function appendMessage(user, text, isSelf) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'chat-msg flex-column ' + (isSelf ? 'self' : '');
+        
+        const authorDiv = document.createElement('div');
+        authorDiv.className = 'chat-msg-author';
+        authorDiv.innerText = isSelf ? 'Vous' : user;
+        
+        const textDiv = document.createElement('div');
+        textDiv.innerText = text;
+
+        msgDiv.appendChild(authorDiv);
+        msgDiv.appendChild(textDiv);
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Auto-open chat if hidden and new message arrives
+        if (!isSelf && !chatSidebar.classList.contains('active')) {
+            toggleChat();
+        }
+    }
+
+
+    // =======================================================================
+    // VANILLA JANUS REST API SIGNALING (No janus.js)
+    // =======================================================================
+    let sessionId = null;
+    let publisherHandleId = null;
+    let publisherPc = null;
+    let longPollXhr = null;
+    let myId = null; // Janus assigned ID
+    const STUN_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+
+    // Map of feed_id -> peer connection mapping
+    const remoteFeeds = {}; 
+
+    async function reqJanus(path, payload) {
+        const res = await fetch(`${JANUS_SERVER}${path}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        return res.json();
+    }
+
+    async function startJanusWebRTC() {
+        try {
+            // 1. Create session
+            let rep = await reqJanus('', { janus: "create", transaction: txn() });
+            if (rep.janus !== 'success') throw new Error("Janus session creation failed");
+            sessionId = rep.data.id;
+
+            // 2. Attach VideoRoom plugin
+            rep = await reqJanus(`/${sessionId}`, { janus: "attach", plugin: "janus.plugin.videoroom", transaction: txn() });
+            publisherHandleId = rep.data.id;
+
+            // 3. Start Long Polling immediately
+            startLongPolling();
+
+            // 4. Join the room as publisher
+            // We'll try to join. If room doesn't exist (error 426), we'll create it then join.
+            const joinReq = { janus: "message", transaction: txn(), body: { request: "join", room: NUMERIC_ROOM_ID, ptype: "publisher", display: DISPLAY_NAME } };
+            const joinRep = await reqJanus(`/${sessionId}/${publisherHandleId}`, joinReq);
+
+            // Note: Janus usually replies async to plugin messages via the long-poll event loop.
+            // But if there's a synchronous error, we handle it here.
+            // Actually, REST API for plugins might return an ack, and the actual response comes via long-polling.
+
+        } catch(e) {
+            console.error("Erreur Janus INIT:", e);
+        }
+    }
+
+    // Long polling loop
+    async function startLongPolling() {
+        if (!sessionId) return;
+        try {
+            const res = await fetch(`${JANUS_SERVER}/${sessionId}?maxev=1`);
+            const event = await res.json();
+            
+            if (event.janus === 'keepalive') {
+                // ignore
+            } else if (event.janus === 'event') {
+                handleJanusEvent(event);
+            }
+            
+            startLongPolling();
+        } catch (e) {
+            console.error("Long poll error", e);
+            setTimeout(startLongPolling, 2000);
+        }
+    }
+
+    async function handleJanusEvent(event) {
+        const handleId = event.sender;
+        const plugindata = event.plugindata;
+        
+        if (plugindata && plugindata.data) {
+            const data = plugindata.data;
+            const videoroom = data.videoroom;
+
+            if (videoroom === 'joined') {
+                // Publisher joined successfully
+                myId = data.id;
+                
+                // If there are already publishers in the room, subscribe to them
+                if (data.publishers) {
+                    data.publishers.forEach(pub => subscribeToFeed(pub.id, pub.display));
+                }
+
+                // Publish our stream
+                publishOwnStream();
+            } 
+            else if (videoroom === 'event') {
+                if (data.publishers) {
+                    data.publishers.forEach(pub => subscribeToFeed(pub.id, pub.display));
+                }
+                if (data.leaving) {
+                    removeRemoteVideo(data.leaving);
+                }
+                if (data.unpublished) {
+                    removeRemoteVideo(data.unpublished);
+                }
+            }
+
+            // Handle JSEP remote answers for our local stream 
+            if (event.jsep && handleId === publisherHandleId) {
+                if(publisherPc) {
+                    await publisherPc.setRemoteDescription(new RTCSessionDescription(event.jsep));
+                }
+            } 
+            // Handle JSEP remote offers for subscriber streams
+            else if (event.jsep && remoteFeeds[handleId]) {
+                const pc = remoteFeeds[handleId].pc;
+                await pc.setRemoteDescription(new RTCSessionDescription(event.jsep));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                
+                // Send answer back
+                await reqJanus(`/${sessionId}/${handleId}`, {
+                    janus: 'message',
+                    transaction: txn(),
+                    body: { request: 'start', room: NUMERIC_ROOM_ID },
+                    jsep: pc.localDescription
+                });
+            }
+        }
+    }
+
+    async function publishOwnStream() {
+        publisherPc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+        
+        // Add local tracks
+        localStream.getTracks().forEach(track => publisherPc.addTrack(track, localStream));
+
+        // Trickle ICE
+        publisherPc.onicecandidate = async (e) => {
+            if (e.candidate) {
+                await reqJanus(`/${sessionId}/${publisherHandleId}`, { janus: "trickle", candidate: e.candidate, transaction: txn() });
+            } else {
+                await reqJanus(`/${sessionId}/${publisherHandleId}`, { janus: "trickle", candidate: {completed: true}, transaction: txn() });
+            }
+        };
+
+        const offer = await publisherPc.createOffer();
+        await publisherPc.setLocalDescription(offer);
+
+        // Send configure request
+        const body = { request: "configure", audio: true, video: true };
+        await reqJanus(`/${sessionId}/${publisherHandleId}`, { janus: "message", transaction: txn(), body, jsep: publisherPc.localDescription });
+    }
+
+    async function subscribeToFeed(feedId, display) {
+        // 1. Attach a new handle for this subscription
+        const rep = await reqJanus(`/${sessionId}`, { janus: "attach", plugin: "janus.plugin.videoroom", transaction: txn() });
+        const subHandleId = rep.data.id;
+
+        const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+
+        remoteFeeds[subHandleId] = { pc, feedId, display };
+
+        pc.onicecandidate = async (e) => {
+            if (e.candidate) {
+                await reqJanus(`/${sessionId}/${subHandleId}`, { janus: "trickle", candidate: e.candidate, transaction: txn() });
+            } else {
+                await reqJanus(`/${sessionId}/${subHandleId}`, { janus: "trickle", candidate: {completed: true}, transaction: txn() });
+            }
+        };
+
+        pc.ontrack = (event) => {
+            addRemoteVideo(feedId, display, event.streams[0]);
+        };
+
+        // 2. Send join request as subscriber
+        const body = { request: "join", room: NUMERIC_ROOM_ID, ptype: "subscriber", feed: feedId };
+        await reqJanus(`/${sessionId}/${subHandleId}`, { janus: "message", transaction: txn(), body });
+        
+        // JSEP offer will come through long polling.
+    }
+
+    function addRemoteVideo(feedId, display, stream) {
+        if (document.getElementById(`video-${feedId}`)) return;
+
+        const box = document.createElement('div');
+        box.className = 'video-box';
+        box.id = `videobox-${feedId}`;
+
+        const video = document.createElement('video');
+        video.id = `video-${feedId}`;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.srcObject = stream;
+
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'video-label';
+        labelDiv.innerText = display || 'Participant';
+
+        box.appendChild(video);
+        box.appendChild(labelDiv);
+        videoArea.appendChild(box);
+    }
+
+    function removeRemoteVideo(feedId) {
+        const box = document.getElementById(`videobox-${feedId}`);
+        if (box) {
+            box.remove();
+        }
+        // Cleanup peer connection
+        for (const handleId in remoteFeeds) {
+            if (remoteFeeds[handleId].feedId === feedId) {
+                remoteFeeds[handleId].pc.close();
+                delete remoteFeeds[handleId];
+                break;
+            }
+        }
+    }
+
+    function txn() {
+        return Math.random().toString(36).substring(2, 15);
+    }
+
+    // Ping Janus session to keep alive (every 30s)
+    setInterval(() => {
+        if (sessionId) {
+            reqJanus(`/${sessionId}`, { janus: "keepalive", transaction: txn() });
+        }
+    }, 30000);
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

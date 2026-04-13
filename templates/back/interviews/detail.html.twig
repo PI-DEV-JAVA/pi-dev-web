@@ -1,0 +1,136 @@
+{% extends 'back/_base.html.twig' %}
+
+{% block page_title %}Détail de l'Entretien{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ path('admin_interviews') }}" class="bo-btn bo-btn-outline mb-3"><i class="bi bi-arrow-left me-2"></i>Retour aux entretiens</a>
+    <h1 class="h3 text-white">Candidat : {{ interview.application.user.email }}</h1>
+    <p class="text-muted">Offre : {{ interview.application.offer.title }}</p>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="bo-card mb-4">
+            <h4 class="mb-3 text-white">Série de Meets (Rencontres)</h4>
+            
+            {% if interview.meets is empty %}
+                <div class="alert alert-info">Aucun meet n'a été planifié pour le moment.</div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="bo-table mt-3">
+                        <thead>
+                            <tr>
+                                <th>Titre</th>
+                                <th>Date</th>
+                                <th>Notes</th>
+                                <th>Note (sur 20)</th>
+                                <th>Lien / Room ID</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for meet in interview.meets %}
+                                <tr>
+                                    <td>{{ meet.title }}</td>
+                                    <td>{{ meet.meetDate|date('Y-m-d H:i') }}</td>
+                                    <td>
+                                        {% if meet.notes %}
+                                            <button type="button" class="bo-btn bo-btn-outline bo-action-btn" data-bs-toggle="modal" data-bs-target="#notesModal-{{ meet.id }}" title="Voir Notes">
+                                                <i class="bi bi-file-text"></i>
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if meet.grade is not null %}
+                                            <span class="fw-bold {% if meet.grade >= 10 %}text-success{% else %}text-danger{% endif %}">{{ meet.grade }}/20</span>
+                                        {% else %}
+                                            <span class="text-muted">Non noté</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ path('app_meet_room', {'roomId': meet.roomId}) }}" class="bo-action-btn" title="Rejoindre la visio" target="_blank">
+                                            <i class="bi bi-camera-video"></i>
+                                        </a>
+                                        <br>
+                                        <small class="text-muted">{{ meet.roomId }}</small>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="bo-action-btn text-warning" data-bs-toggle="modal" data-bs-target="#gradeModal-{{ meet.id }}" title="Noter">
+                                            <i class="bi bi-star"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Grade Modal -->
+                                <div class="modal fade" id="gradeModal-{{ meet.id }}" tabindex="-1" aria-hidden="true" style="backdrop-filter: blur(5px);">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content" style="background-color: var(--bo-bg-card); border: 1px solid var(--bo-border);">
+                                            <form method="post" action="{{ path('admin_interview_meet_grade', {'id': meet.id}) }}" class="bo-form">
+                                                <div class="modal-header border-bottom-0">
+                                                    <h5 class="modal-title">Noter "{{ meet.title }}"</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label>Note sur 20</label>
+                                                        <input type="number" step="0.5" min="0" max="20" name="grade" class="form-control" value="{{ meet.grade }}">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label>Notes (Observation)</label>
+                                                        <textarea name="notes" class="form-control" rows="4">{{ meet.notes }}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-top-0">
+                                                    <button type="button" class="bo-btn bo-btn-outline" data-bs-dismiss="modal">Annuler</button>
+                                                    <button type="submit" class="bo-btn bo-btn-primary">Sauvegarder</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Notes Modal (View only) -->
+                                <div class="modal fade" id="notesModal-{{ meet.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content" style="background-color: var(--bo-bg-card); border: 1px solid var(--bo-border);">
+                                            <div class="modal-header border-bottom-0">
+                                                <h5 class="modal-title">Notes - {{ meet.title }}</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body border-top-0 text-white" style="white-space: pre-wrap;">{{ meet.notes }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="bo-card">
+            <h4 class="mb-3 text-white">Planifier un Meet</h4>
+            <form action="{{ path('admin_interview_meet_new', {'id': interview.id}) }}" method="post" class="bo-form">
+                <div class="mb-3">
+                    <label>Titre</label>
+                    <input type="text" name="title" class="form-control" required minlength="3" maxlength="150" placeholder="Ex: Entretien Technique">
+                </div>
+                <div class="mb-3">
+                    <label>Date et Heure</label>
+                    <input type="datetime-local" name="meetDate" class="form-control" required min="{{ 'now'|date('Y-m-d\\TH:i') }}">
+                </div>
+                <div class="mb-3">
+                    <label>Notes Initiale / Ordre du jour (Optionnel)</label>
+                    <textarea name="notes" class="form-control" rows="3" maxlength="2000"></textarea>
+                </div>
+                <button type="submit" class="bo-btn bo-btn-primary w-100 mt-2">Créer le Meet et Générer le Lien</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
