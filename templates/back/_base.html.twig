@@ -257,6 +257,9 @@
         <a href="{{ path('admin_offers') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_offer' ? 'active' : '' }}">
             <i class="bi bi-megaphone"></i> Offres
         </a>
+        <a href="{{ path('admin_interviews') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_interview' ? 'active' : '' }}">
+            <i class="bi bi-camera-video"></i> Entretiens
+        </a>
         <a href="{{ path('admin_events') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_event' ? 'active' : '' }}">
             <i class="bi bi-calendar-event"></i> Évènements
         </a>
