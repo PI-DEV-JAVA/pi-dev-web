@@ -60,6 +60,36 @@ class AdminInterviewController extends AbstractController
         ]);
     }
 
+    #[Route('/api/meets/recruiter', name: 'api_meets_recruiter', methods: ['GET'])]
+    public function recruiterCalendar(EntityManagerInterface $em): Response
+    {
+        $user = $this->getUser();
+        $qb = $em->getRepository(Meet::class)->createQueryBuilder('m')
+            ->join('m.interview', 'i')
+            ->join('i.application', 'a')
+            ->join('a.user', 'u')
+            ->join('a.offer', 'o');
+
+        if (!$this->isAdmin()) {
+            $qb->where('o.recruiterId = :uid')->setParameter('uid', $user->getId());
+        }
+        $meets = $qb->getQuery()->getResult();
+
+        $events = [];
+        foreach ($meets as $meet) {
+            if ($meet->getMeetDate()) {
+                $events[] = [
+                    'title' => $uEmail = $meet->getInterview()->getApplication()->getUser()->getEmail() . ' - ' . $meet->getTitle(),
+                    'start' => $meet->getMeetDate()->format('Y-m-d\TH:i:s'),
+                    'url' => $this->generateUrl('admin_interview_detail', ['id' => $meet->getInterview()->getId()]),
+                    'backgroundColor' => '#ec4899',
+                    'borderColor' => '#ec4899',
+                ];
+            }
+        }
+        return $this->json($events);
+    }
+
     #[Route('/{id}', name: 'admin_interview_detail', requirements: ['id' => '\d+'])]
     public function detail(Interview $interview): Response
     {
@@ -136,6 +166,104 @@ class AdminInterviewController extends AbstractController
         } else {
             $em->flush();
             $this->addFlash('success', 'Meet mis à jour avec succès.');
+        }
+
+        return $this->redirectToRoute('admin_interview_detail', ['id' => $interview->getId()]);
+    }
+
+    #[Route('/{id}/edit', name: 'admin_interview_edit', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function editInterview(Interview $interview, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $interview->getApplication()->getOffer()->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $status = $request->request->get('status');
+        $dateStr = $request->request->get('interviewDate');
+
+        if ($status && in_array($status, ['PENDING', 'COMPLETED', 'CANCELLED'])) {
+            $interview->setStatus($status);
+        }
+        if ($dateStr) {
+            $interview->setInterviewDate(new \DateTime($dateStr));
+        }
+
+        $em->flush();
+        $this->addFlash('success', 'Entretien mis à jour.');
+        
+        // Referer fallback
+        $referer = $request->headers->get('referer');
+        return $this->redirect($referer ?: $this->generateUrl('admin_interviews'));
+    }
+
+    #[Route('/{id}/delete', name: 'admin_interview_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function deleteInterview(Interview $interview, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $interview->getApplication()->getOffer()->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        if ($this->isCsrfTokenValid('delete_interview_' . $interview->getId(), $request->request->get('_token'))) {
+            $em->remove($interview);
+            $em->flush();
+            $this->addFlash('success', 'Entretien et ses Meets supprimés.');
+        }
+
+        return $this->redirectToRoute('admin_interviews');
+    }
+
+    #[Route('/meets/{id}/edit', name: 'admin_interview_meet_edit', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function editMeet(Meet $meet, Request $request, EntityManagerInterface $em): Response
+    {
+        $interview = $meet->getInterview();
+        if (!$this->isAdmin() && $interview->getApplication()->getOffer()->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $title = $request->request->get('title');
+        $dateStr = $request->request->get('meetDate');
+
+        if ($title) {
+            $meet->setTitle($title);
+        }
+        if ($dateStr) {
+            $meet->setMeetDate(new \DateTime($dateStr));
+        }
+
+        $em->flush();
+        $this->addFlash('success', 'Meet mis à jour.');
+        return $this->redirectToRoute('admin_interview_detail', ['id' => $interview->getId()]);
+    }
+
+    #[Route('/meets/{id}/delete', name: 'admin_interview_meet_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function deleteMeet(Meet $meet, Request $request, EntityManagerInterface $em): Response
+    {
+        $interview = $meet->getInterview();
+        if (!$this->isAdmin() && $interview->getApplication()->getOffer()->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        if ($this->isCsrfTokenValid('delete_meet_' . $meet->getId(), $request->request->get('_token'))) {
+            $em->remove($meet);
+            $em->flush();
+            $this->addFlash('success', 'Meet supprimé.');
+        }
+
+        return $this->redirectToRoute('admin_interview_detail', ['id' => $interview->getId()]);
+    }
+
+    #[Route('/meets/{id}/notes/clear', name: 'admin_interview_meet_clear_notes', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function clearNotes(Meet $meet, Request $request, EntityManagerInterface $em): Response
+    {
+        $interview = $meet->getInterview();
+        if (!$this->isAdmin() && $interview->getApplication()->getOffer()->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        if ($this->isCsrfTokenValid('clear_notes_' . $meet->getId(), $request->request->get('_token'))) {
+            $meet->setNotes(null);
+            $em->flush();
+            $this->addFlash('success', 'Notes effacées.');
         }
 
         return $this->redirectToRoute('admin_interview_detail', ['id' => $interview->getId()]);

@@ -102,6 +102,25 @@
             background: none; border: none; cursor: pointer;
             font-size: 1.2rem; color: #5f6368;
         }
+        
+        /* ── Notes Panel ── */
+        .notes-area {
+            flex: 1; padding: 20px;
+            display: none; flex-direction: column;
+        }
+        .notes-area.active { display: flex; }
+        .notes-textarea {
+            flex: 1; width: 100%; resize: none;
+            border: 1px solid #e0e0e0; border-radius: 8px;
+            padding: 12px; margin-bottom: 12px; font-size: 0.9rem;
+            outline: none; background: #fafafa;
+        }
+        .notes-textarea:focus { border-color: #1a73e8; background: white; }
+
+        .chat-area {
+            flex: 1; display: none; flex-direction: column;
+        }
+        .chat-area.active { display: flex; }
         .chat-messages {
             flex: 1; padding: 20px; overflow-y: auto;
             display: flex; flex-direction: column; gap: 12px;
@@ -171,15 +190,20 @@
 </head>
 <body>
 
-<!-- Name Prompt for unauthenticated or first-time guests -->
-<div id="namePromptOverlay" style="display: {{ userName ? 'none' : 'flex' }}">
+<!-- Join Prompt Overlay -->
+<div id="joinPromptOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(32, 33, 36, 0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;">
     <div class="prompt-card">
         <h3 class="mb-4 text-dark" style="font-weight:700">Rejoindre la réunion</h3>
-        <p class="text-muted mb-4">Veuillez saisir votre nom pour rejoindre la visioconférence.</p>
-        <form id="nameForm">
-            <input type="text" id="guestNameInput" class="form-control form-control-lg mb-3" placeholder="Votre nom complet" required minlength="2">
-            <button type="submit" class="btn btn-primary btn-lg w-100" style="background: #1a73e8; border:none; border-radius: 24px;">Demander à participer</button>
-        </form>
+        {% if not userName %}
+            <p class="text-muted mb-4">Veuillez saisir votre nom pour rejoindre la visioconférence.</p>
+            <form id="joinForm">
+                <input type="text" id="guestNameInput" class="form-control form-control-lg mb-3" placeholder="Votre nom complet" required minlength="2">
+                <button type="submit" class="btn btn-primary btn-lg w-100" style="background: #1a73e8; border:none; border-radius: 24px;">Demander à participer</button>
+            </form>
+        {% else %}
+            <p class="text-muted mb-4">Bienvenue, {{ userName }}. Prêt(e) à rejoindre ?</p>
+            <button id="btnJoinNow" class="btn btn-primary btn-lg w-100" style="background: #1a73e8; border:none; border-radius: 24px;">Rejoindre l'appel</button>
+        {% endif %}
     </div>
 </div>
 
@@ -193,23 +217,35 @@
         <!-- Remote Videos will be appended here -->
     </div>
 
-    <!-- Chat Sidebar -->
-    <div class="sidebar" id="chatSidebar">
+    <!-- Sidebar container -->
+    <div class="sidebar" id="appSidebar">
         <div class="sidebar-header">
-            <h5>Messages dans l'appel</h5>
-            <button class="close-sidebar" onclick="toggleChat()"><i class="bi bi-x"></i></button>
+            <h5 id="sidebarTitle">Messages</h5>
+            <button class="close-sidebar" onclick="closeSidebar()"><i class="bi bi-x"></i></button>
         </div>
-        <div class="chat-messages" id="chatMessages">
-            <div class="text-center text-muted" style="font-size:0.8rem; margin-top:20px;">
-                Les messages ne sont visibles que par les participants connectés.
+        
+        <div class="chat-area active" id="chatArea">
+            <div class="chat-messages" id="chatMessages">
+                <div class="text-center text-muted" style="font-size:0.8rem; margin-top:20px;">
+                    Les messages ne sont visibles que par les participants connectés.
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <form id="chatForm" class="chat-input-wrapper">
+                    <input type="text" id="chatInput" placeholder="Envoyer un message..." autocomplete="off" required>
+                    <button type="submit" class="chat-send-btn"><i class="bi bi-send-fill"></i></button>
+                </form>
             </div>
         </div>
-        <div class="chat-input-area">
-            <form id="chatForm" class="chat-input-wrapper">
-                <input type="text" id="chatInput" placeholder="Envoyer un message..." autocomplete="off" required>
-                <button type="submit" class="chat-send-btn"><i class="bi bi-send-fill"></i></button>
-            </form>
+
+        {% if isRecruiter %}
+        <div class="notes-area" id="notesArea">
+            <textarea class="notes-textarea" id="recruiterNotes" placeholder="Prenez des notes rapides pendant l'entretien...">{{ meet.notes }}</textarea>
+            <button class="btn btn-primary" style="background:#1a73e8; border:none; border-radius:24px;" onclick="saveNotes()">
+                <span id="saveNotesText">Sauvegarder les notes</span>
+            </button>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -226,7 +262,10 @@
     
     <div class="side-controls">
         <button class="ctrl-btn" style="background:transparent; color:#e8eaed" onclick="copyInviteLink()" title="Copier le lien d'invitation"><i class="bi bi-info-circle"></i></button>
-        <button class="ctrl-btn" style="background:transparent; color:#e8eaed" onclick="toggleChat()" title="Ouvrir le chat"><i class="bi bi-chat-left-text-fill"></i></button>
+        {% if isRecruiter %}
+        <button class="ctrl-btn" style="background:transparent; color:#e8eaed" onclick="openSidebar('notes')" title="Notes Rapides"><i class="bi bi-journal-text"></i></button>
+        {% endif %}
+        <button class="ctrl-btn" style="background:transparent; color:#e8eaed" onclick="openSidebar('chat')" title="Ouvrir le chat"><i class="bi bi-chat-left-text-fill"></i></button>
     </div>
 </div>
 
@@ -239,19 +278,9 @@
     const WS_CHAT_SERVER = 'ws://4.233.136.0:3000';
     let DISPLAY_NAME = '{{ userName|escape('js') }}' || '';
     
-    // Convert string Room ID to a numeric ID for Janus (if janus is configured for numeric rooms)
-    // We'll hash the roomId to a 53-bit integer.
-    const NUMERIC_ROOM_ID = Math.abs(roomIdHash(ROOM_ID));
-
-    function roomIdHash(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            let char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
-        }
-        return hash === 0 ? 1234 : hash;
-    }
+    // Convert string Room ID to a numeric ID for Janus
+    // Hardcoded to 1234 for testing purposes
+    const NUMERIC_ROOM_ID = 1234;
 
     // --- DOM Elements ---
     const localVideo = document.getElementById('localVideo');
@@ -259,30 +288,38 @@
     const videoArea = document.getElementById('videoArea');
     const btnMic = document.getElementById('btnMic');
     const btnCam = document.getElementById('btnCam');
-    const chatSidebar = document.getElementById('chatSidebar');
+    const appSidebar = document.getElementById('appSidebar');
+    const chatArea = document.getElementById('chatArea');
+    const notesArea = document.getElementById('notesArea');
+    const sidebarTitle = document.getElementById('sidebarTitle');
     const chatMessages = document.getElementById('chatMessages');
     const chatForm = document.getElementById('chatForm');
     const chatInput = document.getElementById('chatInput');
-    const nameForm = document.getElementById('nameForm');
+    const joinForm = document.getElementById('joinForm');
+    const btnJoinNow = document.getElementById('btnJoinNow');
+    const joinPromptOverlay = document.getElementById('joinPromptOverlay');
 
     // --- State ---
     let localStream = null;
     let micEnabled = true;
     let camEnabled = true;
 
-    // --- Name Prompt Logic ---
-    if (!DISPLAY_NAME) {
-        nameForm.addEventListener('submit', (e) => {
+    // --- Join Prompt Logic ---
+    if (joinForm) {
+        joinForm.addEventListener('submit', (e) => {
             e.preventDefault();
             DISPLAY_NAME = document.getElementById('guestNameInput').value.trim();
             if (DISPLAY_NAME) {
-                document.getElementById('namePromptOverlay').style.display = 'none';
+                joinPromptOverlay.style.display = 'none';
                 document.getElementById('displayNameLabel').innerText = DISPLAY_NAME;
                 initApp();
             }
         });
-    } else {
-        initApp();
+    } else if (btnJoinNow) {
+        btnJoinNow.addEventListener('click', () => {
+            joinPromptOverlay.style.display = 'none';
+            initApp();
+        });
     }
 
     function initApp() {
@@ -298,9 +335,45 @@
         document.getElementById('clock').innerText = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     }, 1000);
 
-    function toggleChat() {
-        chatSidebar.classList.toggle('active');
+    function openSidebar(panel) {
+        appSidebar.classList.add('active');
+        if(panel === 'chat') {
+            sidebarTitle.innerText = "Messages";
+            chatArea.classList.add('active');
+            if (notesArea) notesArea.classList.remove('active');
+        } else if (panel === 'notes') {
+            sidebarTitle.innerText = "Notes de l'Entretien";
+            if (notesArea) notesArea.classList.add('active');
+            chatArea.classList.remove('active');
+        }
     }
+
+    function closeSidebar() {
+        appSidebar.classList.remove('active');
+    }
+
+    {% if isRecruiter %}
+    async function saveNotes() {
+        const txt = document.getElementById('recruiterNotes').value;
+        const btnText = document.getElementById('saveNotesText');
+        btnText.innerText = "Sauvegarde...";
+        try {
+            const resp = await fetch("{{ path('api_meet_save_notes', {id: meet.id}) }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ notes: txt })
+            });
+            if(resp.ok) {
+                btnText.innerText = "Enregistré !";
+                setTimeout(() => btnText.innerText = "Sauvegarder les notes", 3000);
+            } else {
+                btnText.innerText = "Erreur";
+            }
+        } catch(e) {
+            btnText.innerText = "Erreur res";
+        }
+    }
+    {% endif %}
 
     function copyInviteLink() {
         navigator.clipboard.writeText(window.location.href);
@@ -391,8 +464,8 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
         // Auto-open chat if hidden and new message arrives
-        if (!isSelf && !chatSidebar.classList.contains('active')) {
-            toggleChat();
+        if (!isSelf && !appSidebar.classList.contains('active')) {
+            openSidebar('chat');
         }
     }
 
@@ -433,14 +506,13 @@
             // 3. Start Long Polling immediately
             startLongPolling();
 
-            // 4. Join the room as publisher
-            // We'll try to join. If room doesn't exist (error 426), we'll create it then join.
+            // 5. Join the room as publisher
             const joinReq = { janus: "message", transaction: txn(), body: { request: "join", room: NUMERIC_ROOM_ID, ptype: "publisher", display: DISPLAY_NAME } };
-            const joinRep = await reqJanus(`/${sessionId}/${publisherHandleId}`, joinReq);
+            const joinRes = await reqJanus(`/${sessionId}/${publisherHandleId}`, joinReq);
 
-            // Note: Janus usually replies async to plugin messages via the long-poll event loop.
-            // But if there's a synchronous error, we handle it here.
-            // Actually, REST API for plugins might return an ack, and the actual response comes via long-polling.
+            if (joinRes && (joinRes.plugindata || joinRes.jsep)) {
+                handleJanusEvent(joinRes);
+            }
 
         } catch(e) {
             console.error("Erreur Janus INIT:", e);
@@ -451,15 +523,30 @@
     async function startLongPolling() {
         if (!sessionId) return;
         try {
-            const res = await fetch(`${JANUS_SERVER}/${sessionId}?maxev=1`);
-            const event = await res.json();
+            const res = await fetch(`${JANUS_SERVER}/${sessionId}?maxev=5`);
+            const responseData = await res.json();
             
-            if (event.janus === 'keepalive') {
-                // ignore
-            } else if (event.janus === 'event') {
-                handleJanusEvent(event);
+            let events = Array.isArray(responseData) ? responseData : [responseData];
+
+            for (let event of events) {
+                if (event.janus === 'keepalive') {
+                    // ignore
+                } else if (event.janus === 'event') {
+                    handleJanusEvent(event);
+                } else if (event.janus === 'trickle') {
+                    const handleId = event.sender;
+                    // Provide the ICE candidate to the correct PeerConnection
+                    if (event.candidate && event.candidate.candidate !== "") {
+                        if (handleId === publisherHandleId && publisherPc) {
+                            publisherPc.addIceCandidate(event.candidate).catch(e => console.error("Error adding publisher ICE", e));
+                        } else if (remoteFeeds[handleId]) {
+                            remoteFeeds[handleId].pc.addIceCandidate(event.candidate).catch(e => console.error("Error adding subscriber ICE", e));
+                        }
+                    }
+                }
             }
             
+            // Loop back immediately
             startLongPolling();
         } catch (e) {
             console.error("Long poll error", e);
@@ -498,28 +585,28 @@
                     removeRemoteVideo(data.unpublished);
                 }
             }
+        }
 
-            // Handle JSEP remote answers for our local stream 
-            if (event.jsep && handleId === publisherHandleId) {
-                if(publisherPc) {
-                    await publisherPc.setRemoteDescription(new RTCSessionDescription(event.jsep));
-                }
-            } 
-            // Handle JSEP remote offers for subscriber streams
-            else if (event.jsep && remoteFeeds[handleId]) {
-                const pc = remoteFeeds[handleId].pc;
-                await pc.setRemoteDescription(new RTCSessionDescription(event.jsep));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                
-                // Send answer back
-                await reqJanus(`/${sessionId}/${handleId}`, {
-                    janus: 'message',
-                    transaction: txn(),
-                    body: { request: 'start', room: NUMERIC_ROOM_ID },
-                    jsep: pc.localDescription
-                });
+        // Handle JSEP remote answers for our local stream 
+        if (event.jsep && handleId === publisherHandleId) {
+            if(publisherPc) {
+                await publisherPc.setRemoteDescription(new RTCSessionDescription(event.jsep));
             }
+        } 
+        // Handle JSEP remote offers for subscriber streams
+        else if (event.jsep && remoteFeeds[handleId]) {
+            const pc = remoteFeeds[handleId].pc;
+            await pc.setRemoteDescription(new RTCSessionDescription(event.jsep));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            
+            // Send answer back
+            await reqJanus(`/${sessionId}/${handleId}`, {
+                janus: 'message',
+                transaction: txn(),
+                body: { request: 'start', room: NUMERIC_ROOM_ID },
+                jsep: pc.localDescription
+            });
         }
     }
 
@@ -543,7 +630,11 @@
 
         // Send configure request
         const body = { request: "configure", audio: true, video: true };
-        await reqJanus(`/${sessionId}/${publisherHandleId}`, { janus: "message", transaction: txn(), body, jsep: publisherPc.localDescription });
+        const confRes = await reqJanus(`/${sessionId}/${publisherHandleId}`, { janus: "message", transaction: txn(), body, jsep: publisherPc.localDescription });
+        
+        if (confRes && (confRes.plugindata || confRes.jsep)) {
+            handleJanusEvent(confRes);
+        }
     }
 
     async function subscribeToFeed(feedId, display) {
@@ -569,9 +660,12 @@
 
         // 2. Send join request as subscriber
         const body = { request: "join", room: NUMERIC_ROOM_ID, ptype: "subscriber", feed: feedId };
-        await reqJanus(`/${sessionId}/${subHandleId}`, { janus: "message", transaction: txn(), body });
+        const subRes = await reqJanus(`/${sessionId}/${subHandleId}`, { janus: "message", transaction: txn(), body });
         
-        // JSEP offer will come through long polling.
+        // JSEP offer typically comes back synchronously here
+        if (subRes && (subRes.plugindata || subRes.jsep)) {
+            handleJanusEvent(subRes);
+        }
     }
 
     function addRemoteVideo(feedId, display, stream) {
