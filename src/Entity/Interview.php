@@ -1,6 +1,8 @@
 <?php
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -35,9 +37,13 @@ class Interview
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_MUTABLE, options: ['default' => 'CURRENT_TIMESTAMP'])]
     private ?\DateTimeInterface $createdAt = null;
 
+    #[ORM\OneToMany(mappedBy: 'interview', targetEntity: Meet::class, cascade: ['persist', 'remove'])]
+    private Collection $meets;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
+        $this->meets = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -101,5 +107,13 @@ class Interview
     public function getCreatedAt(): ?\DateTimeInterface
     {
         return $this->createdAt;
+    }
+
+    /**
+     * @return Collection<int, Meet>
+     */
+    public function getMeets(): Collection
+    {
+        return $this->meets;
     }
 }

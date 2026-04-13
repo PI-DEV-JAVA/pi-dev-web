@@ -1,0 +1,75 @@
+{% extends 'back/_base.html.twig' %}
+
+{% block page_title %}Entretiens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-white">Vos Entretiens</h1>
+    <a href="{{ path('admin_offers') }}" class="bo-btn bo-btn-outline">Retour aux offres</a>
+</div>
+
+<div class="bo-card mb-4">
+    <form method="get" action="{{ path('admin_interviews') }}" class="bo-form row g-3 align-items-end">
+        <div class="col-md-5">
+            <label for="q">Rechercher</label>
+            <input type="text" name="q" id="q" class="form-control" value="{{ search }}" placeholder="Nom, Email, Offre, Statut...">
+        </div>
+        <div class="col-md-4">
+            <label for="sort">Trier par</label>
+            <select name="sort" id="sort" class="form-select">
+                <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Date (Récent en premier)</option>
+                <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Date (Ancien en premier)</option>
+                <option value="status" {% if sort == 'status' %}selected{% endif %}>Statut</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="bo-btn bo-btn-primary w-100"><i class="bi bi-search me-2"></i>Filtrer</button>
+        </div>
+    </form>
+</div>
+
+<div class="bo-card">
+    <div class="table-responsive">
+        <table class="bo-table">
+            <thead>
+                <tr>
+                    <th>Candidat</th>
+                    <th>Offre</th>
+                    <th>Date Prévue</th>
+                    <th>Statut</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for interview in interviews %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ interview.application.user.email }}</div>
+                        </td>
+                        <td>{{ interview.application.offer.title }}</td>
+                        <td>{{ interview.interviewDate ? interview.interviewDate|date('Y-m-d H:i') : '-' }}</td>
+                        <td>
+                            {% if interview.status == 'SCHEDULED' %}
+                                <span class="bo-badge bo-badge-warning">Planifié</span>
+                            {% elseif interview.status == 'COMPLETED' %}
+                                <span class="bo-badge bo-badge-success">Terminé</span>
+                            {% else %}
+                                <span class="bo-badge bo-badge-neutral">{{ interview.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ path('admin_interview_detail', {'id': interview.id}) }}" class="bo-action-btn" title="Gérer">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Aucun entretien trouvé.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
