@@ -59,14 +59,65 @@ class InterviewController extends AbstractController
         }
 
         $userName = null;
+        $isRecruiter = false;
         if ($this->getUser()) {
             $userName = $this->getUser()->getProfile() ? $this->getUser()->getProfile()->getFirstName() . ' ' . $this->getUser()->getProfile()->getLastName() : $this->getUser()->getEmail();
+            if (in_array($this->getUser()->getRole(), ['HR', 'ADMIN'])) {
+                $isRecruiter = true;
+            }
         }
 
         return $this->render('front/meet/room.html.twig', [
             'meet' => $meet,
             'roomId' => $roomId,
             'userName' => $userName,
+            'isRecruiter' => $isRecruiter,
         ]);
+    }
+
+    #[Route('/api/meets/candidate', name: 'api_meets_candidate', methods: ['GET'])]
+    public function candidateCalendar(EntityManagerInterface $em): Response
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+        $user = $this->getUser();
+        
+        $meets = $em->getRepository(Meet::class)->createQueryBuilder('m')
+            ->join('m.interview', 'i')
+            ->join('i.application', 'a')
+            ->where('a.user = :user')
+            ->setParameter('user', $user)
+            ->getQuery()->getResult();
+
+        $events = [];
+        foreach ($meets as $meet) {
+            if ($meet->getMeetDate()) {
+                $events[] = [
+                    'title' => $meet->getInterview()->getApplication()->getOffer()->getTitle() . ' - ' . $meet->getTitle(),
+                    'start' => $meet->getMeetDate()->format('Y-m-d\TH:i:s'),
+                    'url' => $this->generateUrl('app_meet_room', ['roomId' => $meet->getRoomId()]),
+                    'backgroundColor' => '#1a73e8',
+                    'borderColor' => '#1a73e8',
+                ];
+            }
+        }
+        return $this->json($events);
+    }
+
+    #[Route('/api/meets/{id}/notes', name: 'api_meet_save_notes', methods: ['POST'])]
+    public function saveNotes(Meet $meet, Request $request, EntityManagerInterface $em): Response
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+        $user = $this->getUser();
+        if (!in_array($user->getRole(), ['HR', 'ADMIN'])) {
+            return $this->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        if (isset($data['notes'])) {
+            $meet->setNotes($data['notes']);
+            $em->flush();
+            return $this->json(['success' => true]);
+        }
+        return $this->json(['error' => 'Invalid data'], 400);
     }
 }
