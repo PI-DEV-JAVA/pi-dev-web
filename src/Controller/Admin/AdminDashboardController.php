@@ -661,6 +661,18 @@ class AdminDashboardController extends AbstractController
         $newStatus = $request->request->get('status');
         if (in_array($newStatus, ['Acceptée', 'Refusée', 'Entretien', 'En attente'])) {
             $application->setStatus($newStatus);
+            
+            if ($newStatus === 'Entretien') {
+                $existingInterview = $em->getRepository(Interview::class)->findOneBy(['application' => $application]);
+                if (!$existingInterview) {
+                    $interview = new Interview();
+                    $interview->setApplication($application);
+                    $interview->setInterviewDate(new \DateTime('+1 day'));
+                    $interview->setStatus('SCHEDULED');
+                    $em->persist($interview);
+                }
+            }
+            
             $em->flush();
 
             // Notify the candidate
