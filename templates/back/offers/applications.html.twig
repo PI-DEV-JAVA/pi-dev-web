@@ -1,62 +1,192 @@
 {% extends 'back/_base.html.twig' %}
 {% block page_title %}Candidatures — {{ offer.title }}{% endblock %}
 {% block content %}
+<style>
+    .candidate-card { background: var(--bo-bg-input); border-radius: 14px; border: 1.5px solid var(--bo-border); margin-bottom: 12px; transition: all 0.3s; overflow: hidden; }
+    .candidate-card:hover { border-color: rgba(79,70,229,0.3); }
+    .candidate-card.expanded { border-color: var(--primary-light); }
+    .candidate-header { padding: 16px 20px; cursor: pointer; display: flex; align-items: center; gap: 14px; }
+    .candidate-detail { display: none; padding: 0 20px 20px; border-top: 1px solid var(--bo-border); }
+    .candidate-card.expanded .candidate-detail { display: block; }
+    .candidate-avatar { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: white; flex-shrink: 0; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .info-item { background: var(--bo-bg-card); border-radius: 10px; padding: 12px; }
+    .info-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--bo-text-secondary); margin-bottom: 4px; font-weight: 600; }
+    .info-value { font-size: 0.9rem; font-weight: 600; }
+    .motivation-box { background: var(--bo-bg-card); border-radius: 10px; padding: 16px; margin-top: 12px; border-left: 3px solid var(--primary-light); }
+    .decision-bar { display: flex; gap: 8px; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--bo-border); }
+    .decision-btn { padding: 8px 18px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; border: none; cursor: pointer; transition: all 0.2s; }
+    .decision-btn:hover { transform: translateY(-1px); }
+    .chevron { transition: transform 0.3s; font-size: 0.8rem; color: var(--bo-text-secondary); }
+    .candidate-card.expanded .chevron { transform: rotate(180deg); }
+    .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .status-accepted { background: rgba(16,185,129,0.15); color: #34d399; }
+    .status-rejected { background: rgba(239,68,68,0.15); color: #f87171; }
+    .status-interview { background: rgba(79,70,229,0.15); color: var(--primary-light); }
+    .status-pending { background: rgba(245,158,11,0.15); color: #fbbf24; }
+</style>
+
 <div class="mb-3"><a href="{{ path('admin_offers') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour aux offres</a></div>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+{% for message in app.flashes('success') %}
+    <div class="alert" style="background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+{% endfor %}
+
+{# Offer summary header #}
+<div class="bo-card mb-4 d-flex align-items-center justify-content-between" style="padding:20px 24px">
     <div>
         <h5 style="font-weight:700;margin:0">{{ offer.title }}</h5>
-        <span style="color:var(--bo-text-secondary);font-size:0.85rem">{{ applications|length }} candidature(s)</span>
+        <div style="font-size:0.85rem;color:var(--bo-text-secondary);margin-top:4px">
+            <span class="bo-badge bo-badge-primary">{{ offer.contractType ?: 'CDI' }}</span>
+            <span style="margin-left:8px"><i class="bi bi-geo-alt me-1"></i>{{ offer.location ?: '—' }}</span>
+        </div>
+    </div>
+    <div class="text-end">
+        <div style="font-size:2rem;font-weight:800;color:var(--primary-light)">{{ applications|length }}</div>
+        <div style="font-size:0.75rem;color:var(--bo-text-secondary)">candidature(s)</div>
     </div>
 </div>
 
-<div class="bo-card">
-    <table class="bo-table">
-        <thead><tr><th>Candidat</th><th>Date</th><th>CV</th><th>Score</th><th>Statut</th><th>Décision</th></tr></thead>
-        <tbody>
-            {% for app in applications %}
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.75rem;color:white;flex-shrink:0">
-                                {{ app.user ? app.user.email|first|upper : '?' }}
-                            </div>
-                            <span style="font-weight:600;font-size:0.85rem">{{ app.user ? app.user.email : '—' }}</span>
-                        </div>
-                    </td>
-                    <td style="color:var(--bo-text-secondary);font-size:0.85rem">{{ app.applicationDate ? app.applicationDate|date('d/m/Y') : '—' }}</td>
-                    <td>
-                        {% if app.cvFilePath %}
-                            <a href="{{ app.cvFilePath }}" target="_blank" class="bo-action-btn" title="Voir le CV"><i class="bi bi-file-earmark-pdf"></i></a>
-                        {% else %}
-                            <span style="color:var(--bo-text-secondary)">—</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if app.score > 0 %}
-                            <span class="bo-badge bo-badge-{{ app.score >= 70 ? 'success' : (app.score >= 40 ? 'warning' : 'danger') }}">{{ app.score }}%</span>
-                        {% else %}
-                            <span style="color:var(--bo-text-secondary)">—</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <span class="bo-badge bo-badge-{{ app.status == 'Acceptée' ? 'success' : (app.status == 'Refusée' ? 'danger' : (app.status == 'Entretien' ? 'primary' : 'warning')) }}">{{ app.status }}</span>
-                    </td>
-                    <td>
-                        <form method="post" action="{{ path('admin_application_status', {id: app.id}) }}" style="display:inline">
-                            <select name="status" class="form-select form-select-sm" style="background:var(--bo-bg-input);border-color:var(--bo-border);color:var(--bo-text);width:130px;border-radius:8px;font-size:0.8rem" onchange="this.form.submit()">
-                                <option value="En attente" {{ app.status == 'En attente' or app.status == 'Nouvelle' ? 'selected' }}>En attente</option>
-                                <option value="Entretien" {{ app.status == 'Entretien' ? 'selected' }}>Entretien</option>
-                                <option value="Acceptée" {{ app.status == 'Acceptée' ? 'selected' }}>Acceptée</option>
-                                <option value="Refusée" {{ app.status == 'Refusée' ? 'selected' }}>Refusée</option>
-                            </select>
-                        </form>
-                    </td>
-                </tr>
-            {% else %}
-                <tr><td colspan="6" class="text-center" style="padding:30px;color:var(--bo-text-secondary)">Aucune candidature.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+{# Stats bar #}
+{% set accepted = applications|filter(a => a.status == 'Acceptée')|length %}
+{% set rejected = applications|filter(a => a.status == 'Refusée')|length %}
+{% set interview = applications|filter(a => a.status == 'Entretien')|length %}
+{% set pending = applications|length - accepted - rejected - interview %}
+<div class="row g-3 mb-4">
+    <div class="col-3"><div class="bo-card text-center" style="padding:14px"><div style="font-size:1.4rem;font-weight:700;color:#fbbf24">{{ pending }}</div><div style="font-size:0.7rem;color:var(--bo-text-secondary)">En attente</div></div></div>
+    <div class="col-3"><div class="bo-card text-center" style="padding:14px"><div style="font-size:1.4rem;font-weight:700;color:var(--primary-light)">{{ interview }}</div><div style="font-size:0.7rem;color:var(--bo-text-secondary)">Entretien</div></div></div>
+    <div class="col-3"><div class="bo-card text-center" style="padding:14px"><div style="font-size:1.4rem;font-weight:700;color:#34d399">{{ accepted }}</div><div style="font-size:0.7rem;color:var(--bo-text-secondary)">Acceptées</div></div></div>
+    <div class="col-3"><div class="bo-card text-center" style="padding:14px"><div style="font-size:1.4rem;font-weight:700;color:#f87171">{{ rejected }}</div><div style="font-size:0.7rem;color:var(--bo-text-secondary)">Refusées</div></div></div>
 </div>
+
+{# Search bar #}
+<div style="position:relative;width:100%;max-width:400px;margin-bottom:20px">
+    <i class="bi bi-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--bo-text-secondary);font-size:0.85rem"></i>
+    <input type="text" id="searchInput" placeholder="Rechercher un candidat..."
+           style="width:100%;padding:10px 14px 10px 38px;border-radius:10px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.85rem"
+           onfocus="this.style.borderColor='var(--primary-light)'" onblur="this.style.borderColor='var(--bo-border)'">
+</div>
+
+{# Candidate cards #}
+<div id="candidateList">
+{% for app in applications %}
+    <div class="candidate-card" data-search="{{ app.user ? app.user.email : '' }} {{ app.user and app.user.profile ? app.user.profile.fullName : '' }}">
+        <div class="candidate-header" onclick="toggleCard(this)">
+            <div class="candidate-avatar">{{ app.user ? app.user.email|first|upper : '?' }}</div>
+            <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:0.95rem">
+                    {% if app.user and app.user.profile and app.user.profile.fullName %}
+                        {{ app.user.profile.fullName }}
+                    {% else %}
+                        {{ app.user ? app.user.email : 'Inconnu' }}
+                    {% endif %}
+                </div>
+                <div style="font-size:0.8rem;color:var(--bo-text-secondary)">
+                    {{ app.user ? app.user.email : '' }}
+                    {% if app.user and app.user.profile and app.user.profile.professionalTitle %}
+                        · {{ app.user.profile.professionalTitle }}
+                    {% endif %}
+                    · {{ app.applicationDate ? app.applicationDate|date('d/m/Y') : '—' }}
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                {% if app.score > 0 %}
+                    <span class="bo-badge bo-badge-{{ app.score >= 70 ? 'success' : (app.score >= 40 ? 'warning' : 'danger') }}" style="font-size:0.8rem">{{ app.score }}%</span>
+                {% endif %}
+                <span class="status-pill {{ app.status == 'Acceptée' ? 'status-accepted' : (app.status == 'Refusée' ? 'status-rejected' : (app.status == 'Entretien' ? 'status-interview' : 'status-pending')) }}">
+                    <i class="bi bi-{{ app.status == 'Acceptée' ? 'check-circle-fill' : (app.status == 'Refusée' ? 'x-circle-fill' : (app.status == 'Entretien' ? 'camera-video-fill' : 'clock-fill')) }}"></i>
+                    {{ app.status }}
+                </span>
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+        </div>
+
+        <div class="candidate-detail">
+            {# Profile info grid #}
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label"><i class="bi bi-envelope me-1"></i>Email</div>
+                    <div class="info-value">{{ app.user ? app.user.email : '—' }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label"><i class="bi bi-phone me-1"></i>Téléphone</div>
+                    <div class="info-value">{{ app.user and app.user.profile ? (app.user.profile.phoneNumber ?: '—') : '—' }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label"><i class="bi bi-geo-alt me-1"></i>Localisation</div>
+                    <div class="info-value">{{ app.user and app.user.profile ? (app.user.profile.location ?: '—') : '—' }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label"><i class="bi bi-briefcase me-1"></i>Expérience</div>
+                    <div class="info-value">{{ app.user and app.user.profile and app.user.profile.yearsOfExperience ? app.user.profile.yearsOfExperience ~ ' ans' : '—' }}</div>
+                </div>
+            </div>
+
+            {# CV link #}
+            {% if app.cvFilePath %}
+            <div style="margin-top:12px">
+                <a href="{{ app.cvFilePath }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;background:rgba(79,70,229,0.1);color:var(--primary-light);text-decoration:none;font-size:0.85rem;font-weight:600;transition:all 0.2s" onmouseover="this.style.background='rgba(79,70,229,0.2)'" onmouseout="this.style.background='rgba(79,70,229,0.1)'">
+                    <i class="bi bi-file-earmark-pdf-fill" style="font-size:1.1rem"></i> Voir le CV
+                </a>
+            </div>
+            {% endif %}
+
+            {# Motivation letter #}
+            {% if app.motivationLetter %}
+            <div class="motivation-box">
+                <div class="info-label" style="margin-bottom:8px"><i class="bi bi-chat-quote me-1"></i>Lettre de motivation</div>
+                <div style="font-size:0.85rem;line-height:1.6;color:var(--bo-text)">{{ app.motivationLetter|nl2br }}</div>
+            </div>
+            {% endif %}
+
+            {# Notes #}
+            {% if app.notes %}
+            <div style="margin-top:12px;padding:12px;background:var(--bo-bg-card);border-radius:10px;border-left:3px solid var(--accent)">
+                <div class="info-label" style="margin-bottom:4px"><i class="bi bi-sticky me-1"></i>Notes</div>
+                <div style="font-size:0.85rem;color:var(--bo-text)">{{ app.notes }}</div>
+            </div>
+            {% endif %}
+
+            {# Decision bar #}
+            <div class="decision-bar">
+                <span style="font-size:0.8rem;color:var(--bo-text-secondary);font-weight:600;margin-right:8px">Décision :</span>
+                <form method="post" action="{{ path('admin_application_status', {id: app.id}) }}" class="d-flex gap-2" style="flex:1">
+                    <button type="submit" name="status" value="En attente" class="decision-btn" style="background:rgba(245,158,11,0.15);color:#fbbf24"><i class="bi bi-clock me-1"></i>Attente</button>
+                    <button type="submit" name="status" value="Entretien" class="decision-btn" style="background:rgba(79,70,229,0.15);color:var(--primary-light)"><i class="bi bi-camera-video me-1"></i>Entretien</button>
+                    <button type="submit" name="status" value="Acceptée" class="decision-btn" style="background:rgba(16,185,129,0.15);color:#34d399"><i class="bi bi-check-lg me-1"></i>Accepter</button>
+                    <button type="submit" name="status" value="Refusée" class="decision-btn" style="background:rgba(239,68,68,0.15);color:#f87171"><i class="bi bi-x-lg me-1"></i>Refuser</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="bo-card text-center" style="padding:50px">
+        <i class="bi bi-people" style="font-size:3rem;color:var(--bo-text-secondary);opacity:0.3;display:block;margin-bottom:12px"></i>
+        <p style="color:var(--bo-text-secondary)">Aucune candidature pour cette offre.</p>
+    </div>
+{% endfor %}
+</div>
+
+<div id="noResults" style="display:none;text-align:center;padding:40px;color:var(--bo-text-secondary)">
+    <i class="bi bi-search" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:8px"></i>
+    Aucun candidat trouvé
+</div>
+
+<script>
+function toggleCard(header) {
+    header.closest('.candidate-card').classList.toggle('expanded');
+}
+
+document.getElementById('searchInput').addEventListener('input', function() {
+    var q = this.value.toLowerCase().trim();
+    var cards = document.querySelectorAll('.candidate-card');
+    var visible = 0;
+    cards.forEach(function(card) {
+        var match = q === '' || card.getAttribute('data-search').toLowerCase().includes(q);
+        card.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('noResults').style.display = (visible === 0 && cards.length > 0) ? 'block' : 'none';
+});
+</script>
 {% endblock %}
