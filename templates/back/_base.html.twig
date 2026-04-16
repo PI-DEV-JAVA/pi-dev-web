@@ -236,6 +236,25 @@
     .alert-danger { background: rgba(239,68,68,0.15); color: #fca5a5; border: none; }
     .alert-success { background: rgba(16,185,129,0.15); color: #6ee7b7; border: none; }
     .alert-info { background: rgba(6,182,212,0.15); color: #67e8f9; border: none; }
+
+    /* ── Notification Bell ── */
+    .notif-wrapper { position: relative; }
+    .notif-badge { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; border-radius: 50%; background: #ef4444; color: white; font-size: 0.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bo-bg); }
+    .notif-dropdown { display: none; position: absolute; top: calc(100% + 8px); right: 0; width: 360px; max-height: 440px; background: var(--bo-bg-card); border: 1px solid var(--bo-border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.3); z-index: 999; overflow: hidden; }
+    .notif-dropdown.open { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
+    .notif-dropdown-header { padding: 14px 16px; border-bottom: 1px solid var(--bo-border); display: flex; align-items: center; justify-content: space-between; }
+    .notif-dropdown-header h6 { margin: 0; font-weight: 700; font-size: 0.9rem; }
+    .notif-list { max-height: 340px; overflow-y: auto; }
+    .notif-item { padding: 12px 16px; border-bottom: 1px solid var(--bo-border); display: flex; gap: 10px; transition: background 0.2s; cursor: pointer; text-decoration: none; color: var(--bo-text); }
+    .notif-item:hover { background: rgba(79,70,229,0.05); color: var(--bo-text); }
+    .notif-item.unread { background: rgba(79,70,229,0.04); }
+    .notif-item .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary-light); flex-shrink: 0; margin-top: 6px; }
+    .notif-item.read .notif-dot { background: transparent; }
+    .notif-item-title { font-weight: 600; font-size: 0.82rem; }
+    .notif-item-msg { font-size: 0.75rem; color: var(--bo-text-secondary); margin-top: 2px; }
+    .notif-item-time { font-size: 0.65rem; color: var(--bo-text-secondary); margin-top: 4px; }
+    .notif-empty { text-align: center; padding: 30px; color: var(--bo-text-secondary); }
 </style>
 {% endblock %}
 
@@ -266,12 +285,11 @@
         <a href="{{ path('admin_activities') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_activit' ? 'active' : '' }}">
             <i class="bi bi-clipboard-data"></i> Activités
         </a>
-
-        {% if app.user.role == 'ADMIN' %}
         <a href="{{ path('admin_courses') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_course' ? 'active' : '' }}">
             <i class="bi bi-book"></i> Formations
         </a>
 
+        {% if app.user.role == 'ADMIN' %}
         <div class="bo-nav-section">Administration</div>
         <a href="{{ path('admin_users') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_user' ? 'active' : '' }}">
             <i class="bi bi-people-fill"></i> Utilisateurs
@@ -289,11 +307,13 @@
 
 
     <div class="bo-sidebar-user">
-        <div class="bo-user-avatar">{{ app.user.email|first|upper }}</div>
-        <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:0.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ app.user.email }}</div>
-            <div style="font-size:0.7rem;color:var(--bo-text-secondary)">{{ app.user.role }}</div>
-        </div>
+        <a href="{{ path('admin_profile') }}" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+            <div class="bo-user-avatar">{{ app.user.email|first|upper }}</div>
+            <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:0.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--bo-text)">{{ app.user.email }}</div>
+                <div style="font-size:0.7rem;color:var(--bo-text-secondary)">{{ app.user.role }}</div>
+            </div>
+        </a>
         <a href="{{ path('app_logout') }}" class="bo-topbar-btn" title="Déconnexion">
             <i class="bi bi-box-arrow-right" style="font-size:0.9rem"></i>
         </a>
@@ -304,10 +324,55 @@
 <header class="bo-topbar">
     <div class="bo-topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
     <div class="bo-topbar-actions">
+        {# Notification bell #}
+        <div class="notif-wrapper">
+            <button class="bo-topbar-btn" id="notifToggle" title="Notifications" onclick="toggleNotifDropdown()" style="position:relative">
+                <i class="bi bi-bell"></i>
+                {% if notif_unread_count is defined and notif_unread_count > 0 %}
+                    <span class="notif-badge">{{ notif_unread_count > 9 ? '9+' : notif_unread_count }}</span>
+                {% endif %}
+            </button>
+            <div class="notif-dropdown" id="notifDropdown">
+                <div class="notif-dropdown-header">
+                    <h6><i class="bi bi-bell me-1"></i> Notifications</h6>
+                    {% if notif_unread_count is defined and notif_unread_count > 0 %}
+                        <a href="{{ path('admin_notifications_read_all') }}" style="font-size:0.75rem;color:var(--primary-light);text-decoration:none">Tout marquer lu</a>
+                    {% endif %}
+                </div>
+                <div class="notif-list">
+                    {% if notif_latest is defined and notif_latest|length > 0 %}
+                        {% for n in notif_latest %}
+                            <a href="{{ path('admin_notification_read', {id: n.id}) }}" class="notif-item {{ n.isRead ? 'read' : 'unread' }}">
+                                <div class="notif-dot"></div>
+                                <div style="flex:1;min-width:0">
+                                    <div class="notif-item-title">{{ n.title }}</div>
+                                    {% if n.message %}<div class="notif-item-msg">{{ n.message|length > 80 ? n.message|slice(0, 80) ~ '…' : n.message }}</div>{% endif %}
+                                    <div class="notif-item-time"><i class="bi bi-clock me-1"></i>{{ n.createdAt|date('d/m/Y H:i') }}</div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    {% else %}
+                        <div class="notif-empty"><i class="bi bi-bell-slash" style="font-size:1.5rem;opacity:0.3;display:block;margin-bottom:6px"></i>Aucune notification</div>
+                    {% endif %}
+                </div>
+                <a href="{{ path('admin_notifications') }}" style="display:block;text-align:center;padding:10px;font-size:0.8rem;color:var(--primary-light);text-decoration:none;border-top:1px solid var(--bo-border);font-weight:600">Voir toutes les notifications</a>
+            </div>
+        </div>
+        <a href="{{ path('admin_profile') }}" class="bo-topbar-btn" title="Profil"><i class="bi bi-person-circle"></i></a>
         <a href="{{ path('app_home') }}" class="bo-topbar-btn" title="Voir le site"><i class="bi bi-box-arrow-up-right"></i></a>
         <a href="{{ path('app_logout') }}" class="bo-topbar-btn" title="Déconnexion"><i class="bi bi-power"></i></a>
     </div>
 </header>
+
+<script>
+function toggleNotifDropdown() {
+    document.getElementById('notifDropdown').classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+    var w = document.querySelector('.notif-wrapper');
+    if (w && !w.contains(e.target)) document.getElementById('notifDropdown').classList.remove('open');
+});
+</script>
 
 {# ── Main Content ── #}
 <main class="bo-main">

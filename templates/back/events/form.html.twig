@@ -1,24 +1,129 @@
 {% extends 'back/_base.html.twig' %}
 {% block page_title %}{{ event ? 'Modifier l\'évènement' : 'Nouvel évènement' }}{% endblock %}
+{% block title %}{{ event ? 'Modifier' : 'Nouvel' }} évènement — Admin{% endblock %}
+
 {% block content %}
+<style>
+    .field-valid { border-color: #10b981 !important; }
+    .field-valid:focus { box-shadow: 0 0 0 3px rgba(16,185,129,0.15) !important; }
+    .field-invalid { border-color: #ef4444 !important; }
+    .field-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.15) !important; }
+    .field-msg { font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px; min-height: 18px; }
+    .field-msg.error { color: #ef4444; }
+    .field-msg.success { color: #10b981; }
+    .req { color: #ef4444; font-weight: 700; }
+    .bo-form label { display: flex; align-items: center; gap: 4px; }
+</style>
+
 <div class="mb-3"><a href="{{ path('admin_events') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour</a></div>
+
+{% for message in app.flashes('danger') %}
+    <div class="alert" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+    </div>
+{% endfor %}
+
 <div class="bo-card bo-form" style="max-width:700px">
-    <form method="post">
+    <form method="post" id="eventForm" novalidate>
         <div class="row g-3">
-            <div class="col-12"><label>Titre *</label><input type="text" name="title" class="form-control" value="{{ event ? event.title : '' }}" required></div>
-            <div class="col-12"><label>Description</label><textarea name="description" class="form-control" rows="4">{{ event ? event.description : '' }}</textarea></div>
-            <div class="col-md-6"><label>Type</label>
+            <div class="col-12">
+                <label>Titre <span class="req">*</span></label>
+                <input type="text" name="title" id="fTitle" class="form-control" value="{{ event ? event.title : '' }}" placeholder="Ex: Workshop IA & Recrutement" required>
+                <div class="field-msg" id="msgTitle"></div>
+            </div>
+            <div class="col-12">
+                <label>Description <span class="req">*</span></label>
+                <textarea name="description" id="fDesc" class="form-control" rows="4" placeholder="Décrivez l'évènement..." required>{{ event ? event.description : '' }}</textarea>
+                <div class="field-msg" id="msgDesc"></div>
+            </div>
+            <div class="col-md-6">
+                <label>Type <span class="req">*</span></label>
                 <select name="eventType" class="form-select">
                     <option value="CONFERENCE" {{ event and event.eventType == 'CONFERENCE' ? 'selected' }}>Conférence</option>
                     <option value="WORKSHOP" {{ event and event.eventType == 'WORKSHOP' ? 'selected' }}>Workshop</option>
                     <option value="MEETUP" {{ event and event.eventType == 'MEETUP' ? 'selected' }}>Meetup</option>
                 </select>
             </div>
-            <div class="col-md-6"><label>Date</label><input type="datetime-local" name="eventDate" class="form-control" value="{{ event and event.eventDate ? event.eventDate|date('Y-m-d\\TH:i') : '' }}"></div>
-            <div class="col-md-8"><label>Lieu</label><input type="text" name="location" class="form-control" value="{{ event ? event.location : '' }}"></div>
-            <div class="col-md-4"><label>Capacité max</label><input type="number" name="maxCapacity" class="form-control" value="{{ event ? event.maxCapacity : '' }}" min="1"></div>
+            <div class="col-md-6">
+                <label>Date <span class="req">*</span></label>
+                <input type="datetime-local" name="eventDate" id="fDate" class="form-control" value="{{ event and event.eventDate ? event.eventDate|date('Y-m-d\\TH:i') : '' }}" required>
+                <div class="field-msg" id="msgDate"></div>
+            </div>
+            <div class="col-md-8">
+                <label>Lieu <span class="req">*</span></label>
+                <input type="text" name="location" id="fLocation" class="form-control" value="{{ event ? event.location : '' }}" placeholder="Ex: Tunis, En ligne" required>
+                <div class="field-msg" id="msgLocation"></div>
+            </div>
+            <div class="col-md-4">
+                <label>Capacité max</label>
+                <input type="number" name="maxCapacity" id="fCapacity" class="form-control" value="{{ event ? event.maxCapacity : '' }}" min="1" placeholder="0 = illimité">
+                <div class="field-msg" id="msgCapacity"></div>
+            </div>
         </div>
-        <div class="mt-4"><button type="submit" class="bo-btn bo-btn-primary"><i class="bi bi-check-lg me-1"></i> {{ event ? 'Enregistrer' : 'Créer' }}</button></div>
+        <div class="mt-4 d-flex align-items-center gap-3">
+            <button type="submit" class="bo-btn bo-btn-primary" id="submitBtn" disabled style="opacity:0.5;transition:opacity 0.3s">
+                <i class="bi bi-check-lg me-1"></i> {{ event ? 'Enregistrer' : 'Créer' }}
+            </button>
+            <span id="formStatus" style="font-size:0.8rem;color:var(--bo-text-secondary)"></span>
+        </div>
     </form>
 </div>
+
+<script>
+(function() {
+    var title = document.getElementById('fTitle'), desc = document.getElementById('fDesc'),
+        date = document.getElementById('fDate'), location = document.getElementById('fLocation'),
+        capacity = document.getElementById('fCapacity'), submitBtn = document.getElementById('submitBtn'),
+        formStatus = document.getElementById('formStatus');
+    var msgs = {title: document.getElementById('msgTitle'), desc: document.getElementById('msgDesc'),
+                date: document.getElementById('msgDate'), location: document.getElementById('msgLocation'),
+                capacity: document.getElementById('msgCapacity')};
+    var state = {title: false, desc: false, date: false, location: false, capacity: true};
+
+    function setField(el, ok) { el.classList.remove('field-valid','field-invalid'); if (el.value) el.classList.add(ok ? 'field-valid' : 'field-invalid'); }
+    function setMsg(el, t, type) { el.className = 'field-msg ' + type; el.innerHTML = '<i class="bi bi-' + (type==='error'?'x-circle-fill':'check-circle-fill') + '"></i> ' + t; }
+    function clearMsg(el) { el.className = 'field-msg'; el.innerHTML = ''; }
+    function checkForm() {
+        var ok = state.title && state.desc && state.date && state.location && state.capacity;
+        submitBtn.disabled = !ok; submitBtn.style.opacity = ok ? '1' : '0.5';
+        formStatus.textContent = ok ? '' : 'Remplissez les champs obligatoires';
+    }
+
+    title.addEventListener('input', function() {
+        if (!this.value.trim()) { setField(this,false); setMsg(msgs.title,'Le titre est requis','error'); state.title=false; }
+        else if (this.value.trim().length < 3) { setField(this,false); setMsg(msgs.title,'Au moins 3 caractères','error'); state.title=false; }
+        else { setField(this,true); setMsg(msgs.title,'Titre valide','success'); state.title=true; }
+        checkForm();
+    });
+    desc.addEventListener('input', function() {
+        if (!this.value.trim()) { setField(this,false); setMsg(msgs.desc,'La description est requise','error'); state.desc=false; }
+        else if (this.value.trim().length < 10) { setField(this,false); setMsg(msgs.desc,'Au moins 10 caractères ('+this.value.trim().length+'/10)','error'); state.desc=false; }
+        else { setField(this,true); setMsg(msgs.desc,'Description valide','success'); state.desc=true; }
+        checkForm();
+    });
+    date.addEventListener('input', function() {
+        if (!this.value) { setField(this,false); setMsg(msgs.date,'La date est requise','error'); state.date=false; }
+        else { setField(this,true); clearMsg(msgs.date); state.date=true; }
+        checkForm();
+    });
+    location.addEventListener('input', function() {
+        if (!this.value.trim()) { setField(this,false); setMsg(msgs.location,'Le lieu est requis','error'); state.location=false; }
+        else { setField(this,true); setMsg(msgs.location,'Lieu valide','success'); state.location=true; }
+        checkForm();
+    });
+    capacity.addEventListener('input', function() {
+        var v = parseInt(this.value);
+        if (this.value && (isNaN(v) || v < 0)) { setField(this,false); setMsg(msgs.capacity,'Capacité invalide','error'); state.capacity=false; }
+        else { if (this.value) setField(this,true); else this.classList.remove('field-valid','field-invalid'); clearMsg(msgs.capacity); state.capacity=true; }
+        checkForm();
+    });
+
+    // Init for edit mode
+    if (title.value) title.dispatchEvent(new Event('input'));
+    if (desc.value) desc.dispatchEvent(new Event('input'));
+    if (date.value) date.dispatchEvent(new Event('input'));
+    if (location.value) location.dispatchEvent(new Event('input'));
+    checkForm();
+})();
+</script>
 {% endblock %}

@@ -4,11 +4,17 @@ namespace App\Controller\Admin;
 
 use App\Entity\Activity;
 use App\Entity\Application;
+use App\Entity\Choix;
 use App\Entity\Event;
 use App\Entity\Formation;
 use App\Entity\Interview;
+use App\Entity\Notification;
 use App\Entity\Offer;
+use App\Entity\Profile;
 use App\Entity\Project;
+use App\Entity\Question;
+use App\Entity\Quiz;
+use App\Entity\Seance;
 use App\Entity\SupportTicket;
 use App\Entity\TicketReply;
 use App\Entity\User;
@@ -108,16 +114,43 @@ class AdminDashboardController extends AbstractController
     public function offerNew(Request $request, EntityManagerInterface $em): Response
     {
         if ($request->isMethod('POST')) {
-            $offer = new Offer();
-            $offer->setTitle($request->request->get('title'));
-            $offer->setDescription($request->request->get('description'));
-            $offer->setContractType($request->request->get('contractType'));
-            $offer->setLocation($request->request->get('location'));
-            $offer->setDepartment($request->request->get('department'));
-            $offer->setExperienceLevel($request->request->get('experienceLevel'));
-            $offer->setPositionsAvailable((int)$request->request->get('positionsAvailable', 1));
+            $title = trim($request->request->get('title', ''));
+            $description = trim($request->request->get('description', ''));
+            $location = trim($request->request->get('location', ''));
+            $positions = (int)$request->request->get('positionsAvailable', 1);
             $salaryMin = $request->request->get('salaryMin');
             $salaryMax = $request->request->get('salaryMax');
+
+            // Server-side validation
+            if (strlen($title) < 3) {
+                $this->addFlash('danger', 'Le titre doit contenir au moins 3 caractères.');
+                return $this->render('back/offers/form.html.twig', ['offer' => null]);
+            }
+            if (strlen($description) < 10) {
+                $this->addFlash('danger', 'La description doit contenir au moins 10 caractères.');
+                return $this->render('back/offers/form.html.twig', ['offer' => null]);
+            }
+            if (empty($location)) {
+                $this->addFlash('danger', 'La localisation est requise.');
+                return $this->render('back/offers/form.html.twig', ['offer' => null]);
+            }
+            if ($positions < 1) {
+                $this->addFlash('danger', 'Au moins 1 poste doit être disponible.');
+                return $this->render('back/offers/form.html.twig', ['offer' => null]);
+            }
+            if ($salaryMin && $salaryMax && (float)$salaryMax < (float)$salaryMin) {
+                $this->addFlash('danger', 'Le salaire max doit être supérieur ou égal au salaire min.');
+                return $this->render('back/offers/form.html.twig', ['offer' => null]);
+            }
+
+            $offer = new Offer();
+            $offer->setTitle($title);
+            $offer->setDescription($description);
+            $offer->setContractType($request->request->get('contractType'));
+            $offer->setLocation($location);
+            $offer->setDepartment($request->request->get('department'));
+            $offer->setExperienceLevel($request->request->get('experienceLevel'));
+            $offer->setPositionsAvailable($positions);
             if ($salaryMin) $offer->setSalaryMin((float)$salaryMin);
             if ($salaryMax) $offer->setSalaryMax((float)$salaryMax);
             $offer->setStatus('Active');
@@ -142,17 +175,44 @@ class AdminDashboardController extends AbstractController
         }
 
         if ($request->isMethod('POST')) {
-            $offer->setTitle($request->request->get('title'));
-            $offer->setDescription($request->request->get('description'));
-            $offer->setContractType($request->request->get('contractType'));
-            $offer->setLocation($request->request->get('location'));
-            $offer->setDepartment($request->request->get('department'));
-            $offer->setExperienceLevel($request->request->get('experienceLevel'));
-            $offer->setPositionsAvailable((int)$request->request->get('positionsAvailable', 1));
+            $title = trim($request->request->get('title', ''));
+            $description = trim($request->request->get('description', ''));
+            $location = trim($request->request->get('location', ''));
+            $positions = (int)$request->request->get('positionsAvailable', 1);
             $salaryMin = $request->request->get('salaryMin');
             $salaryMax = $request->request->get('salaryMax');
-            if ($salaryMin) $offer->setSalaryMin((float)$salaryMin);
-            if ($salaryMax) $offer->setSalaryMax((float)$salaryMax);
+
+            // Server-side validation
+            if (strlen($title) < 3) {
+                $this->addFlash('danger', 'Le titre doit contenir au moins 3 caractères.');
+                return $this->render('back/offers/form.html.twig', ['offer' => $offer]);
+            }
+            if (strlen($description) < 10) {
+                $this->addFlash('danger', 'La description doit contenir au moins 10 caractères.');
+                return $this->render('back/offers/form.html.twig', ['offer' => $offer]);
+            }
+            if (empty($location)) {
+                $this->addFlash('danger', 'La localisation est requise.');
+                return $this->render('back/offers/form.html.twig', ['offer' => $offer]);
+            }
+            if ($positions < 1) {
+                $this->addFlash('danger', 'Au moins 1 poste doit être disponible.');
+                return $this->render('back/offers/form.html.twig', ['offer' => $offer]);
+            }
+            if ($salaryMin && $salaryMax && (float)$salaryMax < (float)$salaryMin) {
+                $this->addFlash('danger', 'Le salaire max doit être supérieur ou égal au salaire min.');
+                return $this->render('back/offers/form.html.twig', ['offer' => $offer]);
+            }
+
+            $offer->setTitle($title);
+            $offer->setDescription($description);
+            $offer->setContractType($request->request->get('contractType'));
+            $offer->setLocation($location);
+            $offer->setDepartment($request->request->get('department'));
+            $offer->setExperienceLevel($request->request->get('experienceLevel'));
+            $offer->setPositionsAvailable($positions);
+            $offer->setSalaryMin($salaryMin ? (float)$salaryMin : null);
+            $offer->setSalaryMax($salaryMax ? (float)$salaryMax : null);
             $em->flush();
             $this->addFlash('success', 'Offre modifiée.');
             return $this->redirectToRoute('admin_offers');
@@ -192,13 +252,34 @@ class AdminDashboardController extends AbstractController
     public function eventNew(Request $request, EntityManagerInterface $em): Response
     {
         if ($request->isMethod('POST')) {
-            $event = new Event();
-            $event->setTitle($request->request->get('title'));
-            $event->setDescription($request->request->get('description'));
-            $event->setEventType($request->request->get('eventType'));
-            $event->setLocation($request->request->get('location'));
+            $title = trim($request->request->get('title', ''));
+            $description = trim($request->request->get('description', ''));
+            $location = trim($request->request->get('location', ''));
             $dateStr = $request->request->get('eventDate');
-            if ($dateStr) $event->setEventDate(new \DateTime($dateStr));
+
+            if (strlen($title) < 3) {
+                $this->addFlash('danger', 'Le titre doit contenir au moins 3 caractères.');
+                return $this->render('back/events/form.html.twig', ['event' => null]);
+            }
+            if (strlen($description) < 10) {
+                $this->addFlash('danger', 'La description doit contenir au moins 10 caractères.');
+                return $this->render('back/events/form.html.twig', ['event' => null]);
+            }
+            if (empty($location)) {
+                $this->addFlash('danger', 'Le lieu est requis.');
+                return $this->render('back/events/form.html.twig', ['event' => null]);
+            }
+            if (empty($dateStr)) {
+                $this->addFlash('danger', 'La date est requise.');
+                return $this->render('back/events/form.html.twig', ['event' => null]);
+            }
+
+            $event = new Event();
+            $event->setTitle($title);
+            $event->setDescription($description);
+            $event->setEventType($request->request->get('eventType'));
+            $event->setLocation($location);
+            $event->setEventDate(new \DateTime($dateStr));
             $mc = $request->request->get('maxCapacity');
             if ($mc) $event->setMaxCapacity((int)$mc);
             $event->setStatus('UPCOMING');
@@ -219,11 +300,28 @@ class AdminDashboardController extends AbstractController
             throw $this->createAccessDeniedException();
         }
         if ($request->isMethod('POST')) {
-            $event->setTitle($request->request->get('title'));
-            $event->setDescription($request->request->get('description'));
-            $event->setEventType($request->request->get('eventType'));
-            $event->setLocation($request->request->get('location'));
+            $title = trim($request->request->get('title', ''));
+            $description = trim($request->request->get('description', ''));
+            $location = trim($request->request->get('location', ''));
             $dateStr = $request->request->get('eventDate');
+
+            if (strlen($title) < 3) {
+                $this->addFlash('danger', 'Le titre doit contenir au moins 3 caractères.');
+                return $this->render('back/events/form.html.twig', ['event' => $event]);
+            }
+            if (strlen($description) < 10) {
+                $this->addFlash('danger', 'La description doit contenir au moins 10 caractères.');
+                return $this->render('back/events/form.html.twig', ['event' => $event]);
+            }
+            if (empty($location)) {
+                $this->addFlash('danger', 'Le lieu est requis.');
+                return $this->render('back/events/form.html.twig', ['event' => $event]);
+            }
+
+            $event->setTitle($title);
+            $event->setDescription($description);
+            $event->setEventType($request->request->get('eventType'));
+            $event->setLocation($location);
             if ($dateStr) $event->setEventDate(new \DateTime($dateStr));
             $mc = $request->request->get('maxCapacity');
             if ($mc) $event->setMaxCapacity((int)$mc);
@@ -247,12 +345,18 @@ class AdminDashboardController extends AbstractController
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  COURSES (ADMIN only)
+    //  COURSES (HR: own; ADMIN: all)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     #[Route('/courses', name: 'admin_courses')]
     public function courses(EntityManagerInterface $em): Response
     {
-        $formations = $em->getRepository(Formation::class)->findBy([], ['dateDebut' => 'DESC']);
+        if ($this->isAdmin()) {
+            $formations = $em->getRepository(Formation::class)->findBy([], ['dateDebut' => 'DESC']);
+        } else {
+            $formations = $em->getRepository(Formation::class)->findBy(
+                ['recruiterId' => $this->getUser()->getId()], ['dateDebut' => 'DESC']
+            );
+        }
         return $this->render('back/courses/list.html.twig', ['formations' => $formations]);
     }
 
@@ -260,18 +364,32 @@ class AdminDashboardController extends AbstractController
     public function courseNew(Request $request, EntityManagerInterface $em): Response
     {
         if ($request->isMethod('POST')) {
+            $titre = trim($request->request->get('titre', ''));
+            $description = trim($request->request->get('description', ''));
+            $duree = (int)$request->request->get('duree', 1);
+
+            if (strlen($titre) < 3) {
+                $this->addFlash('danger', 'Le titre doit contenir au moins 3 caractères.');
+                return $this->render('back/courses/form.html.twig', ['formation' => null]);
+            }
+            if (strlen($description) < 10) {
+                $this->addFlash('danger', 'La description doit contenir au moins 10 caractères.');
+                return $this->render('back/courses/form.html.twig', ['formation' => null]);
+            }
+
             $f = new Formation();
-            $f->setTitre($request->request->get('titre'));
-            $f->setDescription($request->request->get('description'));
-            $f->setDuree((int)$request->request->get('duree', 1));
+            $f->setTitre($titre);
+            $f->setDescription($description);
+            $f->setDuree($duree);
             $f->setNiveau($request->request->get('niveau'));
+            $f->setRecruiterId($this->getUser()->getId());
             $dateStr = $request->request->get('dateDebut');
             if ($dateStr) $f->setDateDebut(new \DateTime($dateStr));
 
             $em->persist($f);
             $em->flush();
             $this->addFlash('success', 'Formation créée.');
-            return $this->redirectToRoute('admin_courses');
+            return $this->redirectToRoute('admin_course_edit', ['id' => $f->getId()]);
         }
         return $this->render('back/courses/form.html.twig', ['formation' => null]);
     }
@@ -279,27 +397,215 @@ class AdminDashboardController extends AbstractController
     #[Route('/courses/{id}/edit', name: 'admin_course_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     public function courseEdit(Formation $formation, Request $request, EntityManagerInterface $em): Response
     {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
         if ($request->isMethod('POST')) {
-            $formation->setTitre($request->request->get('titre'));
-            $formation->setDescription($request->request->get('description'));
+            $titre = trim($request->request->get('titre', ''));
+            $description = trim($request->request->get('description', ''));
+
+            if (strlen($titre) < 3) {
+                $this->addFlash('danger', 'Le titre doit contenir au moins 3 caractères.');
+                return $this->redirectToRoute('admin_course_edit', ['id' => $formation->getId()]);
+            }
+            if (strlen($description) < 10) {
+                $this->addFlash('danger', 'La description doit contenir au moins 10 caractères.');
+                return $this->redirectToRoute('admin_course_edit', ['id' => $formation->getId()]);
+            }
+
+            $formation->setTitre($titre);
+            $formation->setDescription($description);
             $formation->setDuree((int)$request->request->get('duree', 1));
             $formation->setNiveau($request->request->get('niveau'));
             $dateStr = $request->request->get('dateDebut');
             if ($dateStr) $formation->setDateDebut(new \DateTime($dateStr));
             $em->flush();
             $this->addFlash('success', 'Formation modifiée.');
-            return $this->redirectToRoute('admin_courses');
+            return $this->redirectToRoute('admin_course_edit', ['id' => $formation->getId()]);
         }
-        return $this->render('back/courses/form.html.twig', ['formation' => $formation]);
+
+        $seances = $em->getRepository(Seance::class)->findBy(['formation' => $formation], ['dateDebut' => 'ASC']);
+        $quizzes = $em->getRepository(Quiz::class)->findBy(['formation' => $formation]);
+
+        return $this->render('back/courses/form.html.twig', [
+            'formation' => $formation,
+            'seances' => $seances,
+            'quizzes' => $quizzes,
+        ]);
     }
 
     #[Route('/courses/{id}/delete', name: 'admin_course_delete', requirements: ['id' => '\d+'])]
     public function courseDelete(Formation $formation, EntityManagerInterface $em): Response
     {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
         $em->remove($formation);
         $em->flush();
         $this->addFlash('success', 'Formation supprimée.');
         return $this->redirectToRoute('admin_courses');
+    }
+
+    // ── Séances CRUD ──
+    #[Route('/courses/{id}/seance/new', name: 'admin_course_seance_new', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function courseSeanceNew(Formation $formation, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $titre = trim($request->request->get('titre', ''));
+        $dateDebut = $request->request->get('dateDebut');
+        $dateFin = $request->request->get('dateFin');
+
+        if (strlen($titre) < 2) {
+            $this->addFlash('danger', 'Le titre de la séance est requis.');
+            return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $formation->getId()]) . '#seances');
+        }
+        if (!$dateDebut || !$dateFin) {
+            $this->addFlash('danger', 'Les dates de début et fin sont requises.');
+            return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $formation->getId()]) . '#seances');
+        }
+
+        $seance = new Seance();
+        $seance->setFormation($formation);
+        $seance->setTitre($titre);
+        $seance->setType($request->request->get('type', 'PRESENTIEL'));
+        $seance->setDateDebut(new \DateTime($dateDebut));
+        $seance->setDateFin(new \DateTime($dateFin));
+        $seance->setAdresse($request->request->get('adresse'));
+        $videoPath = trim($request->request->get('videoPath', ''));
+        if ($videoPath) $seance->setVideoPath($videoPath);
+        $dm = $request->request->get('dureeMinutes');
+        if ($dm) $seance->setDureeMinutes((int)$dm);
+
+        $em->persist($seance);
+        $em->flush();
+        $this->addFlash('success', 'Séance ajoutée.');
+        return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $formation->getId()]) . '#seances');
+    }
+
+    #[Route('/courses/{id}/seance/{sid}/delete', name: 'admin_course_seance_delete', requirements: ['id' => '\d+', 'sid' => '\d+'])]
+    public function courseSeanceDelete(int $id, int $sid, EntityManagerInterface $em): Response
+    {
+        $formation = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        $seance = $em->getRepository(Seance::class)->find($sid);
+        if ($seance) { $em->remove($seance); $em->flush(); $this->addFlash('success', 'Séance supprimée.'); }
+        return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#seances');
+    }
+
+    // ── Quiz CRUD ──
+    #[Route('/courses/{id}/quiz/new', name: 'admin_course_quiz_new', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function courseQuizNew(Formation $formation, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $titre = trim($request->request->get('titre', ''));
+        if (strlen($titre) < 2) {
+            $this->addFlash('danger', 'Le titre du quiz est requis.');
+            return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $formation->getId()]) . '#quizzes');
+        }
+
+        $quiz = new Quiz();
+        $quiz->setFormation($formation);
+        $quiz->setTitre($titre);
+        $duree = $request->request->get('duree');
+        if ($duree) $quiz->setDuree((int)$duree);
+
+        $em->persist($quiz);
+        $em->flush();
+        $this->addFlash('success', 'Quiz créé.');
+        return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $formation->getId()]) . '#quizzes');
+    }
+
+    #[Route('/courses/{id}/quiz/{qid}/delete', name: 'admin_course_quiz_delete', requirements: ['id' => '\d+', 'qid' => '\d+'])]
+    public function courseQuizDelete(int $id, int $qid, EntityManagerInterface $em): Response
+    {
+        $formation = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        $quiz = $em->getRepository(Quiz::class)->find($qid);
+        if ($quiz) { $em->remove($quiz); $em->flush(); $this->addFlash('success', 'Quiz supprimé.'); }
+        return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#quizzes');
+    }
+
+    #[Route('/courses/{id}/quiz/{qid}/manage', name: 'admin_course_quiz_manage', requirements: ['id' => '\d+', 'qid' => '\d+'])]
+    public function courseQuizManage(int $id, int $qid, EntityManagerInterface $em): Response
+    {
+        $formation = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        $quiz = $em->getRepository(Quiz::class)->find($qid);
+        $questions = $em->getRepository(Question::class)->findBy(['quiz' => $quiz]);
+
+        return $this->render('back/courses/quiz_manage.html.twig', [
+            'formation' => $formation,
+            'quiz' => $quiz,
+            'questions' => $questions,
+        ]);
+    }
+
+    // ── Question + Choix CRUD ──
+    #[Route('/courses/{id}/quiz/{qid}/question/new', name: 'admin_course_question_new', requirements: ['id' => '\d+', 'qid' => '\d+'], methods: ['POST'])]
+    public function courseQuestionNew(int $id, int $qid, Request $request, EntityManagerInterface $em): Response
+    {
+        $formation = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $quiz = $em->getRepository(Quiz::class)->find($qid);
+        $enonce = trim($request->request->get('enonce', ''));
+        $choixTexts = $request->request->all('choix');
+        $correctIndex = (int)$request->request->get('correct', 0);
+
+        if (strlen($enonce) < 5) {
+            $this->addFlash('danger', 'L\'\u00e9nonc\u00e9 doit contenir au moins 5 caract\u00e8res.');
+            return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#quizzes');
+        }
+        if (count($choixTexts) < 2) {
+            $this->addFlash('danger', 'Au moins 2 choix sont requis.');
+            return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#quizzes');
+        }
+
+        $question = new Question();
+        $question->setQuiz($quiz);
+        $question->setEnonce($enonce);
+        $em->persist($question);
+
+        foreach ($choixTexts as $i => $texte) {
+            $texte = trim($texte);
+            if (!$texte) continue;
+            $choix = new Choix();
+            $choix->setQuestion($question);
+            $choix->setTexte($texte);
+            $choix->setIsCorrect($i === $correctIndex);
+            $em->persist($choix);
+        }
+
+        $em->flush();
+        $this->addFlash('success', 'Question ajoutée.');
+        return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#quizzes');
+    }
+
+    #[Route('/courses/{id}/quiz/{qid}/question/{questionId}/delete', name: 'admin_course_question_delete', requirements: ['id' => '\d+', 'qid' => '\d+', 'questionId' => '\d+'])]
+    public function courseQuestionDelete(int $id, int $qid, int $questionId, EntityManagerInterface $em): Response
+    {
+        $formation = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        $question = $em->getRepository(Question::class)->find($questionId);
+        if ($question) { $em->remove($question); $em->flush(); $this->addFlash('success', 'Question supprimée.'); }
+        return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#quizzes');
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -322,15 +628,30 @@ class AdminDashboardController extends AbstractController
     public function projectNew(Request $request, EntityManagerInterface $em): Response
     {
         if ($request->isMethod('POST')) {
-            $p = new Project();
-            $p->setName($request->request->get('name'));
-            $p->setDescription($request->request->get('description'));
-            $p->setStatus($request->request->get('status', 'PLANNED'));
+            $name = trim($request->request->get('name', ''));
             $startDate = $request->request->get('startDate');
             $endDate = $request->request->get('endDate');
+            $budget = $request->request->get('budget');
+
+            if (strlen($name) < 2) {
+                $this->addFlash('danger', 'Le nom doit contenir au moins 2 caractères.');
+                return $this->render('back/projects/form.html.twig', ['project' => null]);
+            }
+            if ($startDate && $endDate && $endDate < $startDate) {
+                $this->addFlash('danger', 'La date fin doit être après la date début.');
+                return $this->render('back/projects/form.html.twig', ['project' => null]);
+            }
+            if ($budget && (float)$budget < 0) {
+                $this->addFlash('danger', 'Le budget ne peut pas être négatif.');
+                return $this->render('back/projects/form.html.twig', ['project' => null]);
+            }
+
+            $p = new Project();
+            $p->setName($name);
+            $p->setDescription($request->request->get('description'));
+            $p->setStatus($request->request->get('status', 'PLANNED'));
             if ($startDate) $p->setStartDate(new \DateTime($startDate));
             if ($endDate) $p->setEndDate(new \DateTime($endDate));
-            $budget = $request->request->get('budget');
             if ($budget) $p->setBudget($budget);
             $p->setProjectManagerId($this->getUser()->getId());
 
@@ -350,15 +671,26 @@ class AdminDashboardController extends AbstractController
         }
 
         if ($request->isMethod('POST')) {
-            $project->setName($request->request->get('name'));
-            $project->setDescription($request->request->get('description'));
-            $project->setStatus($request->request->get('status', 'PLANNED'));
+            $name = trim($request->request->get('name', ''));
             $startDate = $request->request->get('startDate');
             $endDate = $request->request->get('endDate');
+            $budget = $request->request->get('budget');
+
+            if (strlen($name) < 2) {
+                $this->addFlash('danger', 'Le nom doit contenir au moins 2 caractères.');
+                return $this->render('back/projects/form.html.twig', ['project' => $project, 'activities' => $em->getRepository(Activity::class)->findBy(['project' => $project])]);
+            }
+            if ($startDate && $endDate && $endDate < $startDate) {
+                $this->addFlash('danger', 'La date fin doit être après la date début.');
+                return $this->render('back/projects/form.html.twig', ['project' => $project, 'activities' => $em->getRepository(Activity::class)->findBy(['project' => $project])]);
+            }
+
+            $project->setName($name);
+            $project->setDescription($request->request->get('description'));
+            $project->setStatus($request->request->get('status', 'PLANNED'));
             if ($startDate) $project->setStartDate(new \DateTime($startDate));
             if ($endDate) $project->setEndDate(new \DateTime($endDate));
-            $budget = $request->request->get('budget');
-            if ($budget) $project->setBudget($budget);
+            $project->setBudget($budget ?: null);
             $em->flush();
             $this->addFlash('success', 'Projet modifié.');
             return $this->redirectToRoute('admin_projects');
@@ -686,5 +1018,83 @@ class AdminDashboardController extends AbstractController
         }
 
         return $this->redirectToRoute('admin_offer_applications', ['id' => $offer->getId()]);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  NOTIFICATIONS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/notifications', name: 'admin_notifications')]
+    public function notifications(EntityManagerInterface $em): Response
+    {
+        $notifications = $em->getRepository(Notification::class)->findBy(
+            ['user' => $this->getUser()],
+            ['createdAt' => 'DESC'],
+            50
+        );
+        return $this->render('back/notifications/list.html.twig', [
+            'notifications' => $notifications,
+        ]);
+    }
+
+    #[Route('/notification/{id}/read', name: 'admin_notification_read', requirements: ['id' => '\d+'])]
+    public function notificationRead(int $id, EntityManagerInterface $em): Response
+    {
+        $notif = $em->getRepository(Notification::class)->find($id);
+        if ($notif && $notif->getUser() === $this->getUser()) {
+            $notif->setIsRead(true);
+            $em->flush();
+            if ($notif->getLink()) {
+                return $this->redirect($notif->getLink());
+            }
+        }
+        return $this->redirectToRoute('admin_notifications');
+    }
+
+    #[Route('/notifications/read-all', name: 'admin_notifications_read_all')]
+    public function notificationsReadAll(EntityManagerInterface $em): Response
+    {
+        $unread = $em->getRepository(Notification::class)->findBy(
+            ['user' => $this->getUser(), 'isRead' => false]
+        );
+        foreach ($unread as $n) {
+            $n->setIsRead(true);
+        }
+        $em->flush();
+        $this->addFlash('success', 'Toutes les notifications marquées comme lues.');
+        return $this->redirectToRoute('admin_notifications');
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  PROFILE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/profile', name: 'admin_profile')]
+    public function profile(Request $request, EntityManagerInterface $em): Response
+    {
+        $user = $this->getUser();
+        $profile = $user->getProfile();
+        if (!$profile) {
+            $profile = new Profile();
+            $profile->setUser($user);
+            $em->persist($profile);
+            $em->flush();
+        }
+
+        if ($request->isMethod('POST')) {
+            $profile->setFirstName(trim($request->request->get('firstName', '')));
+            $profile->setLastName(trim($request->request->get('lastName', '')));
+            $profile->setProfessionalTitle($request->request->get('professionalTitle'));
+            $profile->setPhoneNumber($request->request->get('phoneNumber'));
+            $profile->setLocation($request->request->get('location'));
+            $profile->setSummary($request->request->get('summary'));
+            $yoe = $request->request->get('yearsOfExperience');
+            if ($yoe !== null && $yoe !== '') $profile->setYearsOfExperience((int)$yoe);
+            $em->flush();
+            $this->addFlash('success', 'Profil mis à jour avec succès.');
+            return $this->redirectToRoute('admin_profile');
+        }
+
+        return $this->render('back/profile/index.html.twig', [
+            'profile' => $profile,
+        ]);
     }
 }
