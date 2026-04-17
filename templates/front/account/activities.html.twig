@@ -60,9 +60,7 @@
                         {% if a.project %}
                             <span class="fo-badge fo-badge-primary"><i class="bi bi-kanban me-1"></i>{{ a.project.name }}</span>
                         {% endif %}
-                        {% if a.hoursWorked %}
-                            <span class="fo-badge fo-badge-accent"><i class="bi bi-clock me-1"></i>{{ a.hoursWorked }}h</span>
-                        {% endif %}
+
                         {% if a.deadline %}
                             <span class="fo-badge {% if a.isOnTime() %}fo-badge-success{% else %}fo-badge-danger{% endif %} text-white" style="{% if not a.isOnTime() %}background:#ef4444;{% endif %}">
                                 <i class="bi bi-alarm me-1"></i>{% if a.isOnTime() %}Dans les temps{% else %}En retard{% endif %}

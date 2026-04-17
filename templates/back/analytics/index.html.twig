@@ -1,0 +1,369 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Analytique{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 style="font-weight:800; margin:0"><i class="bi bi-graph-up-arrow me-2" style="color:var(--primary)"></i> Dashboard Analytique</h4>
+        <p style="color:var(--bo-text-secondary); font-size:0.9rem; margin:4px 0 0">Vue d'ensemble de la performance des projets et des employés</p>
+    </div>
+</div>
+
+{# KPI Cards #}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(99,102,241,0.15); color:#818cf8"><i class="bi bi-clipboard-data"></i></div>
+            <div class="stat-value">{{ totalActivities }}</div>
+            <div class="stat-label">Total Activités</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(6,182,212,0.15); color:#22d3ee"><i class="bi bi-kanban"></i></div>
+            <div class="stat-value">{{ totalProjects }}</div>
+            <div class="stat-label">Total Projets</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(16,185,129,0.15); color:#34d399"><i class="bi bi-check-circle"></i></div>
+            <div class="stat-value">{{ statusCounts.APPROVED }}</div>
+            <div class="stat-label">Activités Validées</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(239,68,68,0.15); color:#f87171"><i class="bi bi-x-circle"></i></div>
+            <div class="stat-value">{{ statusCounts.REJECTED }}</div>
+            <div class="stat-label">Activités Rejetées</div>
+        </div>
+    </div>
+</div>
+
+{# Row 1: Monthly Activities + Status Pie #}
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="bo-card" style="padding:24px">
+            <h6 style="font-weight:700; margin-bottom:20px"><i class="bi bi-bar-chart-fill me-2" style="color:var(--primary)"></i> Activités par Mois (12 derniers mois)</h6>
+            <canvas id="monthlyChart" height="280"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="bo-card" style="padding:24px; height:100%; display:flex; flex-direction:column;">
+            <h6 style="font-weight:700; margin-bottom:20px"><i class="bi bi-pie-chart-fill me-2" style="color:var(--accent)"></i> Distribution des Statuts</h6>
+            <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+                <canvas id="statusPieChart" height="240"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Row 2: Response Time + Budget Burn #}
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="bo-card" style="padding:24px">
+            <h6 style="font-weight:700; margin-bottom:20px"><i class="bi bi-clock-history me-2" style="color:#f59e0b"></i> Temps de Réponse Moyen (jours)</h6>
+            <canvas id="responseChart" height="240"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="bo-card" style="padding:24px">
+            <h6 style="font-weight:700; margin-bottom:20px"><i class="bi bi-cash-stack me-2" style="color:#10b981"></i> Budget Consommé par Projet</h6>
+            {% if projectNames|length > 0 %}
+                <canvas id="budgetChart" height="240"></canvas>
+            {% else %}
+                <div class="text-center" style="padding:60px 0; color:var(--bo-text-secondary)">
+                    <i class="bi bi-inbox" style="font-size:2rem; opacity:0.4"></i>
+                    <p class="mt-2" style="font-size:0.85rem">Aucun projet avec budget défini</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# Row 3: Top Performers Table #}
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="bo-card" style="padding:24px">
+            <h6 style="font-weight:700; margin-bottom:20px"><i class="bi bi-trophy-fill me-2" style="color:#f59e0b"></i> Classement des Employés</h6>
+            {% if topPerformers|length > 0 %}
+            <table class="bo-table" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Employé</th>
+                        <th>Activités</th>
+                        <th>À l'heure</th>
+                        <th>Validées</th>
+                        <th>Temps réel</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in topPerformers %}
+                    {% set pct = emp.total > 0 ? ((emp.onTime / emp.total) * 100)|round : 0 %}
+                    <tr>
+                        <td>
+                            {% if loop.index == 1 %}<span style="font-size:1.2rem">🥇</span>
+                            {% elseif loop.index == 2 %}<span style="font-size:1.2rem">🥈</span>
+                            {% elseif loop.index == 3 %}<span style="font-size:1.2rem">🥉</span>
+                            {% else %}{{ loop.index }}{% endif %}
+                        </td>
+                        <td style="font-weight:600">{{ emp.email|split('@')[0] }}</td>
+                        <td>{{ emp.total }}</td>
+                        <td>{{ emp.onTime }}</td>
+                        <td>{{ emp.approved }}</td>
+                        <td style="color:var(--accent); font-weight:600;"><i class="bi bi-stopwatch me-1"></i>{% set hrs = (emp.trackedSeconds / 3600)|round(1) %}{{ hrs }}h</td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div style="flex:1; height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden;">
+                                    <div style="width:{{ pct }}%; height:100%; border-radius:4px; background:{% if pct >= 75 %}#10b981{% elseif pct >= 50 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+                                </div>
+                                <span style="font-weight:700; font-size:0.8rem; color:{% if pct >= 75 %}#10b981{% elseif pct >= 50 %}#f59e0b{% else %}#ef4444{% endif %};">{{ pct }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <div class="text-center" style="padding:40px 0; color:var(--bo-text-secondary)">
+                    <i class="bi bi-people" style="font-size:2rem; opacity:0.4"></i>
+                    <p class="mt-2" style="font-size:0.85rem">Aucune donnée employé disponible</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="bo-card" style="padding:24px">
+            <h6 style="font-weight:700; margin-bottom:20px"><i class="bi bi-person-lines-fill me-2" style="color:var(--primary)"></i> Performances Individuelles</h6>
+            {% if topPerformers|length > 0 %}
+                <canvas id="performerChart" height="280"></canvas>
+            {% else %}
+                <div class="text-center" style="padding:60px 0; color:var(--bo-text-secondary)">
+                    <i class="bi bi-bar-chart" style="font-size:2rem; opacity:0.4"></i>
+                    <p class="mt-2" style="font-size:0.85rem">Aucune donnée disponible</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# Row 4: Tracked Time per Employee #}
+{% if topPerformers|length > 0 %}
+<div class="row g-4 mt-1 mb-4">
+    <div class="col-12">
+        <div class="bo-card" style="padding:24px">
+            <h6 style="font-weight:700; margin-bottom:20px"><i class="bi bi-stopwatch me-2" style="color:var(--accent)"></i> Temps Réel Travaillé par Employé (heures)</h6>
+            <canvas id="trackedTimeChart" height="120"></canvas>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = 'rgba(71,85,105,0.3)';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+// 1. Monthly Activities Bar Chart
+new Chart(document.getElementById('monthlyChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ monthLabels|json_encode|raw }},
+        datasets: [
+            {
+                label: 'Total',
+                data: {{ monthlyTotal|json_encode|raw }},
+                backgroundColor: 'rgba(99,102,241,0.7)',
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Validées',
+                data: {{ monthlyApproved|json_encode|raw }},
+                backgroundColor: 'rgba(16,185,129,0.7)',
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Rejetées',
+                data: {{ monthlyRejected|json_encode|raw }},
+                backgroundColor: 'rgba(239,68,68,0.7)',
+                borderRadius: 6,
+                borderSkipped: false,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20 } } },
+        scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(71,85,105,0.15)' } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+// 2. Status Pie Chart
+new Chart(document.getElementById('statusPieChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['En attente', 'En cours', 'En révision', 'Approuvé', 'Rejeté'],
+        datasets: [{
+            data: [
+                {{ statusCounts.PENDING }}, {{ statusCounts.IN_PROGRESS }},
+                {{ statusCounts.REVIEW }}, {{ statusCounts.APPROVED }}, {{ statusCounts.REJECTED }}
+            ],
+            backgroundColor: ['#64748b', '#6366f1', '#f59e0b', '#10b981', '#ef4444'],
+            borderWidth: 0,
+            hoverOffset: 8
+        }]
+    },
+    options: {
+        responsive: true,
+        cutout: '65%',
+        plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 11 } } }
+        }
+    }
+});
+
+// 3. Average Response Time Line Chart
+new Chart(document.getElementById('responseChart'), {
+    type: 'line',
+    data: {
+        labels: {{ monthLabels|json_encode|raw }},
+        datasets: [{
+            label: 'Jours moyens',
+            data: {{ avgResponseData|json_encode|raw }},
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.1)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#f59e0b',
+            pointBorderColor: '#f59e0b',
+            pointRadius: 4,
+            pointHoverRadius: 7,
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(71,85,105,0.15)' }, title: { display: true, text: 'Jours' } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+// 4. Budget Burn Chart
+{% if projectNames|length > 0 %}
+new Chart(document.getElementById('budgetChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ projectNames|json_encode|raw }},
+        datasets: [
+            {
+                label: 'Budget Total (DT)',
+                data: {{ budgetData|json_encode|raw }},
+                backgroundColor: 'rgba(16,185,129,0.3)',
+                borderColor: '#10b981',
+                borderWidth: 2,
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Consommé (DT)',
+                data: {{ burnData|json_encode|raw }},
+                backgroundColor: 'rgba(239,68,68,0.5)',
+                borderColor: '#ef4444',
+                borderWidth: 2,
+                borderRadius: 6,
+                borderSkipped: false,
+            }
+        ]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20 } } },
+        scales: {
+            x: { beginAtZero: true, grid: { color: 'rgba(71,85,105,0.15)' } },
+            y: { grid: { display: false } }
+        }
+    }
+});
+{% endif %}
+
+// 5. Individual Performance Radar/Bar
+{% if topPerformers|length > 0 %}
+new Chart(document.getElementById('performerChart'), {
+    type: 'radar',
+    data: {
+        labels: ['Ponctualité', 'Validations', 'Volume'],
+        datasets: [
+            {% for emp in topPerformers %}
+            {
+                label: '{{ emp.email|split("@")[0] }}',
+                data: [
+                    {{ emp.total > 0 ? ((emp.onTime / emp.total) * 100)|round : 0 }},
+                    {{ emp.total > 0 ? ((emp.approved / emp.total) * 100)|round : 0 }},
+                    {{ (emp.total * 10) > 100 ? 100 : (emp.total * 10) }}
+                ],
+                borderColor: ['#6366f1','#10b981','#f59e0b','#ef4444','#22d3ee'][{{ loop.index0 }}],
+                backgroundColor: ['rgba(99,102,241,0.1)','rgba(16,185,129,0.1)','rgba(245,158,11,0.1)','rgba(239,68,68,0.1)','rgba(34,211,238,0.1)'][{{ loop.index0 }}],
+                pointBackgroundColor: ['#6366f1','#10b981','#f59e0b','#ef4444','#22d3ee'][{{ loop.index0 }}],
+                borderWidth: 2,
+            },
+            {% endfor %}
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            r: {
+                beginAtZero: true, max: 100,
+                grid: { color: 'rgba(71,85,105,0.2)' },
+                angleLines: { color: 'rgba(71,85,105,0.2)' },
+                pointLabels: { font: { size: 12, weight: '600' } }
+            }
+        },
+        plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 11 } } }
+        }
+    }
+});
+{% endif %}
+
+// 6. Tracked Time per Employee
+{% if topPerformers|length > 0 %}
+new Chart(document.getElementById('trackedTimeChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for emp in topPerformers %}'{{ emp.email|split("@")[0] }}',{% endfor %}],
+        datasets: [{
+            label: 'Heures trackées',
+            data: [{% for emp in topPerformers %}{{ (emp.trackedSeconds / 3600)|round(1) }},{% endfor %}],
+            backgroundColor: [
+                'rgba(99,102,241,0.7)', 'rgba(16,185,129,0.7)', 'rgba(245,158,11,0.7)',
+                'rgba(239,68,68,0.7)', 'rgba(34,211,238,0.7)'
+            ],
+            borderRadius: 8,
+            borderSkipped: false,
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(71,85,105,0.15)' }, title: { display: true, text: 'Heures' } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

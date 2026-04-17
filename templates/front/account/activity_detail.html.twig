@@ -15,11 +15,25 @@
             <div class="alert alert-success mb-3"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
         {% endfor %}
 
+        {# ═══ TIMER WIDGET ═══ #}
+        {# Timer widget hidden from employees — runs silently in background, visible only to admins #}
+        <div id="timer-widget" style="display:none;">
+            <div id="timer-pulse"></div>
+            <div id="timer-display">00:00:00</div>
+            <div id="timer-status"></div>
+            <div id="timer-saved"></div>
+        </div>
+
         <div class="fo-card mb-4" style="padding:30px">
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <div>
                     <h4 style="margin-bottom:8px;font-weight:700">{{ activity.description }}</h4>
                     <span style="color:var(--fo-text-secondary)"><i class="bi bi-calendar3 me-1"></i>{{ activity.activityDate ? activity.activityDate|date('d/m/Y') : '—' }}</span>
+                    {% if activity.deadline %}
+                        <span style="margin-left:12px; color:{% if activity.isOnTime() %}var(--success){% else %}#ef4444{% endif %}">
+                            <i class="bi bi-alarm me-1"></i>Deadline: {{ activity.deadline|date('d/m/Y') }}
+                        </span>
+                    {% endif %}
                 </div>
                 <span class="fo-badge {% if activity.status == 'APPROVED' %}fo-badge-success{% elseif activity.status == 'REJECTED' %}fo-badge-danger{% else %}fo-badge-warning{% endif %}" style="font-size:1.1rem;padding:8px 16px">
                     {{ activity.status }}
@@ -38,10 +52,17 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div style="font-size:0.85rem;color:var(--fo-text-secondary);margin-bottom:4px">Heures Travaillées</div>
-                    <div style="font-weight:600"><i class="bi bi-clock me-2 text-primary"></i>{{ activity.hoursWorked ?? '0' }}h</div>
+                    <div style="font-size:0.85rem;color:var(--fo-text-secondary);margin-bottom:4px">Date limite</div>
+                    <div style="font-weight:600">
+                        {% if activity.deadline %}
+                            <i class="bi bi-alarm me-2" style="color:{% if activity.isOnTime() %}var(--success){% else %}#ef4444{% endif %}"></i>{{ activity.deadline|date('d/m/Y') }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
                 </div>
             </div>
+            <span id="timer-inline" style="display:none;">{{ activity.timeSpentFormatted }}</span>
 
             <hr style="opacity:0.1">
 
@@ -75,4 +96,143 @@
         </div>
     </div>
 </section>
+
+<style>
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+#timer-widget.paused #timer-pulse {
+    background: #f59e0b !important;
+    box-shadow: 0 0 8px #f59e0b !important;
+    animation: none !important;
+}
+#timer-widget.paused #timer-status {
+    color: #f59e0b !important;
+}
+</style>
+
+<script>
+(function() {
+    var ACTIVITY_ID = {{ activity.id }};
+    var SAVE_URL = '/activities/' + ACTIVITY_ID + '/timer-save';
+    var IDLE_LIMIT = 30 * 60 * 1000; // 30 minutes in ms
+    var AUTOSAVE_INTERVAL = 60 * 1000; // 60 seconds
+
+    var totalSeconds = {{ activity.timeSpent }};
+    var isRunning = true;
+    var lastMouseMove = Date.now();
+    var timerInterval = null;
+    var saveInterval = null;
+
+    var displayEl = document.getElementById('timer-display');
+    var statusEl = document.getElementById('timer-status');
+    var savedEl = document.getElementById('timer-saved');
+    var widgetEl = document.getElementById('timer-widget');
+    var inlineEl = document.getElementById('timer-inline');
+
+    function formatTime(secs) {
+        var h = Math.floor(secs / 3600);
+        var m = Math.floor((secs % 3600) / 60);
+        var s = secs % 60;
+        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    function formatInline(secs) {
+        var h = Math.floor(secs / 3600);
+        var m = Math.floor((secs % 3600) / 60);
+        if (h > 0) return h + 'h ' + String(m).padStart(2, '0') + 'min';
+        return m + 'min';
+    }
+
+    function updateDisplay() {
+        displayEl.textContent = formatTime(totalSeconds);
+        inlineEl.textContent = formatInline(totalSeconds);
+    }
+
+    function tick() {
+        // Check idle
+        if (Date.now() - lastMouseMove > IDLE_LIMIT) {
+            if (isRunning) {
+                isRunning = false;
+                widgetEl.classList.add('paused');
+                statusEl.innerHTML = '<i class="bi bi-pause-circle me-1"></i>Inactif — Bougez la souris';
+                saveToServer();
+            }
+            return;
+        }
+
+        if (isRunning) {
+            totalSeconds++;
+            updateDisplay();
+        }
+    }
+
+    function saveToServer() {
+        fetch(SAVE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seconds: totalSeconds })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) {
+                var now = new Date();
+                savedEl.textContent = 'Dernière sauvegarde: ' + now.toLocaleTimeString('fr-FR');
+            }
+        }).catch(function() {});
+    }
+
+    function saveBeacon() {
+        if (navigator.sendBeacon) {
+            var blob = new Blob([JSON.stringify({ seconds: totalSeconds })], { type: 'application/json' });
+            navigator.sendBeacon(SAVE_URL, blob);
+        } else {
+            // Fallback sync XHR
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', SAVE_URL, false);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify({ seconds: totalSeconds }));
+        }
+    }
+
+    // Mouse movement detection
+    document.addEventListener('mousemove', function() {
+        lastMouseMove = Date.now();
+        if (!isRunning) {
+            isRunning = true;
+            widgetEl.classList.remove('paused');
+            statusEl.innerHTML = '<i class="bi bi-record-circle me-1"></i>Enregistrement…';
+        }
+    });
+
+    // Keyboard activity also counts
+    document.addEventListener('keydown', function() {
+        lastMouseMove = Date.now();
+        if (!isRunning) {
+            isRunning = true;
+            widgetEl.classList.remove('paused');
+            statusEl.innerHTML = '<i class="bi bi-record-circle me-1"></i>Enregistrement…';
+        }
+    });
+
+    // Start the timer
+    updateDisplay();
+    timerInterval = setInterval(tick, 1000);
+    saveInterval = setInterval(saveToServer, AUTOSAVE_INTERVAL);
+
+    // Save on page exit
+    window.addEventListener('beforeunload', function() {
+        saveBeacon();
+    });
+
+    // Save on tab switch
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') {
+            saveBeacon();
+        }
+    });
+
+    // Initial save marker
+    savedEl.textContent = 'Sauvegarde auto toutes les 60s';
+})();
+</script>
 {% endblock %}

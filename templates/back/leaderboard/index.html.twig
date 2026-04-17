@@ -1,0 +1,343 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Classement des Employés{% endblock %}
+{% block content %}
+
+<style>
+    .lb-hero {
+        background: linear-gradient(135deg, rgba(79,70,229,0.15), rgba(6,182,212,0.1));
+        border: 1px solid rgba(79,70,229,0.2);
+        border-radius: 20px;
+        padding: 32px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+    }
+    .lb-hero::before {
+        content: '🏆';
+        position: absolute;
+        top: -20px; right: 20px;
+        font-size: 120px;
+        opacity: 0.06;
+    }
+    .lb-hero h2 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin-bottom: 6px;
+    }
+    .lb-hero p {
+        color: var(--bo-text-secondary);
+        font-size: 0.9rem;
+    }
+
+    /* Podium */
+    .podium {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 16px;
+        margin-bottom: 36px;
+        padding: 0 20px;
+    }
+    .podium-card {
+        background: var(--bo-bg-card);
+        border: 1px solid var(--bo-border);
+        border-radius: 20px;
+        text-align: center;
+        padding: 28px 20px 24px;
+        position: relative;
+        transition: all 0.3s;
+        flex: 1;
+        max-width: 240px;
+    }
+    .podium-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(79,70,229,0.4);
+        box-shadow: 0 12px 40px rgba(79,70,229,0.15);
+    }
+    .podium-card.gold {
+        border-color: rgba(245,158,11,0.4);
+        background: linear-gradient(180deg, rgba(245,158,11,0.08), var(--bo-bg-card));
+        min-height: 280px;
+    }
+    .podium-card.silver {
+        border-color: rgba(148,163,184,0.3);
+        min-height: 240px;
+    }
+    .podium-card.bronze {
+        border-color: rgba(180,83,9,0.3);
+        min-height: 220px;
+    }
+    .podium-rank {
+        position: absolute;
+        top: -16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1rem;
+    }
+    .podium-rank.gold-rank { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #78350f; }
+    .podium-rank.silver-rank { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #334155; }
+    .podium-rank.bronze-rank { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
+
+    .podium-avatar {
+        width: 64px; height: 64px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1.5rem;
+        color: white;
+        margin: 12px auto 12px;
+    }
+    .podium-card.gold .podium-avatar { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+    .podium-card.silver .podium-avatar { background: linear-gradient(135deg, #64748b, #94a3b8); }
+    .podium-card.bronze .podium-avatar { background: linear-gradient(135deg, #b45309, #d97706); }
+
+    .podium-email {
+        font-weight: 700;
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .podium-score {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin: 8px 0 4px;
+    }
+    .podium-card.gold .podium-score { color: #fbbf24; }
+    .podium-card.silver .podium-score { color: #94a3b8; }
+    .podium-card.bronze .podium-score { color: #d97706; }
+
+    .podium-detail {
+        font-size: 0.75rem;
+        color: var(--bo-text-secondary);
+    }
+
+    /* Badge pill */
+    .perf-pill {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.72rem;
+        margin-top: 8px;
+    }
+    .perf-excellent { background: rgba(16,185,129,0.15); color: #34d399; }
+    .perf-good { background: rgba(99,102,241,0.15); color: #818cf8; }
+    .perf-average { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    .perf-poor { background: rgba(239,68,68,0.15); color: #f87171; }
+
+    /* Full table */
+    .lb-table-wrap {
+        background: var(--bo-bg-card);
+        border: 1px solid var(--bo-border);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    .lb-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .lb-table th {
+        background: rgba(255,255,255,0.03);
+        color: var(--bo-text-secondary);
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--bo-border);
+        text-align: left;
+    }
+    .lb-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--bo-border);
+        font-size: 0.88rem;
+        vertical-align: middle;
+    }
+    .lb-table tr:hover td {
+        background: rgba(79,70,229,0.04);
+    }
+    .lb-table tr:last-child td { border-bottom: none; }
+
+    .rank-num {
+        width: 32px; height: 32px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.85rem;
+        background: rgba(79,70,229,0.1);
+        color: var(--primary-light);
+    }
+    .rank-1 { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .rank-2 { background: rgba(148,163,184,0.2); color: #cbd5e1; }
+    .rank-3 { background: rgba(180,83,9,0.2); color: #d97706; }
+
+    .mini-avatar {
+        width: 34px; height: 34px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.8rem;
+        color: white;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+
+    .progress-mini {
+        width: 100px;
+        height: 6px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 3px;
+        overflow: hidden;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 8px;
+    }
+    .progress-mini-fill {
+        height: 100%;
+        border-radius: 3px;
+    }
+
+    .tracked-badge {
+        display: inline-block;
+        background: rgba(139,92,246,0.15);
+        color: #a78bfa;
+        padding: 3px 10px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+</style>
+
+{# ═══ Hero Header ═══ #}
+<div class="lb-hero">
+    <h2>🏆 Classement des Employés</h2>
+    <p>Performance basée sur le respect des délais, le taux d'approbation et le temps de travail réel</p>
+</div>
+
+{# ═══ Podium (Top 3) ═══ #}
+{% if leaderboard|length >= 3 %}
+<div class="podium">
+    {# Silver — 2nd place (left) #}
+    {% set p2 = leaderboard[1] %}
+    <div class="podium-card silver">
+        <div class="podium-rank silver-rank">2</div>
+        <div class="podium-avatar">{{ p2.email|first|upper }}</div>
+        <div class="podium-email">{{ p2.email }}</div>
+        <div class="podium-score">{{ p2.score }}%</div>
+        <div class="podium-detail">{{ p2.total }} activités · {{ p2.onTime }} dans les temps</div>
+        <div class="perf-pill {% if p2.score >= 90 %}perf-excellent{% elseif p2.score >= 70 %}perf-good{% elseif p2.score >= 50 %}perf-average{% else %}perf-poor{% endif %}">
+            {{ p2.badgeLabel }}
+        </div>
+    </div>
+
+    {# Gold — 1st place (center, tallest) #}
+    {% set p1 = leaderboard[0] %}
+    <div class="podium-card gold">
+        <div class="podium-rank gold-rank">1</div>
+        <div class="podium-avatar">{{ p1.email|first|upper }}</div>
+        <div class="podium-email">{{ p1.email }}</div>
+        <div class="podium-score">{{ p1.score }}%</div>
+        <div class="podium-detail">{{ p1.total }} activités · {{ p1.onTime }} dans les temps</div>
+        <div class="perf-pill {% if p1.score >= 90 %}perf-excellent{% elseif p1.score >= 70 %}perf-good{% elseif p1.score >= 50 %}perf-average{% else %}perf-poor{% endif %}">
+            {{ p1.badgeLabel }}
+        </div>
+    </div>
+
+    {# Bronze — 3rd place (right) #}
+    {% set p3 = leaderboard[2] %}
+    <div class="podium-card bronze">
+        <div class="podium-rank bronze-rank">3</div>
+        <div class="podium-avatar">{{ p3.email|first|upper }}</div>
+        <div class="podium-email">{{ p3.email }}</div>
+        <div class="podium-score">{{ p3.score }}%</div>
+        <div class="podium-detail">{{ p3.total }} activités · {{ p3.onTime }} dans les temps</div>
+        <div class="perf-pill {% if p3.score >= 90 %}perf-excellent{% elseif p3.score >= 70 %}perf-good{% elseif p3.score >= 50 %}perf-average{% else %}perf-poor{% endif %}">
+            {{ p3.badgeLabel }}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ═══ Full Ranking Table ═══ #}
+<div class="lb-table-wrap">
+    <table class="lb-table">
+        <thead>
+            <tr>
+                <th style="width:50px">#</th>
+                <th>Employé</th>
+                <th>Score</th>
+                <th>Activités</th>
+                <th>Validées</th>
+                <th>Respect délais</th>
+                <th>Temps suivi</th>
+                <th>Badge</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in leaderboard %}
+            <tr>
+                <td>
+                    <span class="rank-num {% if loop.index == 1 %}rank-1{% elseif loop.index == 2 %}rank-2{% elseif loop.index == 3 %}rank-3{% endif %}">
+                        {% if loop.index == 1 %}🥇{% elseif loop.index == 2 %}🥈{% elseif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
+                    </span>
+                </td>
+                <td>
+                    <span class="mini-avatar">{{ entry.email|first|upper }}</span>
+                    <strong>{{ entry.email }}</strong>
+                </td>
+                <td>
+                    <strong style="color: {% if entry.score >= 90 %}#34d399{% elseif entry.score >= 70 %}#818cf8{% elseif entry.score >= 50 %}#fbbf24{% else %}#f87171{% endif %}">
+                        {{ entry.score }}%
+                    </strong>
+                </td>
+                <td>{{ entry.total }}</td>
+                <td>{{ entry.approved }}</td>
+                <td>
+                    <div class="progress-mini">
+                        <div class="progress-mini-fill" style="width: {{ entry.onTimePercent }}%; background: {% if entry.onTimePercent >= 70 %}#10b981{% elseif entry.onTimePercent >= 50 %}#f59e0b{% else %}#ef4444{% endif %}"></div>
+                    </div>
+                    <span style="font-size:0.8rem; font-weight:600">{{ entry.onTimePercent }}%</span>
+                </td>
+                <td>
+                    <span class="tracked-badge">{{ entry.trackedFormatted }}</span>
+                </td>
+                <td>
+                    <span class="perf-pill {% if entry.score >= 90 %}perf-excellent{% elseif entry.score >= 70 %}perf-good{% elseif entry.score >= 50 %}perf-average{% else %}perf-poor{% endif %}">
+                        {{ entry.badgeLabel }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{{ path('admin_employee_report_pdf', {id: entry.id}) }}" class="bo-btn bo-btn-outline" style="padding:6px 14px;font-size:0.78rem" title="Télécharger PDF">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9" class="text-center" style="padding:40px; color:var(--bo-text-secondary)">
+                    <i class="bi bi-people" style="font-size:2rem; opacity:0.4"></i>
+                    <p class="mt-2">Aucun employé avec des activités assignées.</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

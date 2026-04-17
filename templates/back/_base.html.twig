@@ -266,6 +266,15 @@
         <a href="{{ path('admin_activities') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_activit' ? 'active' : '' }}">
             <i class="bi bi-clipboard-data"></i> Activités
         </a>
+        <a href="{{ path('admin_calendar') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_calendar' ? 'active' : '' }}">
+            <i class="bi bi-calendar3"></i> Calendrier
+        </a>
+        <a href="{{ path('admin_analytics') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_analytics' ? 'active' : '' }}">
+            <i class="bi bi-graph-up-arrow"></i> Analytique
+        </a>
+        <a href="{{ path('admin_leaderboard') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_leaderboard' ? 'active' : '' }}">
+            <i class="bi bi-trophy"></i> Classement
+        </a>
 
         {% if app.user.role == 'ADMIN' %}
         <a href="{{ path('admin_courses') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_course' ? 'active' : '' }}">

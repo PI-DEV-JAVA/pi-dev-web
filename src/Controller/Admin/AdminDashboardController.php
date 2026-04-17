@@ -13,6 +13,7 @@ use App\Entity\SupportTicket;
 use App\Entity\TicketReply;
 use App\Entity\User;
 use App\Service\NotificationService;
+use App\Service\PdfReportService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -493,6 +494,184 @@ class AdminDashboardController extends AbstractController
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  ACTIVITIES (HR assigns to own candidates)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/analytics', name: 'admin_analytics')]
+    public function analytics(EntityManagerInterface $em): Response
+    {
+        $activities = $em->getRepository(Activity::class)->findAll();
+        $projects = $em->getRepository(Project::class)->findAll();
+
+        // 1. Activities completed per month (last 12 months)
+        $monthlyData = [];
+        $monthLabels = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $d = new \DateTime("-{$i} months");
+            $key = $d->format('Y-m');
+            $monthLabels[] = $d->format('M Y');
+            $monthlyData[$key] = ['total' => 0, 'approved' => 0, 'rejected' => 0];
+        }
+        foreach ($activities as $a) {
+            $key = $a->getActivityDate()->format('Y-m');
+            if (isset($monthlyData[$key])) {
+                $monthlyData[$key]['total']++;
+                if ($a->getStatus() === 'APPROVED') $monthlyData[$key]['approved']++;
+                if ($a->getStatus() === 'REJECTED') $monthlyData[$key]['rejected']++;
+            }
+        }
+
+        // 2. Average response time (days between activityDate and submittedAt)
+        $responseTimes = [];
+        foreach ($monthlyData as $key => $v) {
+            $responseTimes[$key] = [];
+        }
+        foreach ($activities as $a) {
+            if ($a->getSubmittedAt() && $a->getActivityDate()) {
+                $key = $a->getActivityDate()->format('Y-m');
+                if (isset($responseTimes[$key])) {
+                    $diff = $a->getSubmittedAt()->diff($a->getActivityDate());
+                    $responseTimes[$key][] = $diff->days;
+                }
+            }
+        }
+        $avgResponseData = [];
+        foreach ($responseTimes as $vals) {
+            $avgResponseData[] = count($vals) > 0 ? round(array_sum($vals) / count($vals), 1) : 0;
+        }
+
+        // 3. Budget burn rate per project
+        $projectNames = [];
+        $budgetData = [];
+        $burnData = [];
+        foreach ($projects as $p) {
+            if (!$p->getBudget()) continue;
+            $projectNames[] = $p->getName();
+            $budget = (float)$p->getBudget();
+            $budgetData[] = $budget;
+            // burn = total hours logged * estimated cost/hour (budget / expected hours)
+            $totalHours = 0;
+            foreach ($p->getActivities() as $a) {
+                $totalHours += (float)($a->getHoursWorked() ?? 0);
+            }
+            // Estimate: if budget exists and hours exist, cost per hour = budget / max expected hours (assume 200h baseline)
+            $burnData[] = round(($totalHours / max(200, $totalHours + 50)) * $budget, 2);
+        }
+
+        // 4. Top performers vs underperformers
+        $employeeStats = [];
+        foreach ($activities as $a) {
+            $emp = $a->getEmployee();
+            if (!$emp) continue;
+            $eid = $emp->getId();
+            if (!isset($employeeStats[$eid])) {
+                $employeeStats[$eid] = ['email' => $emp->getEmail(), 'total' => 0, 'onTime' => 0, 'approved' => 0, 'trackedSeconds' => 0];
+            }
+            $employeeStats[$eid]['total']++;
+            if ($a->isOnTime()) $employeeStats[$eid]['onTime']++;
+            if ($a->getStatus() === 'APPROVED') $employeeStats[$eid]['approved']++;
+            $employeeStats[$eid]['trackedSeconds'] += $a->getTimeSpent();
+        }
+        // Sort by on-time percentage descending
+        usort($employeeStats, function($a, $b) {
+            $pA = $a['total'] > 0 ? ($a['onTime'] / $a['total']) : 0;
+            $pB = $b['total'] > 0 ? ($b['onTime'] / $b['total']) : 0;
+            return $pB <=> $pA;
+        });
+        $topPerformers = array_slice($employeeStats, 0, 5);
+
+        // 5. Status distribution (pie chart)
+        $statusCounts = ['PENDING' => 0, 'IN_PROGRESS' => 0, 'REVIEW' => 0, 'APPROVED' => 0, 'REJECTED' => 0];
+        foreach ($activities as $a) {
+            $s = $a->getStatus();
+            if (isset($statusCounts[$s])) $statusCounts[$s]++;
+        }
+
+        return $this->render('back/analytics/index.html.twig', [
+            'monthLabels' => $monthLabels,
+            'monthlyTotal' => array_column(array_values($monthlyData), 'total'),
+            'monthlyApproved' => array_column(array_values($monthlyData), 'approved'),
+            'monthlyRejected' => array_column(array_values($monthlyData), 'rejected'),
+            'avgResponseData' => $avgResponseData,
+            'projectNames' => $projectNames,
+            'budgetData' => $budgetData,
+            'burnData' => $burnData,
+            'topPerformers' => $topPerformers,
+            'statusCounts' => $statusCounts,
+            'totalActivities' => count($activities),
+            'totalProjects' => count($projects),
+        ]);
+    }
+
+    #[Route('/calendar', name: 'admin_calendar')]
+    public function calendar(): Response
+    {
+        return $this->render('back/calendar/index.html.twig');
+    }
+
+    #[Route('/calendar/events', name: 'admin_calendar_events', methods: ['GET'])]
+    public function calendarEvents(EntityManagerInterface $em): Response
+    {
+        $user = $this->getUser();
+
+        if ($this->isAdmin()) {
+            $activities = $em->getRepository(Activity::class)->findAll();
+        } else {
+            $activities = $em->getRepository(Activity::class)->createQueryBuilder('a')
+                ->join('a.project', 'p')
+                ->where('p.projectManagerId = :uid')->setParameter('uid', $user->getId())
+                ->getQuery()->getResult();
+        }
+
+        $events = [];
+        foreach ($activities as $a) {
+            $color = match($a->getStatus()) {
+                'APPROVED' => '#10b981',
+                'REJECTED' => '#ef4444',
+                'IN_PROGRESS' => '#6366f1',
+                'REVIEW' => '#f59e0b',
+                default => '#64748b',
+            };
+
+            // Main activity event (on activity date)
+            $events[] = [
+                'id' => 'act-' . $a->getId(),
+                'title' => $a->getDescription(),
+                'start' => $a->getActivityDate()->format('Y-m-d'),
+                'backgroundColor' => $color,
+                'borderColor' => $color,
+                'extendedProps' => [
+                    'employee' => $a->getEmployee() ? $a->getEmployee()->getEmail() : '—',
+                    'project' => $a->getProject() ? $a->getProject()->getName() : '—',
+                    'status' => $a->getStatus(),
+                    'hours' => $a->getHoursWorked() ?? '—',
+                    'type' => 'activity',
+                    'reviewUrl' => '/admin/activities/' . $a->getId() . '/review',
+                ],
+            ];
+
+            // Deadline marker (if set)
+            if ($a->getDeadline()) {
+                $deadlineColor = $a->isOnTime() ? '#10b981' : '#ef4444';
+                $events[] = [
+                    'id' => 'dl-' . $a->getId(),
+                    'title' => '⏰ Deadline: ' . $a->getDescription(),
+                    'start' => $a->getDeadline()->format('Y-m-d'),
+                    'backgroundColor' => 'transparent',
+                    'borderColor' => $deadlineColor,
+                    'textColor' => $deadlineColor,
+                    'display' => 'list-item',
+                    'extendedProps' => [
+                        'employee' => $a->getEmployee() ? $a->getEmployee()->getEmail() : '—',
+                        'project' => $a->getProject() ? $a->getProject()->getName() : '—',
+                        'status' => $a->getStatus(),
+                        'type' => 'deadline',
+                        'isLate' => !$a->isOnTime(),
+                    ],
+                ];
+            }
+        }
+
+        return $this->json($events);
+    }
+
     #[Route('/activities', name: 'admin_activities')]
     public function activities(EntityManagerInterface $em): Response
     {
@@ -823,5 +1002,104 @@ class AdminDashboardController extends AbstractController
         }
 
         return $this->redirectToRoute('admin_offer_applications', ['id' => $offer->getId()]);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  EMPLOYEE LEADERBOARD
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/leaderboard', name: 'admin_leaderboard')]
+    public function leaderboard(EntityManagerInterface $em): Response
+    {
+        $activities = $em->getRepository(Activity::class)->findAll();
+
+        // Group by employee
+        $employeeMap = [];
+        foreach ($activities as $a) {
+            $emp = $a->getEmployee();
+            if (!$emp) continue;
+            $eid = $emp->getId();
+            if (!isset($employeeMap[$eid])) {
+                $employeeMap[$eid] = [
+                    'id' => $eid,
+                    'email' => $emp->getEmail(),
+                    'total' => 0,
+                    'approved' => 0,
+                    'rejected' => 0,
+                    'onTime' => 0,
+                    'trackedSeconds' => 0,
+                ];
+            }
+            $employeeMap[$eid]['total']++;
+            if ($a->getStatus() === 'APPROVED') $employeeMap[$eid]['approved']++;
+            if ($a->getStatus() === 'REJECTED') $employeeMap[$eid]['rejected']++;
+            if ($a->isOnTime()) $employeeMap[$eid]['onTime']++;
+            $employeeMap[$eid]['trackedSeconds'] += $a->getTimeSpent();
+        }
+
+        // Calculate composite score: 60% on-time + 40% approval rate
+        $leaderboard = [];
+        foreach ($employeeMap as $e) {
+            $onTimePercent = $e['total'] > 0 ? round(($e['onTime'] / $e['total']) * 100) : 0;
+            $approvalRate = $e['total'] > 0 ? round(($e['approved'] / $e['total']) * 100) : 0;
+            $score = round(($onTimePercent * 0.6) + ($approvalRate * 0.4));
+
+            // Format tracked time
+            $h = intdiv($e['trackedSeconds'], 3600);
+            $m = intdiv($e['trackedSeconds'] % 3600, 60);
+            $trackedFormatted = $h . 'h ' . str_pad($m, 2, '0', STR_PAD_LEFT) . 'min';
+
+            // Determine badge
+            if ($score >= 90) {
+                $badgeLabel = '⭐ Excellent';
+            } elseif ($score >= 70) {
+                $badgeLabel = '✅ Bon';
+            } elseif ($score >= 50) {
+                $badgeLabel = '⚠️ À améliorer';
+            } else {
+                $badgeLabel = '🔴 Insuffisant';
+            }
+
+            $leaderboard[] = [
+                'id' => $e['id'],
+                'email' => $e['email'],
+                'total' => $e['total'],
+                'approved' => $e['approved'],
+                'rejected' => $e['rejected'],
+                'onTime' => $e['onTime'],
+                'onTimePercent' => $onTimePercent,
+                'approvalRate' => $approvalRate,
+                'score' => $score,
+                'trackedFormatted' => $trackedFormatted,
+                'badgeLabel' => $badgeLabel,
+            ];
+        }
+
+        // Sort by score descending
+        usort($leaderboard, fn($a, $b) => $b['score'] <=> $a['score']);
+
+        return $this->render('back/leaderboard/index.html.twig', [
+            'leaderboard' => $leaderboard,
+        ]);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  PDF REPORT EXPORT
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/reports/employee/{id}/pdf', name: 'admin_employee_report_pdf', requirements: ['id' => '\d+'])]
+    public function employeeReportPdf(User $user, EntityManagerInterface $em, PdfReportService $pdfService): Response
+    {
+        $activities = $em->getRepository(Activity::class)->findBy(
+            ['employee' => $user],
+            ['activityDate' => 'DESC']
+        );
+
+        $pdfContent = $pdfService->generateEmployeeReport($user, $activities);
+
+        $filename = 'rapport_' . preg_replace('/[^a-zA-Z0-9]/', '_', $user->getEmail()) . '_' . date('Ymd') . '.pdf';
+
+        return new Response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 }

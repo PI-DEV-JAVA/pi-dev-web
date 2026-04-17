@@ -3,7 +3,12 @@
 {% block content %}
 <div class="row w-100 justify-content-center">
     <div class="col-lg-8">
-        <a href="{{ path('admin_activities') }}" class="bo-btn bo-btn-outline mb-4"><i class="bi bi-arrow-left me-2"></i>Retour aux activités</a>
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <a href="{{ path('admin_activities') }}" class="bo-btn bo-btn-outline"><i class="bi bi-arrow-left me-2"></i>Retour aux activités</a>
+            <a href="{{ path('admin_employee_report_pdf', {id: activity.employee.id}) }}" class="bo-btn bo-btn-outline" style="margin-left:auto">
+                <i class="bi bi-file-earmark-pdf me-1" style="color:#ef4444"></i>Télécharger PDF
+            </a>
+        </div>
 
         <div class="bo-card mb-4" style="padding:30px">
             <h4 style="font-weight:700">Détails de l'activité</h4>
@@ -29,6 +34,27 @@
                     <td class="text-muted">Heures travaillées :</td>
                     <td>{{ activity.hoursWorked ?? '0' }}h</td>
                 </tr>
+                {% if activity.deadline %}
+                <tr>
+                    <td class="text-muted">Deadline :</td>
+                    <td>
+                        <span style="color: {% if activity.isOnTime() %}#10b981{% else %}#ef4444{% endif %}">
+                            <i class="bi bi-alarm me-1"></i>{{ activity.deadline|date('d/m/Y') }}
+                            {% if not activity.isOnTime() %} — <strong>En retard</strong>{% else %} — Dans les temps{% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endif %}
+                {% if activity.timeSpent > 0 %}
+                <tr>
+                    <td class="text-muted">Temps réel suivi :</td>
+                    <td>
+                        <span style="display:inline-block;background:rgba(139,92,246,0.15);color:#a78bfa;padding:4px 14px;border-radius:10px;font-weight:700">
+                            <i class="bi bi-stopwatch me-1"></i>{{ activity.timeSpentFormatted }}
+                        </span>
+                    </td>
+                </tr>
+                {% endif %}
                 <tr>
                     <td class="text-muted">Statut actuel :</td>
                     <td>

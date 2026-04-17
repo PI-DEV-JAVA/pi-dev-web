@@ -50,6 +50,9 @@ class Activity
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $submittedAt = null;
 
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $timeSpent = 0;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -174,6 +177,28 @@ class Activity
     {
         $this->submittedAt = $submittedAt;
         return $this;
+    }
+
+    public function getTimeSpent(): int
+    {
+        return $this->timeSpent;
+    }
+
+    public function setTimeSpent(int $timeSpent): static
+    {
+        $this->timeSpent = $timeSpent;
+        return $this;
+    }
+
+    public function getTimeSpentFormatted(): string
+    {
+        $s = $this->timeSpent;
+        $h = intdiv($s, 3600);
+        $m = intdiv($s % 3600, 60);
+        if ($h > 0) {
+            return $h . 'h ' . str_pad($m, 2, '0', STR_PAD_LEFT) . 'min';
+        }
+        return $m . 'min';
     }
 
     // --- Advanced Methods ---

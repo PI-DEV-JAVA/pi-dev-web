@@ -7,6 +7,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 
 class ActivityController extends AbstractController
@@ -59,5 +60,25 @@ class ActivityController extends AbstractController
         return $this->render('front/account/activity_detail.html.twig', [
             'activity' => $activity,
         ]);
+    }
+
+    #[Route('/activities/{id}/timer-save', name: 'app_activity_timer_save', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function timerSave(Activity $activity, Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+
+        if ($activity->getEmployee() !== $this->getUser()) {
+            return new JsonResponse(['error' => 'Access denied'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $seconds = isset($data['seconds']) ? (int)$data['seconds'] : 0;
+
+        if ($seconds > 0) {
+            $activity->setTimeSpent($seconds);
+            $em->flush();
+        }
+
+        return new JsonResponse(['success' => true, 'total' => $activity->getTimeSpent()]);
     }
 }

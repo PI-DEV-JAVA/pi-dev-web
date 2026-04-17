@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* ═══════════════════════════════════════════
+           PDF Report Styles — Talentos
+           ═══════════════════════════════════════════ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            font-size: 11px;
+            line-height: 1.5;
+            background: #fff;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            top: -50px; right: -50px;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+        .header .subtitle {
+            font-size: 12px;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+        .header .logo {
+            font-size: 26px;
+            font-weight: 900;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+        .header .date-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 10px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .content { padding: 30px 40px; }
+
+        /* Employee info */
+        .employee-info {
+            display: table;
+            width: 100%;
+            margin-bottom: 24px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .employee-info .row {
+            display: table-row;
+        }
+        .employee-info .cell {
+            display: table-cell;
+            padding: 10px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .employee-info .label {
+            color: #64748b;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            width: 140px;
+            background: #f8fafc;
+        }
+        .employee-info .value {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Performance badge */
+        .perf-badge {
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 13px;
+            color: white;
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 28px;
+        }
+        .stats-grid td {
+            width: 16.66%;
+            text-align: center;
+            padding: 16px 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .stats-grid td:first-child { border-radius: 10px 0 0 10px; }
+        .stats-grid td:last-child { border-radius: 0 10px 10px 0; }
+        .stat-number {
+            font-size: 24px;
+            font-weight: 800;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 9px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        /* Section titles */
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #4f46e5;
+            display: inline-block;
+        }
+
+        /* Progress bar  */
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background: #f1f5f9;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 6px 0 16px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 5px;
+        }
+
+        /* Tables */
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 28px;
+            font-size: 10px;
+        }
+        table.data-table th {
+            background: #f8fafc;
+            color: #64748b;
+            font-weight: 700;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 12px;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: left;
+        }
+        table.data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+        }
+        table.data-table tr:nth-child(even) td {
+            background: #fafbfc;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 700;
+        }
+        .status-approved { background: #d1fae5; color: #065f46; }
+        .status-rejected { background: #fee2e2; color: #991b1b; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+
+        .time-badge {
+            display: inline-block;
+            background: #ede9fe;
+            color: #5b21b6;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 20px;
+            padding: 20px 40px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 9px;
+        }
+        .footer .brand {
+            font-weight: 800;
+            color: #4f46e5;
+            font-size: 11px;
+        }
+
+        .page-break { page-break-before: always; }
+    </style>
+</head>
+<body>
+
+{# ═══ HEADER ═══ #}
+<div class="header">
+    <div class="logo">📋 Talentos</div>
+    <h1>Rapport de Performance — Employé</h1>
+    <div class="subtitle">Analyse complète des activités et de la productivité</div>
+    <div class="date-badge">Généré le {{ generatedAt|date('d/m/Y à H:i') }}</div>
+</div>
+
+<div class="content">
+
+    {# ═══ EMPLOYEE INFO ═══ #}
+    <div class="employee-info">
+        <div class="row">
+            <div class="cell label">Employé</div>
+            <div class="cell value">{{ employee.email }}</div>
+        </div>
+        <div class="row">
+            <div class="cell label">Rôle</div>
+            <div class="cell value">{{ employee.role }}</div>
+        </div>
+        <div class="row">
+            <div class="cell label">Membre depuis</div>
+            <div class="cell value">{{ employee.createdAt|date('d/m/Y') }}</div>
+        </div>
+        <div class="row">
+            <div class="cell label">Performance</div>
+            <div class="cell value">
+                <span class="perf-badge" style="background: {{ stats.badge.color }}">
+                    {{ stats.badge.label }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {# ═══ KEY METRICS ═══ #}
+    <div class="section-title">📊 Chiffres Clés</div>
+
+    <table class="stats-grid">
+        <tr>
+            <td>
+                <span class="stat-number" style="color:#4f46e5">{{ stats.total }}</span>
+                <span class="stat-label">Activités</span>
+            </td>
+            <td>
+                <span class="stat-number" style="color:#10b981">{{ stats.approved }}</span>
+                <span class="stat-label">Validées</span>
+            </td>
+            <td>
+                <span class="stat-number" style="color:#ef4444">{{ stats.rejected }}</span>
+                <span class="stat-label">Rejetées</span>
+            </td>
+            <td>
+                <span class="stat-number" style="color:#f59e0b">{{ stats.pending }}</span>
+                <span class="stat-label">En attente</span>
+            </td>
+            <td>
+                <span class="stat-number" style="color:#06b6d4">{{ stats.totalHours }}h</span>
+                <span class="stat-label">Heures</span>
+            </td>
+            <td>
+                <span class="stat-number" style="color:#8b5cf6">{{ stats.trackedFormatted }}</span>
+                <span class="stat-label">Temps réel</span>
+            </td>
+        </tr>
+    </table>
+
+    {# ═══ ON-TIME PROGRESS ═══ #}
+    <div style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <strong style="font-size: 11px;">Respect des délais</strong>
+            <strong style="font-size: 11px; color: {% if stats.onTimePercentage >= 70 %}#10b981{% elseif stats.onTimePercentage >= 50 %}#f59e0b{% else %}#ef4444{% endif %}">
+                {{ stats.onTimePercentage }}%
+            </strong>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" style="width: {{ stats.onTimePercentage }}%; background: {% if stats.onTimePercentage >= 70 %}linear-gradient(90deg, #10b981, #34d399){% elseif stats.onTimePercentage >= 50 %}linear-gradient(90deg, #f59e0b, #fbbf24){% else %}linear-gradient(90deg, #ef4444, #f87171){% endif %}"></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <strong style="font-size: 11px;">Taux d'approbation</strong>
+            <strong style="font-size: 11px; color: {% if stats.approvalRate >= 70 %}#10b981{% elseif stats.approvalRate >= 50 %}#f59e0b{% else %}#ef4444{% endif %}">
+                {{ stats.approvalRate }}%
+            </strong>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" style="width: {{ stats.approvalRate }}%; background: {% if stats.approvalRate >= 70 %}linear-gradient(90deg, #4f46e5, #818cf8){% elseif stats.approvalRate >= 50 %}linear-gradient(90deg, #f59e0b, #fbbf24){% else %}linear-gradient(90deg, #ef4444, #f87171){% endif %}"></div>
+        </div>
+    </div>
+
+    {# ═══ PROJECT BREAKDOWN ═══ #}
+    {% if projectBreakdown|length > 0 %}
+    <div class="section-title">📂 Répartition par Projet</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Projet</th>
+                <th>Activités</th>
+                <th>Validées</th>
+                <th>Heures (est.)</th>
+                <th>Temps réel</th>
+                <th>Taux</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in projectBreakdown %}
+            <tr>
+                <td><strong>{{ name }}</strong></td>
+                <td>{{ data.total }}</td>
+                <td>{{ data.approved }}</td>
+                <td>{{ data.hours }}h</td>
+                <td>
+                    {% set ph = (data.tracked / 3600)|round(0, 'floor') %}
+                    {% set pm = ((data.tracked % 3600) / 60)|round(0, 'floor') %}
+                    <span class="time-badge">{{ ph }}h {{ pm < 10 ? '0' ~ pm : pm }}min</span>
+                </td>
+                <td>
+                    {% set rate = data.total > 0 ? ((data.approved / data.total) * 100)|round : 0 %}
+                    <strong style="color: {% if rate >= 70 %}#10b981{% elseif rate >= 50 %}#f59e0b{% else %}#ef4444{% endif %}">
+                        {{ rate }}%
+                    </strong>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {# ═══ ACTIVITY DETAIL TABLE ═══ #}
+    <div class="section-title">📋 Détail des Activités ({{ stats.total }})</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:30%">Description</th>
+                <th>Projet</th>
+                <th>Date</th>
+                <th>Deadline</th>
+                <th>Heures</th>
+                <th>Temps réel</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in activities %}
+            <tr>
+                <td>{{ a.description|length > 50 ? a.description|slice(0, 50) ~ '…' : a.description }}</td>
+                <td>{{ a.project ? a.project.name : '—' }}</td>
+                <td>{{ a.activityDate|date('d/m/Y') }}</td>
+                <td>
+                    {% if a.deadline %}
+                        <span style="color: {% if a.isOnTime() %}#10b981{% else %}#ef4444{% endif %}">
+                            {{ a.deadline|date('d/m/Y') }}
+                            {% if not a.isOnTime() %} ⚠{% endif %}
+                        </span>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>{{ a.hoursWorked ?? '—' }}h</td>
+                <td><span class="time-badge">{{ a.timeSpentFormatted }}</span></td>
+                <td>
+                    <span class="status-badge {% if a.status == 'APPROVED' %}status-approved{% elseif a.status == 'REJECTED' %}status-rejected{% else %}status-pending{% endif %}">
+                        {{ a.status }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+{# ═══ FOOTER ═══ #}
+<div class="footer">
+    <div class="brand">Talentos — Plateforme de Gestion RH</div>
+    <div style="margin-top: 4px;">
+        Ce rapport a été généré automatiquement le {{ generatedAt|date('d/m/Y à H:i:s') }}.
+        Il est strictement confidentiel et réservé à l'usage administratif interne.
+    </div>
+</div>
+
+</body>
+</html>

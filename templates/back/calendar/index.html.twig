@@ -1,0 +1,210 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Calendrier des Activités{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 style="font-weight:800; margin:0"><i class="bi bi-calendar3 me-2" style="color:var(--primary)"></i> Calendrier des Activités</h4>
+        <p style="color:var(--bo-text-secondary); font-size:0.9rem; margin:4px 0 0">Vue globale de toutes les activités et deadlines assignées</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ path('admin_activities') }}" class="bo-btn bo-btn-outline"><i class="bi bi-list-ul me-1"></i> Vue liste</a>
+    </div>
+</div>
+
+{# Legend #}
+<div class="bo-card mb-4" style="padding:14px 20px;">
+    <div class="d-flex flex-wrap gap-4 align-items-center" style="font-size:0.8rem;">
+        <span style="font-weight:700; color:var(--bo-text-secondary)">Légende :</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#64748b;margin-right:6px;vertical-align:middle;"></span>En attente</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#6366f1;margin-right:6px;vertical-align:middle;"></span>En cours</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f59e0b;margin-right:6px;vertical-align:middle;"></span>En révision</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#10b981;margin-right:6px;vertical-align:middle;"></span>Approuvé</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#ef4444;margin-right:6px;vertical-align:middle;"></span>Rejeté</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;border:2px solid #10b981;margin-right:6px;vertical-align:middle;"></span>Deadline OK</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;border:2px solid #ef4444;margin-right:6px;vertical-align:middle;"></span>Deadline dépassée</span>
+    </div>
+</div>
+
+{# Calendar Container #}
+<div class="bo-card" style="padding:20px;">
+    <div id="activity-calendar"></div>
+</div>
+
+{# Detail Modal #}
+<div id="eventModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px);" onclick="if(event.target===this)closeModal()">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:420px; max-width:90vw; background:var(--bo-bg-card); border:1px solid var(--bo-border); border-radius:16px; padding:28px; box-shadow:0 25px 50px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h6 id="modalTitle" style="font-weight:700; margin:0; font-size:1rem;"></h6>
+            <button onclick="closeModal()" style="background:none; border:none; color:var(--bo-text-secondary); font-size:1.2rem; cursor:pointer;"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div id="modalBody" style="font-size:0.9rem;"></div>
+        <div id="modalFooter" style="margin-top:20px; text-align:right;"></div>
+    </div>
+</div>
+
+{# FullCalendar CDN #}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<style>
+    /* Dark theme overrides for FullCalendar */
+    #activity-calendar {
+        --fc-bg-event-opacity: 0.85;
+        --fc-border-color: var(--bo-border);
+        --fc-button-bg-color: var(--bo-bg-input);
+        --fc-button-border-color: var(--bo-border);
+        --fc-button-text-color: var(--bo-text);
+        --fc-button-hover-bg-color: rgba(79,70,229,0.3);
+        --fc-button-hover-border-color: var(--primary);
+        --fc-button-active-bg-color: var(--primary);
+        --fc-button-active-border-color: var(--primary);
+        --fc-today-bg-color: rgba(79,70,229,0.08);
+        --fc-neutral-bg-color: var(--bo-bg);
+        --fc-page-bg-color: transparent;
+        --fc-event-text-color: #fff;
+    }
+
+    .fc .fc-toolbar-title {
+        font-size: 1.2rem !important;
+        font-weight: 700 !important;
+        color: var(--bo-text) !important;
+    }
+    .fc th {
+        color: var(--bo-text-secondary) !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        padding: 10px 0 !important;
+    }
+    .fc td, .fc th {
+        border-color: var(--bo-border) !important;
+    }
+    .fc .fc-daygrid-day-number {
+        color: var(--bo-text) !important;
+        font-weight: 600;
+        font-size: 0.85rem;
+        padding: 6px 10px !important;
+    }
+    .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+        background: var(--primary);
+        border-radius: 50%;
+        width: 28px; height: 28px;
+        display: flex; align-items: center; justify-content: center;
+        color: white !important;
+    }
+    .fc .fc-event {
+        border-radius: 6px !important;
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        padding: 2px 6px !important;
+        cursor: pointer !important;
+        transition: transform 0.1s !important;
+    }
+    .fc .fc-event:hover {
+        transform: scale(1.03);
+    }
+    .fc .fc-col-header-cell {
+        background: rgba(255,255,255,0.02) !important;
+    }
+    .fc .fc-button {
+        border-radius: 8px !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        padding: 6px 14px !important;
+    }
+    .fc .fc-button-group .fc-button {
+        border-radius: 0 !important;
+    }
+    .fc .fc-button-group .fc-button:first-child {
+        border-radius: 8px 0 0 8px !important;
+    }
+    .fc .fc-button-group .fc-button:last-child {
+        border-radius: 0 8px 8px 0 !important;
+    }
+    .fc .fc-scrollgrid {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var el = document.getElementById('activity-calendar');
+    var calendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth',
+        locale: 'fr',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,listWeek'
+        },
+        buttonText: {
+            today: "Aujourd'hui",
+            month: 'Mois',
+            week: 'Semaine',
+            list: 'Liste'
+        },
+        events: '{{ path("admin_calendar_events") }}',
+        height: 'auto',
+        eventDisplay: 'block',
+        dayMaxEvents: 4,
+        moreLinkText: 'plus',
+        eventClick: function(info) {
+            info.jsEvent.preventDefault();
+            var props = info.event.extendedProps;
+            var title = info.event.title;
+
+            document.getElementById('modalTitle').textContent = title;
+
+            var statusBadge = '';
+            var statusColors = {
+                'PENDING': '#64748b', 'IN_PROGRESS': '#6366f1',
+                'REVIEW': '#f59e0b', 'APPROVED': '#10b981', 'REJECTED': '#ef4444'
+            };
+            var statusLabels = {
+                'PENDING': 'En attente', 'IN_PROGRESS': 'En cours',
+                'REVIEW': 'En révision', 'APPROVED': 'Approuvé', 'REJECTED': 'Rejeté'
+            };
+            var sColor = statusColors[props.status] || '#64748b';
+            var sLabel = statusLabels[props.status] || props.status;
+            statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:700;background:' + sColor + '22;color:' + sColor + ';">' + sLabel + '</span>';
+
+            var body = '';
+            if (props.type === 'deadline') {
+                body += '<div style="margin-bottom:14px; padding:12px; border-radius:10px; background:' + (props.isLate ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)') + '; border:1px solid ' + (props.isLate ? '#ef4444' : '#10b981') + ';">';
+                body += '<i class="bi bi-alarm me-1"></i> ' + (props.isLate ? '<strong>Deadline dépassée !</strong>' : '<strong>Dans les délais</strong>');
+                body += '</div>';
+            }
+            body += '<div style="display:grid; grid-template-columns:auto 1fr; gap:8px 16px; align-items:center;">';
+            body += '<span style="color:var(--bo-text-secondary);font-size:0.8rem;font-weight:600;">Candidat</span><span>' + props.employee + '</span>';
+            body += '<span style="color:var(--bo-text-secondary);font-size:0.8rem;font-weight:600;">Projet</span><span>' + props.project + '</span>';
+            body += '<span style="color:var(--bo-text-secondary);font-size:0.8rem;font-weight:600;">Statut</span><span>' + statusBadge + '</span>';
+            if (props.hours && props.hours !== '—') {
+                body += '<span style="color:var(--bo-text-secondary);font-size:0.8rem;font-weight:600;">Heures</span><span>' + props.hours + 'h</span>';
+            }
+            body += '</div>';
+
+            document.getElementById('modalBody').innerHTML = body;
+
+            var footer = '';
+            if (props.reviewUrl) {
+                footer = '<a href="' + props.reviewUrl + '" class="bo-btn bo-btn-primary" style="font-size:0.85rem; padding:8px 20px;"><i class="bi bi-eye me-1"></i> Voir / Gérer</a>';
+            }
+            document.getElementById('modalFooter').innerHTML = footer;
+
+            document.getElementById('eventModal').style.display = 'block';
+        }
+    });
+    calendar.render();
+});
+
+function closeModal() {
+    document.getElementById('eventModal').style.display = 'none';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+</script>
+{% endblock %}

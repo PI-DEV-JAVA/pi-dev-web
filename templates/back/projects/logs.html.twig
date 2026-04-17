@@ -54,7 +54,7 @@
                         <div class="d-flex align-items-center justify-content-between py-2" style="border-bottom:1px solid var(--bo-border);">
                             <div style="flex:1">
                                 <div style="font-size:0.85rem; font-weight:600">{{ a.description }}</div>
-                                <div style="font-size:0.75rem; color:var(--bo-text-secondary)">Créée le {{ a.activityDate|date('d/m') }} {% if a.deadline %}— Deadline: {{ a.deadline|date('d/m') }}{% endif %}</div>
+                                <div style="font-size:0.75rem; color:var(--bo-text-secondary)">Créée le {{ a.activityDate|date('d/m') }} {% if a.deadline %}— Deadline: {{ a.deadline|date('d/m') }}{% endif %}{% if a.timeSpent > 0 %} — <i class="bi bi-stopwatch"></i> {{ a.timeSpentFormatted }}{% endif %}</div>
                             </div>
                             <div style="text-align:right">
                                 <span class="badge {% if a.status == 'APPROVED' %}bg-success{% elseif a.status == 'REJECTED' %}bg-danger{% else %}bg-warning text-dark{% endif %}" style="font-size:0.65rem">{{ a.status }}</span>
