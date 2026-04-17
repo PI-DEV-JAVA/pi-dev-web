@@ -1,6 +1,48 @@
 {% extends 'front/_base.html.twig' %}
 {% block title %}Modifier le profil — Talentos{% endblock %}
 {% block content %}
+{# Cropper.js CDN #}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+
+<style>
+    .avatar-zone { position:relative; width:130px; height:130px; margin:0 auto 16px; cursor:pointer; }
+    .avatar-zone:hover .av-overlay { opacity:1; }
+    .av-circle { width:130px; height:130px; border-radius:50%; object-fit:cover; border:3px solid var(--primary); box-shadow:0 6px 24px rgba(79,70,229,0.15); transition:transform 0.3s; }
+    .avatar-zone:hover .av-circle { transform:scale(1.04); }
+    .av-initials { width:130px; height:130px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--accent)); display:flex; align-items:center; justify-content:center; font-size:3rem; font-weight:800; color:white; border:3px solid var(--primary); box-shadow:0 6px 24px rgba(79,70,229,0.15); transition:transform 0.3s; }
+    .avatar-zone:hover .av-initials { transform:scale(1.04); }
+    .av-overlay { position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,0.55); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:4px; opacity:0; transition:opacity 0.3s; }
+    .av-overlay i { font-size:1.5rem; color:white; }
+    .av-overlay span { font-size:0.7rem; color:rgba(255,255,255,0.85); font-weight:600; }
+    .avatar-zone.dragover { outline:3px dashed var(--primary); outline-offset:4px; }
+    .avatar-zone.dragover .av-overlay { opacity:1 !important; }
+    .av-btns { display:flex; justify-content:center; gap:8px; margin-bottom:8px; }
+    .av-btns .ab { font-size:0.72rem; padding:5px 14px; border-radius:8px; text-decoration:none; font-weight:600; cursor:pointer; transition:all 0.2s; border:1px solid var(--fo-border, #e2e8f0); display:inline-flex; align-items:center; gap:4px; }
+    .ab-upload { background:rgba(79,70,229,0.08); color:var(--primary); border-color:rgba(79,70,229,0.2); }
+    .ab-upload:hover { background:rgba(79,70,229,0.18); }
+    .file-error { text-align:center; font-size:0.78rem; color:#ef4444; margin-bottom:8px; display:none; }
+
+    /* Crop Modal */
+    .crop-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); z-index:9999; align-items:center; justify-content:center; }
+    .crop-modal-bg.open { display:flex; animation:cropFadeIn 0.25s ease; }
+    @keyframes cropFadeIn { from { opacity:0; } to { opacity:1; } }
+    .crop-modal { background:white; border-radius:20px; padding:24px; width:460px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+    .crop-modal h5 { font-weight:700; margin:0 0 16px; font-size:1rem; color:#1e293b; }
+    .crop-container { width:100%; height:320px; background:#f1f5f9; border-radius:12px; overflow:hidden; margin-bottom:16px; }
+    .crop-container img { max-width:100%; display:block; }
+    .crop-controls { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:20px; }
+    .crop-controls button { width:36px; height:36px; border-radius:10px; border:1px solid #e2e8f0; background:white; color:#475569; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1rem; transition:all 0.2s; }
+    .crop-controls button:hover { background:rgba(79,70,229,0.1); color:var(--primary); border-color:rgba(79,70,229,0.3); }
+    .crop-zoom-label { font-size:0.75rem; color:#94a3b8; font-weight:600; }
+    .crop-actions { display:flex; gap:10px; justify-content:flex-end; }
+    .crop-actions button { padding:10px 24px; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; border:none; transition:all 0.2s; }
+    .crop-btn-cancel { background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0 !important; }
+    .crop-btn-cancel:hover { background:#e2e8f0; }
+    .crop-btn-save { background:linear-gradient(135deg, #4f46e5, #7c3aed); color:white; }
+    .crop-btn-save:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 12px rgba(79,70,229,0.3); }
+</style>
+
 <div class="fo-page-header">
     <div class="container">
         <h1>{% if not profile.profileCompleted %}Complétez votre profil 📝{% else %}Modifier le profil{% endif %}</h1>
@@ -13,22 +55,32 @@
             <div class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}</div>
         {% endfor %}
 
-        {{ form_start(form, {'attr': {'enctype': 'multipart/form-data', 'novalidate': 'novalidate'}}) }}
+        {{ form_start(form, {'attr': {'enctype': 'multipart/form-data', 'novalidate': 'novalidate', 'id': 'profileForm'}}) }}
+        <input type="hidden" name="croppedAvatar" id="croppedAvatarData">
+
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="fo-card text-center" style="padding:32px">
-                    {% if profile.profilePicturePath %}
-                        <img src="{{ profile.profilePicturePath }}" alt="Avatar" style="width:120px;height:120px;border-radius:50%;object-fit:cover;margin-bottom:16px;border:3px solid var(--primary)">
-                    {% else %}
-                        <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:3rem;font-weight:700;margin:0 auto 16px;color:white">
-                            {{ profile.firstName|default(app.user.email)|first|upper }}
-                        </div>
-                    {% endif %}
-                    <div class="fo-form mb-3">
-                        <label class="form-label" style="font-size:0.85rem">Photo de profil</label>
-                        {{ form_widget(form.profilePicture, {'attr': {'class': 'form-control'}}) }}
+                    {# Avatar Zone #}
+                    <div class="avatar-zone" id="avatarZone">
+                        {% if profile.profilePicturePath %}
+                            <img src="{{ profile.profilePicturePath }}" class="av-circle" id="currentAvatar" alt="">
+                        {% else %}
+                            <div class="av-initials" id="currentAvatar">{{ profile.firstName|default(app.user.email)|first|upper }}</div>
+                        {% endif %}
+                        <div class="av-overlay"><i class="bi bi-camera-fill"></i><span>Changer</span></div>
                     </div>
-                    <div class="fo-form">
+
+                    <div id="fileError" class="file-error"><i class="bi bi-exclamation-triangle me-1"></i><span></span></div>
+
+                    <div class="av-btns">
+                        <label class="ab ab-upload" for="avatarFileInput"><i class="bi bi-upload"></i>Choisir une photo</label>
+                    </div>
+                    <input type="file" id="avatarFileInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+
+                    <div style="display:none">{{ form_widget(form.profilePicture) }}</div>
+
+                    <div class="fo-form" style="margin-top:16px">
                         <label class="form-label" style="font-size:0.85rem">CV (PDF)</label>
                         {{ form_widget(form.cvFile, {'attr': {'class': 'form-control'}}) }}
                         {% if profile.cvPath %}
@@ -41,43 +93,19 @@
                 <div class="fo-card fo-form" style="margin-bottom:16px">
                     <h5 style="font-weight:700;margin-bottom:20px"><i class="bi bi-person me-2" style="color:var(--primary)"></i>Informations personnelles</h5>
                     <div class="row g-3">
-                        <div class="col-6">
-                            <label class="form-label">Prénom *</label>
-                            {{ form_widget(form.firstName, {'attr': {'class': 'form-control'}}) }}
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Nom *</label>
-                            {{ form_widget(form.lastName, {'attr': {'class': 'form-control'}}) }}
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Date de naissance</label>
-                            {{ form_widget(form.birthDate, {'attr': {'class': 'form-control'}}) }}
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Téléphone</label>
-                            {{ form_widget(form.phoneNumber, {'attr': {'class': 'form-control'}}) }}
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Localisation</label>
-                            {{ form_widget(form.location, {'attr': {'class': 'form-control'}}) }}
-                        </div>
+                        <div class="col-6"><label class="form-label">Prénom *</label>{{ form_widget(form.firstName, {'attr': {'class': 'form-control'}}) }}</div>
+                        <div class="col-6"><label class="form-label">Nom *</label>{{ form_widget(form.lastName, {'attr': {'class': 'form-control'}}) }}</div>
+                        <div class="col-6"><label class="form-label">Date de naissance</label>{{ form_widget(form.birthDate, {'attr': {'class': 'form-control'}}) }}</div>
+                        <div class="col-6"><label class="form-label">Téléphone</label>{{ form_widget(form.phoneNumber, {'attr': {'class': 'form-control'}}) }}</div>
+                        <div class="col-12"><label class="form-label">Localisation</label>{{ form_widget(form.location, {'attr': {'class': 'form-control'}}) }}</div>
                     </div>
                 </div>
                 <div class="fo-card fo-form" style="margin-bottom:16px">
                     <h5 style="font-weight:700;margin-bottom:20px"><i class="bi bi-briefcase me-2" style="color:var(--accent)"></i>Profil professionnel</h5>
                     <div class="row g-3">
-                        <div class="col-8">
-                            <label class="form-label">Titre professionnel</label>
-                            {{ form_widget(form.professionalTitle, {'attr': {'class': 'form-control'}}) }}
-                        </div>
-                        <div class="col-4">
-                            <label class="form-label">Expérience (ans)</label>
-                            {{ form_widget(form.yearsOfExperience, {'attr': {'class': 'form-control'}}) }}
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">À propos de moi</label>
-                            {{ form_widget(form.summary, {'attr': {'class': 'form-control'}}) }}
-                        </div>
+                        <div class="col-8"><label class="form-label">Titre professionnel</label>{{ form_widget(form.professionalTitle, {'attr': {'class': 'form-control'}}) }}</div>
+                        <div class="col-4"><label class="form-label">Expérience (ans)</label>{{ form_widget(form.yearsOfExperience, {'attr': {'class': 'form-control'}}) }}</div>
+                        <div class="col-12"><label class="form-label">À propos de moi</label>{{ form_widget(form.summary, {'attr': {'class': 'form-control'}}) }}</div>
                     </div>
                 </div>
                 <div class="d-flex gap-3">
@@ -91,4 +119,128 @@
         {{ form_end(form) }}
     </div>
 </section>
+
+{# ═══ CROP MODAL ═══ #}
+<div class="crop-modal-bg" id="cropModal">
+    <div class="crop-modal">
+        <h5><i class="bi bi-crop me-2" style="color:var(--primary)"></i>Recadrer la photo</h5>
+        <div class="crop-container"><img id="cropImage" src="" alt=""></div>
+
+        {# AI Analysis Panel #}
+        <div id="aiPanel" style="margin-bottom:16px;display:none">
+            <div id="aiLoading" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(99,102,241,0.06);border-radius:10px;font-size:0.8rem;color:#6366f1">
+                <div style="width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+                <span>🤖 Analyse IA du portrait en cours...</span>
+            </div>
+            <div id="aiResults" style="display:none"></div>
+        </div>
+        <style>@keyframes spin { to { transform:rotate(360deg); } }</style>
+
+        <div class="crop-controls">
+            <button type="button" onclick="cropper.zoom(-0.1)" title="Zoom -"><i class="bi bi-zoom-out"></i></button>
+            <span class="crop-zoom-label">Zoom</span>
+            <button type="button" onclick="cropper.zoom(0.1)" title="Zoom +"><i class="bi bi-zoom-in"></i></button>
+            <button type="button" onclick="cropper.rotate(-45)" title="Rotation"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <button type="button" onclick="cropper.rotate(45)" title="Rotation"><i class="bi bi-arrow-clockwise"></i></button>
+            <button type="button" onclick="cropper.reset()" title="Reset"><i class="bi bi-arrow-repeat"></i></button>
+        </div>
+        <div class="crop-actions">
+            <button type="button" class="crop-btn-cancel" onclick="closeCropModal()">Annuler</button>
+            <button type="button" id="overrideBtn" style="display:none;padding:10px 16px;border-radius:10px;font-weight:600;font-size:0.8rem;cursor:pointer;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);color:#f59e0b;transition:all 0.2s" onclick="forceApplyCrop()">Utiliser quand même</button>
+            <button type="button" class="crop-btn-save" id="applyBtn" onclick="applyCrop()"><i class="bi bi-check-lg me-1"></i>Appliquer</button>
+        </div>
+    </div>
+</div>
+
+{# face-api.js + face-check.js #}
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="/js/face-check.js"></script>
+
+<script>
+var cropper = null;
+var faceCheckPassed = false;
+var ALLOWED = ['image/jpeg','image/png','image/gif','image/webp'];
+var MAX = 5*1024*1024;
+
+function showError(msg) { var el=document.getElementById('fileError'); el.querySelector('span').textContent=msg; el.style.display='block'; setTimeout(function(){el.style.display='none'},5000); }
+function validateFile(f) { if(!f) return false; if(ALLOWED.indexOf(f.type)===-1){showError('Format non supporté. Utilisez JPG, PNG, GIF ou WebP.');return false;} if(f.size>MAX){showError('Image trop volumineuse (max 5 Mo).');return false;} return true; }
+
+function openCropModal(file) {
+    if(!validateFile(file)) return;
+    document.getElementById('fileError').style.display='none';
+    faceCheckPassed = false;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = document.getElementById('cropImage');
+        img.src = e.target.result;
+        document.getElementById('cropModal').classList.add('open');
+        // Reset AI panel
+        document.getElementById('aiPanel').style.display = 'block';
+        document.getElementById('aiLoading').style.display = 'flex';
+        document.getElementById('aiResults').style.display = 'none';
+        document.getElementById('overrideBtn').style.display = 'none';
+        var applyBtn = document.getElementById('applyBtn');
+        applyBtn.disabled = true; applyBtn.style.opacity = '0.5';
+        if(cropper){cropper.destroy();cropper=null;}
+        setTimeout(function(){
+            cropper = new Cropper(img, {
+                aspectRatio:1, viewMode:1, dragMode:'move',
+                cropBoxResizable:false, cropBoxMovable:false,
+                minCropBoxWidth:200, minCropBoxHeight:200,
+                background:false, modal:true, guides:false, highlight:false, autoCropArea:0.85,
+                ready:function(){
+                    var cb=document.querySelector('.cropper-crop-box'); if(cb)cb.style.borderRadius='50%';
+                    var vb=document.querySelector('.cropper-view-box'); if(vb)vb.style.borderRadius='50%';
+                    runFaceCheck(img);
+                }
+            });
+        },100);
+    };
+    reader.readAsDataURL(file);
+}
+
+async function runFaceCheck(imgEl) {
+    var result = await FACE_CHECK.analyze(imgEl);
+    document.getElementById('aiLoading').style.display = 'none';
+    var resultsEl = document.getElementById('aiResults');
+    FACE_CHECK.renderResults(resultsEl, result);
+    var applyBtn = document.getElementById('applyBtn');
+    if (result.hasFace) {
+        faceCheckPassed = true;
+        applyBtn.disabled = false; applyBtn.style.opacity = '1';
+        document.getElementById('overrideBtn').style.display = 'none';
+    } else {
+        faceCheckPassed = false;
+        applyBtn.disabled = true; applyBtn.style.opacity = '0.4';
+        document.getElementById('overrideBtn').style.display = 'inline-block';
+    }
+}
+
+function closeCropModal() { document.getElementById('cropModal').classList.remove('open'); if(cropper){cropper.destroy();cropper=null;} }
+function forceApplyCrop() { faceCheckPassed = true; applyCrop(); }
+
+function applyCrop() {
+    if(!cropper) return;
+    var canvas = cropper.getCroppedCanvas({width:400,height:400,imageSmoothingQuality:'high'});
+    var dataUrl = canvas.toDataURL('image/jpeg',0.9);
+    var el = document.getElementById('currentAvatar');
+    if(el.tagName==='IMG'){el.src=dataUrl;}else{var img=document.createElement('img');img.src=dataUrl;img.className='av-circle';img.id='currentAvatar';el.parentNode.replaceChild(img,el);}
+    document.getElementById('croppedAvatarData').value = dataUrl;
+    closeCropModal();
+}
+
+// Click to upload
+document.getElementById('avatarZone').addEventListener('click', function(e){e.preventDefault();document.getElementById('avatarFileInput').click();});
+document.getElementById('avatarFileInput').addEventListener('change', function(){if(this.files&&this.files[0])openCropModal(this.files[0]);});
+
+// Drag & drop
+var zone = document.getElementById('avatarZone');
+['dragenter','dragover'].forEach(function(ev){zone.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();zone.classList.add('dragover');});});
+['dragleave','drop'].forEach(function(ev){zone.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();zone.classList.remove('dragover');});});
+zone.addEventListener('drop',function(e){if(e.dataTransfer.files.length>0)openCropModal(e.dataTransfer.files[0]);});
+
+// Close modal on bg click
+document.getElementById('cropModal').addEventListener('click',function(e){if(e.target===this)closeCropModal();});
+</script>
 {% endblock %}
+

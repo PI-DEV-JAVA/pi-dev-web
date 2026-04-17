@@ -308,9 +308,15 @@
 
     <div class="bo-sidebar-user">
         <a href="{{ path('admin_profile') }}" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-            <div class="bo-user-avatar">{{ app.user.email|first|upper }}</div>
+            {% if app.user.profile and app.user.profile.profilePicturePath %}
+                <img src="{{ app.user.profile.profilePicturePath }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid rgba(79,70,229,0.3)" alt="">
+            {% else %}
+                <div class="bo-user-avatar">{{ app.user.email|first|upper }}</div>
+            {% endif %}
             <div style="flex:1;min-width:0">
-                <div style="font-weight:600;font-size:0.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--bo-text)">{{ app.user.email }}</div>
+                <div style="font-weight:600;font-size:0.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--bo-text)">
+                    {% if app.user.profile and app.user.profile.firstName %}{{ app.user.profile.firstName }} {{ app.user.profile.lastName }}{% else %}{{ app.user.email }}{% endif %}
+                </div>
                 <div style="font-size:0.7rem;color:var(--bo-text-secondary)">{{ app.user.role }}</div>
             </div>
         </a>

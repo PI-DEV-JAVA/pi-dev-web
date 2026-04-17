@@ -373,8 +373,14 @@
 
                     <div class="dropdown">
                         <a href="#" class="user-menu-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none">
-                            <div class="user-avatar-sm">{{ app.user.email|first|upper }}</div>
-                            <span style="font-weight:600;font-size:0.85rem">Mon compte</span>
+                            {% if app.user.profile and app.user.profile.profilePicturePath %}
+                                <img src="{{ app.user.profile.profilePicturePath }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover" alt="">
+                            {% else %}
+                                <div class="user-avatar-sm">{{ app.user.email|first|upper }}</div>
+                            {% endif %}
+                            <span style="font-weight:600;font-size:0.85rem">
+                                {% if app.user.profile and app.user.profile.firstName %}{{ app.user.profile.firstName }}{% else %}Mon compte{% endif %}
+                            </span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" style="border-radius:12px;border:1px solid var(--fo-border);box-shadow:var(--fo-card-shadow-hover);padding:8px;min-width:200px">
                             <li><a class="dropdown-item" href="{{ path('app_account') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-grid me-2"></i>Dashboard</a></li>

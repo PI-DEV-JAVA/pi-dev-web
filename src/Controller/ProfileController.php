@@ -49,18 +49,37 @@ class ProfileController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Handle profile picture upload
-            $pictureFile = $form->get('profilePicture')->getData();
-            if ($pictureFile) {
-                $newFilename = 'avatar-' . $user->getId() . '-' . uniqid() . '.' . $pictureFile->guessExtension();
-                try {
-                    $pictureFile->move(
-                        $this->getParameter('kernel.project_dir') . '/public/uploads/avatars',
-                        $newFilename
-                    );
-                    $profile->setProfilePicturePath('/uploads/avatars/' . $newFilename);
-                } catch (FileException $e) {
-                    $this->addFlash('error', 'Erreur lors du téléchargement de la photo.');
+            // Handle cropped avatar (base64 from Cropper.js)
+            $croppedData = $request->request->get('croppedAvatar', '');
+            if ($croppedData && str_starts_with($croppedData, 'data:image/')) {
+                $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/avatars';
+                if (!is_dir($uploadDir)) { mkdir($uploadDir, 0775, true); }
+                $parts = explode(',', $croppedData, 2);
+                $imageData = base64_decode($parts[1]);
+                if ($imageData && strlen($imageData) <= 5 * 1024 * 1024) {
+                    // Delete old avatar
+                    if ($profile->getProfilePicturePath()) {
+                        $oldFile = $this->getParameter('kernel.project_dir') . '/public' . $profile->getProfilePicturePath();
+                        if (file_exists($oldFile)) { @unlink($oldFile); }
+                    }
+                    $filename = 'avatar_' . $user->getId() . '_' . time() . '.jpg';
+                    file_put_contents($uploadDir . '/' . $filename, $imageData);
+                    $profile->setProfilePicturePath('/uploads/avatars/' . $filename);
+                }
+            } else {
+                // Fallback: Handle profile picture file upload
+                $pictureFile = $form->get('profilePicture')->getData();
+                if ($pictureFile) {
+                    $newFilename = 'avatar-' . $user->getId() . '-' . uniqid() . '.' . $pictureFile->guessExtension();
+                    try {
+                        $pictureFile->move(
+                            $this->getParameter('kernel.project_dir') . '/public/uploads/avatars',
+                            $newFilename
+                        );
+                        $profile->setProfilePicturePath('/uploads/avatars/' . $newFilename);
+                    } catch (FileException $e) {
+                        $this->addFlash('error', 'Erreur lors du téléchargement de la photo.');
+                    }
                 }
             }
 
