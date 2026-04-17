@@ -1088,6 +1088,28 @@ class AdminDashboardController extends AbstractController
             $profile->setSummary($request->request->get('summary'));
             $yoe = $request->request->get('yearsOfExperience');
             if ($yoe !== null && $yoe !== '') $profile->setYearsOfExperience((int)$yoe);
+
+            // Handle cropped avatar (base64 from Cropper.js)
+            $croppedData = $request->request->get('croppedAvatar', '');
+            if ($croppedData && str_starts_with($croppedData, 'data:image/')) {
+                $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/avatars';
+                if (!is_dir($uploadDir)) { mkdir($uploadDir, 0775, true); }
+                // Decode base64
+                $parts = explode(',', $croppedData, 2);
+                $imageData = base64_decode($parts[1]);
+                if ($imageData && strlen($imageData) <= 5 * 1024 * 1024) {
+                    $filename = 'avatar_' . $user->getId() . '_' . time() . '.jpg';
+                    file_put_contents($uploadDir . '/' . $filename, $imageData);
+                    // Delete old avatar
+                    $oldPath = $profile->getProfilePicturePath();
+                    if ($oldPath) {
+                        $oldFile = $this->getParameter('kernel.project_dir') . '/public' . $oldPath;
+                        if (file_exists($oldFile)) { unlink($oldFile); }
+                    }
+                    $profile->setProfilePicturePath('/uploads/avatars/' . $filename);
+                }
+            }
+
             $em->flush();
             $this->addFlash('success', 'Profil mis à jour avec succès.');
             return $this->redirectToRoute('admin_profile');
@@ -1096,5 +1118,19 @@ class AdminDashboardController extends AbstractController
         return $this->render('back/profile/index.html.twig', [
             'profile' => $profile,
         ]);
+    }
+
+    #[Route('/profile/remove-avatar', name: 'admin_profile_remove_avatar')]
+    public function removeAvatar(EntityManagerInterface $em): Response
+    {
+        $profile = $this->getUser()->getProfile();
+        if ($profile && $profile->getProfilePicturePath()) {
+            $file = $this->getParameter('kernel.project_dir') . '/public' . $profile->getProfilePicturePath();
+            if (file_exists($file)) { unlink($file); }
+            $profile->setProfilePicturePath(null);
+            $em->flush();
+            $this->addFlash('success', 'Photo de profil supprimée.');
+        }
+        return $this->redirectToRoute('admin_profile');
     }
 }
