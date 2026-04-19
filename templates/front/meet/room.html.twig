@@ -113,6 +113,32 @@
             flex: 1;
             width: 100%;
         }
+        .code-console {
+            height: 180px;
+            background: #111111;
+            border-top: 1px solid #333;
+            display: flex; flex-direction: column;
+        }
+        .code-console-header {
+            padding: 6px 12px;
+            background: #1e1e1e;
+            border-bottom: 1px solid #333;
+            font-size: 0.8rem; font-weight: 600; color: #aaa;
+            display: flex; justify-content: space-between;
+        }
+        .code-console-output {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            color: #10b981;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            margin: 0;
+        }
+        .code-console-output.error {
+            color: #ef4444;
+        }
 
         /* ── Sidebar (Chat) ── */
         .sidebar {
@@ -258,15 +284,27 @@
     <div class="code-area">
         <div class="code-header">
             <span><i class="bi bi-code-square me-2"></i> Élévation Technique</span>
-            <select id="languageSelect" class="form-select form-select-sm" style="width: 150px; background: #333; color: white; border: 1px solid #444;">
-                <option value="javascript">JavaScript</option>
-                <option value="python">Python</option>
-                <option value="php">PHP</option>
-                <option value="java">Java</option>
-                <option value="cpp">C++</option>
-            </select>
+            <div class="d-flex align-items-center gap-2">
+                <button id="btnRunCode" class="btn btn-sm btn-success" style="font-weight:600; border-radius:8px; padding:4px 12px">
+                    <i class="bi bi-play-fill"></i> Exécuter
+                </button>
+                <select id="languageSelect" class="form-select form-select-sm" style="width: 150px; background: #333; color: white; border: 1px solid #444;">
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="php">PHP</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                </select>
+            </div>
         </div>
         <div id="editor"></div>
+        <div class="code-console">
+            <div class="code-console-header">
+                <span>Terminal Output</span>
+                <button id="btnClearConsole" class="btn btn-sm text-muted p-0 border-0"><i class="bi bi-trash"></i></button>
+            </div>
+            <pre class="code-console-output" id="consoleOutput">En attente d'exécution...</pre>
+        </div>
     </div>
     {% endif %}
 
@@ -487,6 +525,8 @@
                             window.applyRemoteCodeChange(data);
                         } else if (data.type === "code_lang" && window.applyRemoteLangChange) {
                             window.applyRemoteLangChange(data.language);
+                        } else if (data.type === "code_output" && window.applyRemoteOutput) {
+                            window.applyRemoteOutput(data);
                         }
                     }
                 } catch (e) {}
@@ -818,7 +858,7 @@
             }
         });
 
-        // Process remote changes
+        // Process remote change
         window.applyRemoteCodeChange = function(data) {
             if (data.user !== DISPLAY_NAME) {
                 isApplyingRemoteChange = true;
@@ -836,6 +876,74 @@
                 monaco.editor.setModelLanguage(window.editor.getModel(), language);
             }
         };
+
+        // Console Logic
+        const consoleOutput = document.getElementById('consoleOutput');
+        const btnRunCode = document.getElementById('btnRunCode');
+        const btnClearConsole = document.getElementById('btnClearConsole');
+
+        function setConsoleMessage(msg, isError = false) {
+            consoleOutput.className = isError ? 'code-console-output error' : 'code-console-output';
+            consoleOutput.innerText = msg || '';
+        }
+
+        btnClearConsole.addEventListener('click', () => {
+            setConsoleMessage("En attente d'exécution...");
+        });
+
+        window.applyRemoteOutput = function(data) {
+            if (data.user !== DISPLAY_NAME) {
+                setConsoleMessage("Résultat de " + data.user + " :\n\n" + data.text, data.isError);
+            }
+        };
+
+        btnRunCode.addEventListener('click', async () => {
+            btnRunCode.innerHTML = '<i class="spinner-border spinner-border-sm"></i> Exécution...';
+            btnRunCode.disabled = true;
+            setConsoleMessage("Compilation & Exécution en cours...");
+
+            try {
+                const response = await fetch("{{ path('api_meet_run_code', {id: meet.id}) }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        language: langSelect.value,
+                        code: window.editor.getValue()
+                    })
+                });
+                const result = await response.json();
+                
+                let finalText = "";
+                let isError = false;
+                
+                if (result.error && result.error.trim() !== '') {
+                    finalText = result.error;
+                    isError = true;
+                } else {
+                    finalText = result.output;
+                    if (!finalText || finalText.trim() === '') finalText = "Le programme a été exécuté avec succès mais n'a retourné aucune sortie.";
+                }
+                
+                setConsoleMessage(finalText, isError);
+
+                // Broadcast output to room
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: "code_output",
+                        room: ROOM_ID,
+                        user: DISPLAY_NAME,
+                        text: finalText,
+                        isError: isError
+                    }));
+                }
+                
+            } catch (err) {
+                setConsoleMessage("Une erreur interne est survenue lors de l'exécution.", true);
+            } finally {
+                btnRunCode.innerHTML = '<i class="bi bi-play-fill"></i> Exécuter';
+                btnRunCode.disabled = false;
+            }
+        });
     });
 </script>
 {% endif %}
