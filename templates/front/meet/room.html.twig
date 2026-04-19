@@ -77,6 +77,43 @@
             backdrop-filter: blur(4px);
         }
 
+        /* ── Technical Layout ── */
+        .meet-container.technical-layout {
+            flex-direction: row;
+        }
+        .technical-layout .video-area {
+            flex: 0 0 300px; /* Video sidebar width */
+            grid-template-columns: 1fr;
+            background: #2a2b2e;
+            border-right: 1px solid #3c4043;
+            padding: 10px;
+        }
+        .technical-layout .video-box { 
+            min-height: 200px; /* Smaller videos */
+            max-height: 200px;
+        }
+        .code-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+            overflow: hidden;
+            position: relative;
+        }
+        .code-header {
+            padding: 12px 20px;
+            background: #252526;
+            color: #ccc;
+            border-bottom: 1px solid #333;
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        #editor {
+            flex: 1;
+            width: 100%;
+        }
+
         /* ── Sidebar (Chat) ── */
         .sidebar {
             width: 360px;
@@ -207,7 +244,7 @@
     </div>
 </div>
 
-<div class="meet-container">
+<div class="meet-container {% if meet.meetType == 'TECHNICAL' %}technical-layout{% endif %}">
     <div class="video-area" id="videoArea">
         <!-- Local Video -->
         <div class="video-box" id="localVideoContainer">
@@ -216,6 +253,22 @@
         </div>
         <!-- Remote Videos will be appended here -->
     </div>
+
+    {% if meet.meetType == 'TECHNICAL' %}
+    <div class="code-area">
+        <div class="code-header">
+            <span><i class="bi bi-code-square me-2"></i> Élévation Technique</span>
+            <select id="languageSelect" class="form-select form-select-sm" style="width: 150px; background: #333; color: white; border: 1px solid #444;">
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+                <option value="php">PHP</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+            </select>
+        </div>
+        <div id="editor"></div>
+    </div>
+    {% endif %}
 
     <!-- Sidebar container -->
     <div class="sidebar" id="appSidebar">
@@ -427,8 +480,14 @@
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === "chat" && data.room === ROOM_ID) {
-                        appendMessage(data.user, data.text, false);
+                    if (data.room === ROOM_ID) {
+                        if (data.type === "chat") {
+                            appendMessage(data.user, data.text, false);
+                        } else if (data.type === "code" && window.applyRemoteCodeChange) {
+                            window.applyRemoteCodeChange(data);
+                        } else if (data.type === "code_lang" && window.applyRemoteLangChange) {
+                            window.applyRemoteLangChange(data.language);
+                        }
                     }
                 } catch (e) {}
             };
@@ -717,6 +776,70 @@
     }, 30000);
 
 </script>
+
+{% if meet.meetType == 'TECHNICAL' %}
+<!-- RequireJS for Monaco Editor -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script>
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+        window.editor = monaco.editor.create(document.getElementById('editor'), {
+            value: "// L'éditeur collaboratif est prêt\n// Tapez votre code ici...\n",
+            language: 'javascript',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            minimap: { enabled: false },
+            fontSize: 14
+        });
+
+        // Language toggle sync
+        const langSelect = document.getElementById('languageSelect');
+        langSelect.addEventListener('change', function(e) {
+            monaco.editor.setModelLanguage(window.editor.getModel(), e.target.value);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "code_lang", room: ROOM_ID, language: e.target.value }));
+            }
+        });
+
+        let isApplyingRemoteChange = false;
+
+        // Capture local changes
+        window.editor.onDidChangeModelContent(function(e) {
+            if (isApplyingRemoteChange) return;
+
+            const content = window.editor.getValue();
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ 
+                    type: "code", 
+                    room: ROOM_ID, 
+                    user: DISPLAY_NAME, 
+                    content: content 
+                }));
+            }
+        });
+
+        // Process remote changes
+        window.applyRemoteCodeChange = function(data) {
+            if (data.user !== DISPLAY_NAME) {
+                isApplyingRemoteChange = true;
+                const position = window.editor.getPosition();
+                window.editor.setValue(data.content);
+                window.editor.setPosition(position);
+                isApplyingRemoteChange = false;
+            }
+        };
+
+        // Process remote language change
+        window.applyRemoteLangChange = function(language) {
+            if (langSelect.value !== language) {
+                langSelect.value = language;
+                monaco.editor.setModelLanguage(window.editor.getModel(), language);
+            }
+        };
+    });
+</script>
+{% endif %}
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

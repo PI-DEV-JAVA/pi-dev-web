@@ -42,6 +42,9 @@ class Meet
     #[Assert\NotBlank]
     private ?string $roomId = null;
 
+    #[ORM\Column(name: 'meet_type', length: 50, options: ["default" => "GENERAL"])]
+    private ?string $meetType = 'GENERAL';
+
     public function getId(): ?int
     {
         return $this->id;
@@ -104,6 +107,17 @@ class Meet
     public function setRoomId(?string $roomId): static
     {
         $this->roomId = $roomId;
+        return $this;
+    }
+
+    public function getMeetType(): ?string
+    {
+        return $this->meetType;
+    }
+
+    public function setMeetType(?string $meetType): static
+    {
+        $this->meetType = $meetType;
         return $this;
     }
 }
