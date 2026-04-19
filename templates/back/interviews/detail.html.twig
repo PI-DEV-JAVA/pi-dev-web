@@ -83,6 +83,8 @@
                                             {{ meet.title }}
                                             {% if meet.meetType == 'TECHNICAL' %}
                                                 <span class="badge bg-warning ms-2" style="font-size:0.75rem">Technique</span>
+                                            {% elseif meet.meetType == 'SYSTEM_DESIGN' %}
+                                                <span class="badge bg-info ms-2" style="font-size:0.75rem">System Design</span>
                                             {% endif %}
                                         </h5>
                                         <div class="text-muted"><i class="bi bi-clock me-1"></i> {{ meet.meetDate|date('Y-m-d H:i') }} | <i class="bi bi-geo-alt me-1"></i> {{ meet.roomId }}</div>
@@ -187,6 +189,7 @@
                                                         <select name="meetType" class="form-select">
                                                             <option value="GENERAL" {% if meet.meetType == 'GENERAL' %}selected{% endif %}>Général (Échange en visio classique)</option>
                                                             <option value="TECHNICAL" {% if meet.meetType == 'TECHNICAL' %}selected{% endif %}>Technique (Code en direct via Monaco Editor)</option>
+                                                            <option value="SYSTEM_DESIGN" {% if meet.meetType == 'SYSTEM_DESIGN' %}selected{% endif %}>System Design (Tableau blanc interactif TLDraw)</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -222,6 +225,7 @@
                     <select name="meetType" class="form-select">
                         <option value="GENERAL">Général (Échange en visio classique)</option>
                         <option value="TECHNICAL">Technique (Code en direct via Monaco Editor)</option>
+                        <option value="SYSTEM_DESIGN">System Design (Tableau blanc interactif TLDraw)</option>
                     </select>
                 </div>
                 <div class="mb-3">

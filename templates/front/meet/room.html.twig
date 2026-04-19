@@ -270,7 +270,7 @@
     </div>
 </div>
 
-<div class="meet-container {% if meet.meetType == 'TECHNICAL' %}technical-layout{% endif %}">
+<div class="meet-container {% if meet.meetType in ['TECHNICAL', 'SYSTEM_DESIGN'] %}technical-layout{% endif %}">
     <div class="video-area" id="videoArea">
         <!-- Local Video -->
         <div class="video-box" id="localVideoContainer">
@@ -304,6 +304,18 @@
                 <button id="btnClearConsole" class="btn btn-sm text-muted p-0 border-0"><i class="bi bi-trash"></i></button>
             </div>
             <pre class="code-console-output" id="consoleOutput">En attente d'exécution...</pre>
+        </div>
+    </div>
+    {% elseif meet.meetType == 'SYSTEM_DESIGN' %}
+    <div class="code-area" style="background: #f8f9fa;">
+        <div class="code-header" style="background: #ffffff; color: #333; border-bottom: 1px solid #e0e0e0;">
+            <span><i class="bi bi-diagram-3 me-2"></i> System Design (Excalidraw)</span>
+            <a href="https://excalidraw.com/#room=PI-{{ meet.roomId }}-001,A1b2C3d4E5f6G7h8I9j0-A" target="_blank" class="btn btn-sm btn-outline-primary py-0" title="Ouvrir dans un nouvel onglet">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+        </div>
+        <div style="flex: 1; position: relative;">
+            <iframe src="https://excalidraw.com/#room=PI-{{ meet.roomId }}-001,A1b2C3d4E5f6G7h8I9j0-A" style="position: absolute; width: 100%; height: 100%; border: none;"></iframe>
         </div>
     </div>
     {% endif %}
