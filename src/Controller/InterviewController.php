@@ -8,6 +8,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Process;
 use Symfony\Component\Routing\Annotation\Route;
 
 class InterviewController extends AbstractController
@@ -126,5 +128,88 @@ class InterviewController extends AbstractController
             return $this->json(['success' => true]);
         }
         return $this->json(['error' => 'Invalid data'], 400);
+    }
+
+    #[Route('/api/meets/{id}/run-code', name: 'api_meet_run_code', methods: ['POST'])]
+    public function runCode(Request $request): Response
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+        
+        $data = json_decode($request->getContent(), true);
+        $language = $data['language'] ?? 'javascript';
+        $code = $data['code'] ?? '';
+
+        if (empty($code)) {
+            return $this->json(['output' => '', 'error' => 'Code vide.']);
+        }
+
+        $tempDir = sys_get_temp_dir();
+        $fileName = uniqid('code_');
+        $filePath = $tempDir . '/' . $fileName;
+
+        $process = null;
+        
+        switch ($language) {
+            case 'javascript':
+                $filePath .= '.js';
+                file_put_contents($filePath, $code);
+                $process = new Process(['node', $filePath]);
+                break;
+            case 'python':
+                $filePath .= '.py';
+                file_put_contents($filePath, $code);
+                $process = new Process(['python3', $filePath]);
+                break;
+            case 'php':
+                $filePath .= '.php';
+                file_put_contents($filePath, $code);
+                $process = new Process(['php', $filePath]);
+                break;
+            case 'java':
+                // Java requires class name to match file name. We will extract it or use Main
+                $className = 'Main';
+                if (preg_match('/public\s+class\s+([A-Za-z0-9_]+)/', $code, $matches)) {
+                    $className = $matches[1];
+                }
+                $filePath = $tempDir . '/' . $className . '.java';
+                file_put_contents($filePath, $code);
+                // Compile and run
+                $process = new Process(['sh', '-c', "javac $filePath && java -cp $tempDir $className"]);
+                break;
+            case 'cpp':
+                $filePath .= '.cpp';
+                $outPath = $tempDir . '/' . $fileName . '.out';
+                file_put_contents($filePath, $code);
+                // Compile and run
+                $process = new Process(['sh', '-c', "g++ $filePath -o $outPath && $outPath"]);
+                break;
+            default:
+                return $this->json(['output' => '', 'error' => 'Langage non supporté.']);
+        }
+
+        try {
+            $process->setTimeout(5); // 5 seconds timeout to prevent infinite loops
+            $process->run();
+            
+            $output = $process->getOutput();
+            $error = $process->getErrorOutput();
+        } catch (\Exception $e) {
+            $output = '';
+            $error = $e->getMessage();
+        } finally {
+            // Cleanup
+            @unlink($filePath);
+            if ($language === 'java' && isset($className)) {
+                @unlink($tempDir . '/' . $className . '.class');
+            }
+            if ($language === 'cpp' && isset($outPath)) {
+                @unlink($outPath);
+            }
+        }
+
+        return $this->json([
+            'output' => $output,
+            'error' => $error
+        ]);
     }
 }
