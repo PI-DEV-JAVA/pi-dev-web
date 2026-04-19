@@ -117,6 +117,7 @@ class AdminInterviewController extends AbstractController
         $notes = $request->request->get('notes');
         
         $meet->setTitle($title);
+        $meet->setMeetType($request->request->get('meetType', 'GENERAL'));
         if ($dateStr) {
             $meet->setMeetDate(new \DateTime($dateStr));
         }
@@ -226,6 +227,12 @@ class AdminInterviewController extends AbstractController
         if ($title) {
             $meet->setTitle($title);
         }
+        
+        $meetType = $request->request->get('meetType');
+        if ($meetType) {
+            $meet->setMeetType($meetType);
+        }
+
         if ($dateStr) {
             $meet->setMeetDate(new \DateTime($dateStr));
         }
