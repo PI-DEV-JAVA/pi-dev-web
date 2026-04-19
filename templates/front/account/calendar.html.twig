@@ -1,0 +1,83 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}Mon Calendrier — Talentos{% endblock %}
+
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <h1>Mon Calendrier 📅</h1>
+        <p>Vos entretiens et évènements planifiés</p>
+    </div>
+</div>
+
+<section class="fo-section" style="padding-top:40px; padding-bottom:80px">
+    <div class="container">
+        <div class="fo-card" style="padding: 24px; min-height: 600px;">
+            <div id="calendar"></div>
+        </div>
+    </div>
+</section>
+
+<!-- FullCalendar Integration -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendar');
+        let calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'fr',
+            themeSystem: 'standard',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            buttonText: {
+                today: "Aujourd'hui",
+                month: 'Mois',
+                week: 'Semaine',
+                day: 'Jour',
+                list: 'Liste'
+            },
+            events: "{{ path('api_meets_candidate') }}",
+            eventClick: function(info) {
+                if (info.event.url) {
+                    window.open(info.event.url, '_blank');
+                    info.jsEvent.preventDefault();
+                }
+            }
+        });
+        calendar.render();
+    });
+</script>
+
+<style>
+/* ── Optional FullCalendar Tweaks ── */
+.fc-toolbar-title {
+    font-weight: 700 !important;
+    font-size: 1.4rem !important;
+    color: var(--fo-text) !important;
+}
+.fc-button-primary {
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
+    border-radius: 8px !important;
+    transition: all 0.2s !important;
+}
+.fc-button-primary:hover {
+    background: var(--primary-dark) !important;
+    transform: translateY(-1px);
+}
+.fc-event {
+    border-radius: 6px;
+    padding: 2px 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.fc-daygrid-day-number {
+    color: var(--fo-text-secondary);
+    font-weight: 500;
+}
+</style>
+{% endblock %}
