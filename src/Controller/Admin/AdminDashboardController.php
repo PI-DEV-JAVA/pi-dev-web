@@ -799,4 +799,36 @@ class AdminDashboardController extends AbstractController
 
         return $this->redirectToRoute('admin_offer_applications', ['id' => $offer->getId()]);
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  WORKFLOW PIPELINE AUTOMATIONS (n8n like)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/offers/{id}/workflow', name: 'admin_offer_workflow', requirements: ['id' => '\d+'])]
+    public function offerWorkflow(Offer $offer): Response
+    {
+        if (!$this->isAdmin() && $offer->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        return $this->render('back/offers/workflow.html.twig', [
+            'offer' => $offer,
+        ]);
+    }
+
+    #[Route('/offers/{id}/workflow/save', name: 'admin_offer_workflow_save', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function offerWorkflowSave(Offer $offer, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $offer->getRecruiterId() !== $this->getUser()->getId()) {
+            return $this->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        if (!$data) {
+            return $this->json(['success' => false, 'message' => 'Invalid JSON']);
+        }
+
+        $offer->setWorkflow($data);
+        $em->flush();
+
+        return $this->json(['success' => true]);
+    }
 }

@@ -20,6 +20,7 @@
         <a href="{{ path('admin_interviews') }}" class="bo-btn bo-btn-outline"><i class="bi bi-arrow-left me-2"></i>Retour aux entretiens</a>
         
         <div class="d-flex gap-2">
+            <a href="{{ path('admin_interview_workflow', {'id': interview.id}) }}" class="bo-btn" style="background:#8b5cf6; color:white; border:none;" title="Créer un parcours automatisé sur-mesure pour ce candidat"><i class="bi bi-infinity me-2"></i>Workflow Sur-Mesure</a>
             <button class="bo-btn bo-btn-primary" data-bs-toggle="modal" data-bs-target="#editInterviewModal"><i class="bi bi-pencil me-2"></i>Modifier l'Entretien</button>
             <form method="post" action="{{ path('admin_interview_delete', {'id': interview.id}) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet entretien et toute la série de meets associés ?');">
                 <input type="hidden" name="_token" value="{{ csrf_token('delete_interview_' ~ interview.id) }}">
