@@ -103,6 +103,13 @@ class InterviewController extends AbstractController
         return $this->json($events);
     }
 
+    #[Route('/account/calendar', name: 'app_candidate_calendar')]
+    public function candidateCalendarView(): Response
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+        return $this->render('front/account/calendar.html.twig');
+    }
+
     #[Route('/api/meets/{id}/notes', name: 'api_meet_save_notes', methods: ['POST'])]
     public function saveNotes(Meet $meet, Request $request, EntityManagerInterface $em): Response
     {
