@@ -59,6 +59,9 @@ class Offer
     #[ORM\Column(name: 'recruiter_id')]
     private ?int $recruiterId = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $workflow = null;
+
     #[ORM\OneToMany(mappedBy: 'offer', targetEntity: Application::class)]
     private Collection $applications;
 
@@ -209,6 +212,16 @@ class Offer
     public function setRecruiterId(?int $recruiterId): static
     {
         $this->recruiterId = $recruiterId;
+        return $this;
+    }
+
+    public function getWorkflow(): ?array
+    {
+        return $this->workflow;
+    }
+    public function setWorkflow(?array $workflow): static
+    {
+        $this->workflow = $workflow;
         return $this;
     }
 

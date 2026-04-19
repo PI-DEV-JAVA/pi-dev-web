@@ -21,6 +21,7 @@
                     <td><span class="bo-badge bo-badge-success">{{ offer.status ?: 'Active' }}</span></td>
                     <td>
                         <a href="{{ path('admin_offer_applications', {id: offer.id}) }}" class="bo-action-btn" title="Candidatures"><i class="bi bi-people"></i></a>
+                        <a href="{{ path('admin_offer_workflow', {id: offer.id}) }}" class="bo-action-btn" title="Automatisation Automator"><i class="bi bi-infinity"></i></a>
                         <a href="{{ path('admin_offer_edit', {id: offer.id}) }}" class="bo-action-btn" title="Modifier"><i class="bi bi-pencil"></i></a>
                         <a href="{{ path('admin_offer_delete', {id: offer.id}) }}" class="bo-action-btn danger" title="Supprimer" onclick="return confirm('Supprimer cette offre ?')"><i class="bi bi-trash"></i></a>
                     </td>

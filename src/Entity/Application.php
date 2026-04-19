@@ -57,6 +57,9 @@ class Application
     #[ORM\Column(name: 'response_date', type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $responseDate = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $workflow = null;
+
     public function __construct()
     {
         $this->applicationDate = new \DateTime();
@@ -194,6 +197,16 @@ class Application
     public function setResponseDate(?\DateTimeInterface $responseDate): static
     {
         $this->responseDate = $responseDate;
+        return $this;
+    }
+
+    public function getWorkflow(): ?array
+    {
+        return $this->workflow;
+    }
+    public function setWorkflow(?array $workflow): static
+    {
+        $this->workflow = $workflow;
         return $this;
     }
 }
