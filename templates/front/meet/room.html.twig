@@ -242,6 +242,29 @@
         .ctrl-btn.leave:hover { filter: brightness(0.9); }
         
         .side-controls { display: flex; gap: 12px; width: 250px; justify-content: flex-end;}
+
+        /* ── Subtitle Overlay ── */
+        .subtitle-overlay {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            max-width: 80%;
+            text-align: center;
+            display: none;
+            z-index: 500;
+            backdrop-filter: blur(4px);
+        }
+        .subtitle-user {
+            font-weight: 600;
+            color: #90caf9;
+            margin-right: 8px;
+        }
         
         #inviteLinkToast {
             position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
@@ -320,6 +343,11 @@
     </div>
     {% endif %}
 
+    <!-- Subtitles Overlay -->
+    <div class="subtitle-overlay" id="subtitleOverlay">
+        <span class="subtitle-user" id="subtitleUser"></span><span id="subtitleText"></span>
+    </div>
+
     <!-- Sidebar container -->
     <div class="sidebar" id="appSidebar">
         <div class="sidebar-header">
@@ -360,6 +388,7 @@
     <div class="controls">
         <button class="ctrl-btn" id="btnMic" onclick="toggleMic()" title="Désactiver le micro"><i class="bi bi-mic-fill"></i></button>
         <button class="ctrl-btn" id="btnCam" onclick="toggleCam()" title="Désactiver la caméra"><i class="bi bi-camera-video-fill"></i></button>
+        <button class="ctrl-btn" id="btnCc" onclick="toggleCc()" title="Activer le sous-titrage automatique (Transcription)"><i class="bi bi-badge-cc"></i></button>
         <button class="ctrl-btn leave" onclick="leaveRoom()"><i class="bi bi-telephone-x-fill"></i> Quitter</button>
     </div>
     
@@ -539,6 +568,8 @@
                             window.applyRemoteLangChange(data.language);
                         } else if (data.type === "code_output" && window.applyRemoteOutput) {
                             window.applyRemoteOutput(data);
+                        } else if (data.type === "cc") {
+                            showSubtitle(data.user, data.text);
                         }
                     }
                 } catch (e) {}
@@ -826,6 +857,71 @@
             reqJanus(`/${sessionId}`, { janus: "keepalive", transaction: txn() });
         }
     }, 30000);
+
+    // --- Subtitles Logic ---
+    let recognition = null;
+    let ccEnabled = false;
+    let subtitleTimeout;
+
+    function showSubtitle(user, text) {
+        const overlay = document.getElementById('subtitleOverlay');
+        document.getElementById('subtitleUser').innerText = user + ": ";
+        document.getElementById('subtitleText').innerText = text;
+        overlay.style.display = 'block';
+        
+        clearTimeout(subtitleTimeout);
+        subtitleTimeout = setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 4000);
+    }
+
+    function hideSubtitle() {
+        document.getElementById('subtitleOverlay').style.display = 'none';
+    }
+
+    function toggleCc() {
+        if (!ccEnabled) {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("Votre navigateur ne supporte pas la reconnaissance vocale en temps réel (Utilisez Chrome, Edge ou Safari).");
+                return;
+            }
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRec();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'fr-FR';
+
+            recognition.onresult = function(event) {
+                let text = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    text += event.results[i][0].transcript;
+                }
+                if (text.trim()) {
+                    showSubtitle(DISPLAY_NAME, text);
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: "cc", room: ROOM_ID, user: DISPLAY_NAME, text: text }));
+                    }
+                }
+            };
+            
+            recognition.onend = function() {
+                // Auto restart if cc is still enabled (to keep continuous listening active over long pauses)
+                if (ccEnabled) recognition.start();
+            };
+
+            recognition.start();
+            ccEnabled = true;
+            document.getElementById('btnCc').style.background = '#1a73e8';
+        } else {
+            ccEnabled = false;
+            if (recognition) {
+                recognition.onend = null;
+                recognition.stop();
+            }
+            document.getElementById('btnCc').style.background = 'var(--btn-bg)';
+            hideSubtitle();
+        }
+    }
 
 </script>
 
