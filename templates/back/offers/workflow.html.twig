@@ -1,0 +1,233 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}
+    {% if application is defined %}
+        Workflow Sur-Mesure : {{ application.user.email }}
+    {% else %}
+        Générateur d'Automatisations : {{ offer.title }}
+    {% endif %}
+{% endblock %}
+
+{% block base_stylesheets %}
+{{ parent() }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.css">
+<style>
+  .wrapper {
+      width: 100%;
+      height: calc(100vh - 160px);
+      display: flex;
+      border: 1px solid var(--bo-border);
+      border-radius: 12px;
+      overflow: hidden;
+  }
+  .col-right {
+      flex: 1;
+      height: 100%;
+      background: var(--bo-bg-card);
+      position: relative;
+  }
+  .col-left {
+      width: 280px;
+      background: var(--bo-bg-input);
+      border-right: 1px solid var(--bo-border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+  }
+  #drawflow {
+      width: 100%;
+      height: 100%;
+      background-size: 20px 20px;
+      background-image: radial-gradient(var(--bo-border) 1px, transparent 1px);
+  }
+  .drag-drawflow {
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--bo-border);
+      border-radius: 8px;
+      cursor: grab;
+      font-size: 0.85rem;
+      user-select: none;
+      transition: all 0.2s;
+  }
+  .drag-drawflow:hover { background: rgba(79,70,229,0.2); border-color: var(--primary); }
+  
+  /* Drawflow Node Customization */
+  .drawflow .drawflow-node {
+      background: var(--bo-bg-card);
+      border: 1px solid var(--bo-border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      border-radius: 8px;
+      color: var(--bo-text);
+  }
+  .drawflow .drawflow-node .title-box {
+      font-weight: 600; font-size: 0.85rem;
+      padding: 10px; border-bottom: 1px solid var(--bo-border);
+      background: rgba(255,255,255,0.02); border-radius: 8px 8px 0 0;
+  }
+  .drawflow .drawflow-node .box {
+      padding: 10px;
+      font-size: 0.8rem;
+  }
+  .drawflow .connection .main-path {
+      stroke: var(--primary); stroke-width: 3px;
+  }
+  .drawflow .drawflow-node.selected { border: 2px solid var(--primary); box-shadow: 0 0 15px rgba(79,70,229,0.4); }
+
+  /* Input fields inside nodes */
+  .df-input, .df-select {
+      width: 100%; padding: 4px; margin-top: 4px;
+      background: var(--bo-bg-input); border: 1px solid var(--bo-border);
+      color: white; border-radius: 4px; font-size: 0.75rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h5 class="mb-0">Workflow Automatisé</h5>
+        {% if application is defined %}
+            <small class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i> Ce flux s'appliquera **exclusivement** au candidat {{ application.user.email }}, écrasant les règles de l'offre.</small>
+        {% else %}
+            <small class="text-muted">Définissez la suite logique du recrutement conditionné par les entretiens pour tous les candidats de cette offre.</small>
+        {% endif %}
+    </div>
+    <button class="bo-btn bo-btn-primary" onclick="saveWorkflow()"><i class="bi bi-save me-1"></i> Sauvegarder Workflow</button>
+</div>
+
+<div class="wrapper">
+    <div class="col-left">
+        <h6 style="font-size:0.8rem;text-transform:uppercase;color:var(--bo-text-secondary)">Déclencheurs</h6>
+        <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="trigger-meet-graded"><i class="bi bi-play-circle me-2 text-success"></i>Meet Évalué (Noté)</div>
+        
+        <h6 style="font-size:0.8rem;text-transform:uppercase;color:var(--bo-text-secondary);margin-top:10px">Conditions</h6>
+        <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="condition-grade"><i class="bi bi-signpost-split me-2 text-warning"></i>Si Note...</div>
+        
+        <h6 style="font-size:0.8rem;text-transform:uppercase;color:var(--bo-text-secondary);margin-top:10px">Actions</h6>
+        <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="action-schedule-meet"><i class="bi bi-calendar-plus me-2 text-info"></i>Programmer un Meet</div>
+        <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="action-accept-interview"><i class="bi bi-check-circle me-2 text-success"></i>Accepter Candidat</div>
+        <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="action-reject-interview"><i class="bi bi-x-circle me-2 text-danger"></i>Refuser Candidat</div>
+        
+        <div class="mt-auto text-center p-3" style="font-size:0.75rem;color:var(--bo-text-secondary)">
+            Appuyez sur <kbd>Suppr</kbd> pour effacer un nœud ou lien sélectionné.
+        </div>
+    </div>
+    <div class="col-right">
+        <div id="drawflow" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.js"></script>
+<script>
+    var id = document.getElementById("drawflow");
+    var editor = new Drawflow(id);
+    editor.reroute = true;
+    editor.start();
+
+    {% if application is defined %}
+        const existingData = {{ application.workflow ? application.workflow|json_encode|raw : 'null' }};
+        const saveUrl = '{{ path("admin_interview_workflow_save", {id: interview.id}) }}';
+    {% else %}
+        const existingData = {{ offer.workflow ? offer.workflow|json_encode|raw : 'null' }};
+        const saveUrl = '{{ path("admin_offer_workflow_save", {id: offer.id}) }}';
+    {% endif %}
+
+    if (existingData) {
+        editor.import(existingData);
+    }
+
+    function allowDrop(ev) {
+      ev.preventDefault();
+    }
+
+    function drag(ev) {
+      if (ev.type === "touchstart") {
+        mobile_item_selec = ev.target.closest(".drag-drawflow").getAttribute('data-node');
+      } else {
+        ev.dataTransfer.setData("node", ev.target.getAttribute('data-node'));
+      }
+    }
+
+    function drop(ev) {
+      if (ev.type === "touchend") {
+        var parentdrawflow = document.elementFromPoint(mobile_last_move.touches[0].clientX, mobile_last_move.touches[0].clientY).closest("#drawflow");
+        if (parentdrawflow != null) addNodeToDrawFlow(mobile_item_selec, mobile_last_move.touches[0].clientX, mobile_last_move.touches[0].clientY);
+      } else {
+        ev.preventDefault();
+        var data = ev.dataTransfer.getData("node");
+        addNodeToDrawFlow(data, ev.clientX, ev.clientY);
+      }
+    }
+
+    function addNodeToDrawFlow(name, pos_x, pos_y) {
+      if(editor.editor_mode === 'fixed') return;
+      
+      pos_x = pos_x * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)) - (editor.precanvas.getBoundingClientRect().x * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)));
+      pos_y = pos_y * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)) - (editor.precanvas.getBoundingClientRect().y * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)));
+
+      switch (name) {
+        case 'trigger-meet-graded':
+          editor.addNode('trigger-meet-graded', 0, 1, pos_x, pos_y, 'trigger', {}, `
+            <div class="title-box"><i class="bi bi-play-circle text-success me-1"></i> Meet Évalué</div>
+            <div class="box text-muted">Exécuté quand une note est attribuée</div>
+          `);
+          break;
+          
+        case 'condition-grade':
+          editor.addNode('condition-grade', 1, 2, pos_x, pos_y, 'condition', { operator: '>', threshold: 10 }, `
+            <div class="title-box"><i class="bi bi-signpost-split text-warning me-1"></i> Si Note...</div>
+            <div class="box">
+              <select df-operator class="df-select"><option value=">">&gt;</option><option value=">=">&gt;=</option><option value="<">&lt;</option><option value="<=">&lt;=</option></select>
+              <input type="number" df-threshold class="df-input" value="10">
+              <div class="mt-2 text-muted" style="font-size:10px">Sortie 1: Vrai (Haut) <br> Sortie 2: Faux (Bas)</div>
+            </div>
+          `);
+          break;
+          
+        case 'action-schedule-meet':
+          editor.addNode('action-schedule-meet', 1, 1, pos_x, pos_y, 'action', { meetType: 'TECHNICAL' }, `
+            <div class="title-box"><i class="bi bi-calendar-plus text-info me-1"></i> Inviter Meet</div>
+            <div class="box">
+              <select df-meetType class="df-select">
+                <option value="GENERAL">Général</option><option value="TECHNICAL">Technique</option><option value="SYSTEM_DESIGN">System Design</option>
+              </select>
+            </div>
+          `);
+          break;
+          
+        case 'action-accept-interview':
+          editor.addNode('action-accept-interview', 1, 0, pos_x, pos_y, 'action', {}, `
+            <div class="title-box"><i class="bi bi-check-circle text-success me-1"></i> Accepter</div>
+            <div class="box text-muted">Marque le processus comme embauche (Succès)</div>
+          `);
+          break;
+
+        case 'action-reject-interview':
+          editor.addNode('action-reject-interview', 1, 0, pos_x, pos_y, 'action', {}, `
+            <div class="title-box"><i class="bi bi-x-circle text-danger me-1"></i> Refuser</div>
+            <div class="box text-muted">Rejette le candidat définitivement</div>
+          `);
+          break;
+      }
+    }
+
+    function saveWorkflow() {
+        const data = editor.export();
+        fetch(saveUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(res => {
+            if(res.success) {
+                alert("Workflow sauvegardé avec succès !");
+            } else {
+                alert("Erreur: " + res.message);
+            }
+        });
+    }
+</script>
+{% endblock %}
