@@ -142,7 +142,7 @@ class AdminInterviewController extends AbstractController
     }
 
     #[Route('/meets/{id}/grade', name: 'admin_interview_meet_grade', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function meetGrade(Meet $meet, Request $request, EntityManagerInterface $em, ValidatorInterface $validator): Response
+    public function meetGrade(Meet $meet, Request $request, EntityManagerInterface $em, ValidatorInterface $validator, \App\Service\WorkflowEngine $workflowEngine): Response
     {
         $interview = $meet->getInterview();
         if (!$this->isAdmin() && $interview->getApplication()->getOffer()->getRecruiterId() !== $this->getUser()->getId()) {
@@ -167,6 +167,9 @@ class AdminInterviewController extends AbstractController
         } else {
             $em->flush();
             $this->addFlash('success', 'Meet mis à jour avec succès.');
+            
+            // Execute Automation Workflow
+            $workflowEngine->processMeetGraded($meet);
         }
 
         return $this->redirectToRoute('admin_interview_detail', ['id' => $interview->getId()]);
@@ -274,5 +277,40 @@ class AdminInterviewController extends AbstractController
         }
 
         return $this->redirectToRoute('admin_interview_detail', ['id' => $interview->getId()]);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  WORKFLOW PIPELINE AUTOMATIONS (CANDIDATE)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/{id}/workflow', name: 'admin_interview_workflow', requirements: ['id' => '\d+'])]
+    public function applicationWorkflow(Interview $interview): Response
+    {
+        if (!$this->isAdmin() && $interview->getApplication()->getOffer()->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        return $this->render('back/offers/workflow.html.twig', [
+            'offer' => $interview->getApplication()->getOffer(),
+            'application' => $interview->getApplication(),
+            'interview' => $interview
+        ]);
+    }
+
+    #[Route('/{id}/workflow/save', name: 'admin_interview_workflow_save', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function applicationWorkflowSave(Interview $interview, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $interview->getApplication()->getOffer()->getRecruiterId() !== $this->getUser()->getId()) {
+            return $this->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        if (!$data) {
+            return $this->json(['success' => false, 'message' => 'Invalid JSON']);
+        }
+
+        $interview->getApplication()->setWorkflow($data);
+        $em->flush();
+
+        return $this->json(['success' => true]);
     }
 }
