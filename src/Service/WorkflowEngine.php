@@ -44,7 +44,28 @@ class WorkflowEngine
         }
     }
 
-    private function walk(array $nodes, $currentNodeId, Meet $meet, Interview $interview, Application $application, $candidate)
+    public function processApplicationCreated(Application $application)
+    {
+        $offer = $application->getOffer();
+        if (!$offer) return;
+        
+        $candidate = $application->getUser();
+
+        $workflowConfig = $application->getWorkflow() ?? $offer->getWorkflow();
+        if (!$workflowConfig || !isset($workflowConfig['drawflow']['Home']['data'])) {
+            return;
+        }
+
+        $nodes = $workflowConfig['drawflow']['Home']['data'];
+        
+        // Find trigger nodes
+        $triggerNodes = array_filter($nodes, fn($n) => $n['name'] === 'trigger-application-created');
+        foreach ($triggerNodes as $nodeId => $nodeData) {
+            $this->walk($nodes, $nodeId, null, null, $application, $candidate);
+        }
+    }
+
+    private function walk(array $nodes, $currentNodeId, ?Meet $meet, ?Interview $interview, Application $application, $candidate)
     {
         if (!isset($nodes[$currentNodeId])) return;
         $node = $nodes[$currentNodeId];
@@ -52,7 +73,7 @@ class WorkflowEngine
 
         $proceedToOptions = [];
 
-        if ($node['name'] === 'trigger-meet-graded') {
+        if ($node['name'] === 'trigger-meet-graded' || $node['name'] === 'trigger-application-created') {
             // Unconditionally proceed to output_1
             if (!empty($outputs['output_1']['connections'])) {
                 foreach ($outputs['output_1']['connections'] as $conn) {
@@ -62,7 +83,7 @@ class WorkflowEngine
         } elseif ($node['name'] === 'condition-grade') {
             $threshold = (float)($node['data']['threshold'] ?? 10);
             $operator = $node['data']['operator'] ?? '>';
-            $grade = $meet->getGrade() ?? 0;
+            $grade = $meet ? ($meet->getGrade() ?? 0) : 0;
             
             $conditionMet = false;
             if ($operator === '>' && $grade > $threshold) $conditionMet = true;
@@ -80,6 +101,18 @@ class WorkflowEngine
             $meetType = $node['data']['meetType'] ?? 'TECHNICAL';
             $title = $node['data']['title'] ?? 'Entretien (' . $meetType . ')';
             
+            if (!$interview) {
+                $interview = $this->em->getRepository(Interview::class)->findOneBy(['application' => $application]);
+                if (!$interview) {
+                    $interview = new Interview();
+                    $interview->setApplication($application);
+                    $interview->setInterviewDate(new \DateTime('+1 day'));
+                    $interview->setStatus('SCHEDULED');
+                    $this->em->persist($interview);
+                }
+                $application->setStatus('En cours');
+            }
+
             // Generate a secondary Meet ONLY IF one of the same type doesn't exist to prevent infinite loops manually
             $existing = $this->em->getRepository(Meet::class)->findOneBy(['interview' => $interview, 'meetType' => $meetType]);
             if(!$existing) {
@@ -108,14 +141,14 @@ class WorkflowEngine
                 }
             }
         } elseif ($node['name'] === 'action-accept-interview') {
-             $interview->setStatus('COMPLETED');
+             if ($interview) { $interview->setStatus('COMPLETED'); }
              $application->setStatus('Acceptée');
              $this->em->flush();
 
              $ns = new NotificationService($this->em);
              $ns->notify($candidate, 'OFFER_DECISION', '✅ Félicitations', 'Votre candidature a été définitivement acceptée pour l\'offre : ' . $application->getOffer()->getTitle(), '/account/applications');
         } elseif ($node['name'] === 'action-reject-interview') {
-             $interview->setStatus('CANCELLED');
+             if ($interview) { $interview->setStatus('CANCELLED'); }
              $application->setStatus('Refusée');
              $this->em->flush();
 
