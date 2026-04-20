@@ -16,6 +16,8 @@ use App\Entity\Question;
 use App\Entity\Quiz;
 use App\Entity\Seance;
 use App\Entity\SupportTicket;
+use App\Entity\Sync;
+use App\Entity\SyncMessage;
 use App\Entity\TicketReply;
 use App\Entity\User;
 use App\Service\NotificationService;
@@ -1132,5 +1134,158 @@ class AdminDashboardController extends AbstractController
             $this->addFlash('success', 'Photo de profil supprimée.');
         }
         return $this->redirectToRoute('admin_profile');
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  USER PROFILE (Admin view)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/user-profile/{id}', name: 'admin_user_profile', requirements: ['id' => '\d+'])]
+    public function userProfile(int $id, EntityManagerInterface $em): Response
+    {
+        $target = $em->getRepository(User::class)->find($id);
+        if (!$target) { throw $this->createNotFoundException(); }
+
+        // Get their applications
+        $applications = $em->getRepository(Application::class)->findBy(
+            ['user' => $target], ['applicationDate' => 'DESC']
+        );
+
+        return $this->render('back/user_profile.html.twig', [
+            'targetUser' => $target,
+            'applications' => $applications,
+        ]);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  HR → CANDIDATE MESSAGING
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/message-candidate/{id}', name: 'admin_message_candidate', requirements: ['id' => '\d+'])]
+    public function messageCandidate(int $id, EntityManagerInterface $em): Response
+    {
+        $hr = $this->getUser();
+        $candidate = $em->getRepository(User::class)->find($id);
+        if (!$candidate) { throw $this->createNotFoundException(); }
+
+        // Check if HR has access to this candidate (they applied to one of HR's offers)
+        if (!$this->isAdmin()) {
+            $hasAccess = $em->createQueryBuilder()
+                ->select('COUNT(a.id)')
+                ->from(Application::class, 'a')
+                ->join('a.offer', 'o')
+                ->where('a.user = :candidate AND o.recruiterId = :hrId')
+                ->setParameter('candidate', $candidate)
+                ->setParameter('hrId', $hr->getId())
+                ->getQuery()->getSingleScalarResult();
+            if ($hasAccess == 0) {
+                throw $this->createAccessDeniedException('Ce candidat n\'a pas postulé à vos offres.');
+            }
+        }
+
+        // Find or create a sync between HR and candidate
+        $sync = $em->getRepository(Sync::class)->createQueryBuilder('s')
+            ->where('(s.sender = :a AND s.receiver = :b) OR (s.sender = :b AND s.receiver = :a)')
+            ->setParameter('a', $hr)->setParameter('b', $candidate)
+            ->getQuery()->getOneOrNullResult();
+
+        if (!$sync) {
+            $sync = new Sync();
+            $sync->setSender($hr);
+            $sync->setReceiver($candidate);
+            $sync->setReason('HIRE');
+            $sync->setStatus('ACCEPTED');
+            $sync->setAcceptedAt(new \DateTime());
+            $em->persist($sync);
+            $em->flush();
+        } elseif ($sync->getStatus() !== 'ACCEPTED') {
+            $sync->setStatus('ACCEPTED');
+            $sync->setAcceptedAt(new \DateTime());
+            $em->flush();
+        }
+
+        // Load messages and render back-office chat
+        $messages = $em->getRepository(SyncMessage::class)->findBy(
+            ['sync' => $sync], ['createdAt' => 'ASC']
+        );
+
+        // Mark incoming messages as read
+        $em->createQueryBuilder()
+            ->update(SyncMessage::class, 'sm')
+            ->set('sm.isRead', 'true')
+            ->where('sm.sync = :sync AND sm.sender != :me AND sm.isRead = false')
+            ->setParameter('sync', $sync)
+            ->setParameter('me', $hr)
+            ->getQuery()->execute();
+
+        return $this->render('back/hr_chat.html.twig', [
+            'sync' => $sync,
+            'otherUser' => $candidate,
+            'messages' => $messages,
+        ]);
+    }
+
+    #[Route('/my-candidates/messages', name: 'admin_hr_messages')]
+    public function hrMessages(EntityManagerInterface $em): Response
+    {
+        $hr = $this->getUser();
+
+        // Get all candidates who applied to HR's offers
+        if ($this->isAdmin()) {
+            $candidateIds = $em->createQueryBuilder()
+                ->select('DISTINCT IDENTITY(a.user)')
+                ->from(Application::class, 'a')
+                ->getQuery()->getSingleColumnResult();
+        } else {
+            $candidateIds = $em->createQueryBuilder()
+                ->select('DISTINCT IDENTITY(a.user)')
+                ->from(Application::class, 'a')
+                ->join('a.offer', 'o')
+                ->where('o.recruiterId = :hrId')
+                ->setParameter('hrId', $hr->getId())
+                ->getQuery()->getSingleColumnResult();
+        }
+
+        // Get syncs with these candidates
+        $conversations = [];
+        if ($candidateIds) {
+            $syncs = $em->getRepository(Sync::class)->createQueryBuilder('s')
+                ->where('(s.sender = :hr AND s.receiver IN (:ids)) OR (s.receiver = :hr AND s.sender IN (:ids))')
+                ->andWhere('s.status = :accepted')
+                ->setParameter('hr', $hr)
+                ->setParameter('ids', $candidateIds)
+                ->setParameter('accepted', 'ACCEPTED')
+                ->getQuery()->getResult();
+
+            foreach ($syncs as $sync) {
+                $other = $sync->getOtherUser($hr);
+                if (!$other) continue;
+                $lastMsg = $em->getRepository(SyncMessage::class)->findOneBy(
+                    ['sync' => $sync], ['createdAt' => 'DESC']
+                );
+                $unread = $em->getRepository(SyncMessage::class)->count([
+                    'sync' => $sync, 'sender' => $other, 'isRead' => false
+                ]);
+                $conversations[] = [
+                    'sync' => $sync,
+                    'user' => $other,
+                    'lastMessage' => $lastMsg,
+                    'unread' => $unread,
+                ];
+            }
+        }
+
+        // Candidates without a conversation yet
+        $existingSyncCandidateIds = array_map(fn($c) => $c['user']->getId(), $conversations);
+        $newCandidates = [];
+        if ($candidateIds) {
+            $remaining = array_diff($candidateIds, $existingSyncCandidateIds);
+            if ($remaining) {
+                $newCandidates = $em->getRepository(User::class)->findBy(['id' => $remaining]);
+            }
+        }
+
+        return $this->render('back/hr_messages.html.twig', [
+            'conversations' => $conversations,
+            'newCandidates' => $newCandidates,
+        ]);
     }
 }

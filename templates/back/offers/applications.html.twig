@@ -156,6 +156,11 @@
                     <button type="submit" name="status" value="Acceptée" class="decision-btn" style="background:rgba(16,185,129,0.15);color:#34d399"><i class="bi bi-check-lg me-1"></i>Accepter</button>
                     <button type="submit" name="status" value="Refusée" class="decision-btn" style="background:rgba(239,68,68,0.15);color:#f87171"><i class="bi bi-x-lg me-1"></i>Refuser</button>
                 </form>
+                {% if app.user %}
+                <a href="{{ path('admin_message_candidate', {id: app.user.id}) }}" class="decision-btn" style="background:linear-gradient(135deg,rgba(79,70,229,0.15),rgba(6,182,212,0.1));color:var(--primary-light);text-decoration:none;white-space:nowrap">
+                    <i class="bi bi-chat-dots-fill me-1"></i>Message
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>

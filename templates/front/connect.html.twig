@@ -1,0 +1,279 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}{{ 'connect.page_title'|trans }} — Talentos{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .connect-hero {
+        background: linear-gradient(160deg, #eef2ff 0%, #f0f9ff 50%, #faf5ff 100%);
+        padding: 48px 0 32px; text-align: center;
+    }
+    .connect-tabs {
+        display: flex; gap: 8px; background: rgba(255,255,255,0.7);
+        border-radius: 14px; padding: 6px; border: 1px solid var(--fo-border);
+        backdrop-filter: blur(8px); display: inline-flex;
+    }
+    .connect-tab {
+        padding: 10px 20px; border-radius: 10px; font-weight: 600;
+        font-size: 0.85rem; color: var(--fo-text-secondary);
+        text-decoration: none; transition: all 0.2s; position: relative;
+    }
+    .connect-tab:hover { color: var(--primary); }
+    .connect-tab.active {
+        background: var(--primary); color: white;
+        box-shadow: 0 2px 8px rgba(79,70,229,0.25);
+    }
+    .connect-tab .badge-count {
+        position: absolute; top: -4px; right: -4px; width: 20px; height: 20px;
+        border-radius: 50%; background: #ef4444; color: white; font-size: 0.65rem;
+        display: flex; align-items: center; justify-content: center; font-weight: 700;
+    }
+    .search-box {
+        max-width: 480px; margin: 20px auto 0; position: relative;
+    }
+    .search-box input {
+        width: 100%; padding: 14px 20px 14px 48px; border-radius: 14px;
+        border: 1.5px solid var(--fo-border); font-size: 0.95rem;
+        background: white; transition: all 0.2s;
+    }
+    .search-box input:focus {
+        outline: none; border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(79,70,229,0.1);
+    }
+    .search-box i {
+        position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+        color: var(--fo-text-secondary); font-size: 1.1rem;
+    }
+
+    .people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+
+    .person-card {
+        background: white; border: 1px solid var(--fo-border); border-radius: 16px;
+        padding: 24px; text-align: center; transition: all 0.3s; position: relative;
+    }
+    .person-card:hover {
+        transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+        border-color: rgba(79,70,229,0.2);
+    }
+    .person-avatar {
+        width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 1.4rem; color: white;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        border: 3px solid white; box-shadow: 0 4px 14px rgba(79,70,229,0.2);
+        overflow: hidden;
+    }
+    .person-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .person-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; }
+    .person-title { font-size: 0.8rem; color: var(--fo-text-secondary); margin-bottom: 4px; }
+    .person-location { font-size: 0.75rem; color: var(--fo-text-secondary); }
+    .person-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: center; }
+
+    .btn-connect {
+        padding: 8px 20px; border-radius: 10px; font-weight: 600; font-size: 0.8rem;
+        border: 1.5px solid var(--primary); color: var(--primary);
+        background: transparent; cursor: pointer; transition: all 0.2s;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-connect:hover { background: var(--primary); color: white; }
+    .btn-connect.pending { border-color: #94a3b8; color: #94a3b8; pointer-events: none; }
+    .btn-connect.connected { border-color: #10b981; color: #10b981; pointer-events: none; }
+    .btn-msg {
+        padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--fo-border);
+        color: var(--fo-text-secondary); background: transparent; cursor: pointer;
+        transition: all 0.2s; text-decoration: none; font-size: 0.85rem;
+    }
+    .btn-msg:hover { border-color: var(--primary); color: var(--primary); }
+
+    .request-banner {
+        background: linear-gradient(135deg, rgba(79,70,229,0.05), rgba(6,182,212,0.05));
+        border: 1px solid rgba(79,70,229,0.15); border-radius: 16px;
+        padding: 20px; margin-bottom: 24px;
+    }
+    .request-item {
+        display: flex; align-items: center; gap: 14px; padding: 12px 0;
+        border-bottom: 1px solid var(--fo-border);
+    }
+    .request-item:last-child { border-bottom: none; }
+    .btn-accept {
+        padding: 6px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem;
+        background: var(--primary); color: white; border: none; cursor: pointer;
+    }
+    .btn-decline {
+        padding: 6px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem;
+        background: transparent; color: var(--fo-text-secondary); border: 1px solid var(--fo-border);
+        cursor: pointer;
+    }
+    .empty-state {
+        text-align: center; padding: 60px 20px; color: var(--fo-text-secondary);
+    }
+    .empty-state i { font-size: 3rem; opacity: 0.3; display: block; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="connect-hero">
+    <div class="container">
+        <h1 style="font-size:2rem;font-weight:800;margin-bottom:8px">{{ 'connect.hero_title'|trans }}</h1>
+        <p style="color:var(--fo-text-secondary);font-size:1rem;margin-bottom:20px">{{ 'connect.hero_subtitle'|trans }}</p>
+
+        <div class="connect-tabs">
+            <a href="{{ path('app_connect', {tab: 'discover', q: search}) }}" class="connect-tab {{ tab == 'discover' ? 'active' : '' }}">
+                <i class="bi bi-compass me-1"></i> {{ 'connect.tab_discover'|trans }}
+            </a>
+            <a href="{{ path('app_connect', {tab: 'connections'}) }}" class="connect-tab {{ tab == 'connections' ? 'active' : '' }}">
+                <i class="bi bi-people me-1"></i> {{ 'connect.tab_connections'|trans }} ({{ connections|length }})
+            </a>
+            <a href="{{ path('app_connect', {tab: 'requests'}) }}" class="connect-tab {{ tab == 'requests' ? 'active' : '' }}">
+                <i class="bi bi-person-plus me-1"></i> {{ 'connect.tab_requests'|trans }}
+                {% if pendingReceived|length > 0 %}<span class="badge-count">{{ pendingReceived|length }}</span>{% endif %}
+            </a>
+        </div>
+
+        {% if tab == 'discover' %}
+        <form method="get" action="{{ path('app_connect') }}" class="search-box">
+            <input type="hidden" name="tab" value="discover">
+            <i class="bi bi-search"></i>
+            <input type="text" name="q" value="{{ search }}" placeholder="{{ 'connect.search_placeholder'|trans }}" autocomplete="off">
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<section class="fo-section" style="padding-top:32px">
+    <div class="container">
+
+        {# ── DISCOVER TAB ── #}
+        {% if tab == 'discover' %}
+            {% if discoverUsers|length > 0 %}
+                <div class="people-grid">
+                    {% for u in discoverUsers %}
+                        <div class="person-card">
+                            <a href="{{ path('app_user_profile', {id: u.id}) }}" style="text-decoration:none;color:inherit">
+                                <div class="person-avatar">
+                                    {% if u.profile and u.profile.profilePicturePath %}
+                                        <img src="{{ u.profile.profilePicturePath }}" alt="">
+                                    {% else %}
+                                        {{ u.email|first|upper }}
+                                    {% endif %}
+                                </div>
+                                <div class="person-name">
+                                    {% if u.profile and u.profile.firstName %}{{ u.profile.firstName }} {{ u.profile.lastName }}{% else %}{{ u.email|split('@')[0] }}{% endif %}
+                                </div>
+                                <div class="person-title">{{ u.profile ? u.profile.professionalTitle : '' }}</div>
+                                {% if u.profile and u.profile.location %}
+                                    <div class="person-location"><i class="bi bi-geo-alt me-1"></i>{{ u.profile.location }}</div>
+                                {% endif %}
+                            </a>
+                            <div class="person-actions">
+                                <button class="btn-connect" onclick="sendConnect(this, {{ u.id }})">
+                                    <i class="bi bi-person-plus"></i> {{ 'connect.btn_connect'|trans }}
+                                </button>
+                                <a href="{{ path('app_user_profile', {id: u.id}) }}" class="btn-msg" title="{{ 'connect.btn_view'|trans }}"><i class="bi bi-eye"></i></a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-search-heart"></i>
+                    <p>{{ search ? 'connect.no_results'|trans : 'connect.no_users'|trans }}</p>
+                </div>
+            {% endif %}
+
+        {# ── CONNECTIONS TAB ── #}
+        {% elseif tab == 'connections' %}
+            {% if connections|length > 0 %}
+                <div class="people-grid">
+                    {% for c in connections %}
+                        {% set u = c.user %}
+                        {% set unread = unreadCounts[c.sync.id] is defined ? unreadCounts[c.sync.id] : 0 %}
+                        {% set last = lastMessages[c.sync.id] is defined ? lastMessages[c.sync.id] : null %}
+                        <div class="person-card">
+                            <a href="{{ path('app_user_profile', {id: u.id}) }}" style="text-decoration:none;color:inherit">
+                                <div class="person-avatar">
+                                    {% if u.profile and u.profile.profilePicturePath %}
+                                        <img src="{{ u.profile.profilePicturePath }}" alt="">
+                                    {% else %}
+                                        {{ u.email|first|upper }}
+                                    {% endif %}
+                                </div>
+                                <div class="person-name">
+                                    {% if u.profile and u.profile.firstName %}{{ u.profile.firstName }} {{ u.profile.lastName }}{% else %}{{ u.email|split('@')[0] }}{% endif %}
+                                </div>
+                                <div class="person-title">{{ u.profile ? u.profile.professionalTitle : '' }}</div>
+                            </a>
+                            {% if last %}
+                                <div style="font-size:0.75rem;color:var(--fo-text-secondary);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                    💬 {{ last.message|length > 40 ? last.message|slice(0,40) ~ '…' : last.message }}
+                                </div>
+                            {% endif %}
+                            <div class="person-actions">
+                                <a href="{{ path('app_messages', {chat: c.sync.id}) }}" class="btn-connect" style="text-decoration:none;color:var(--primary);border-color:var(--primary)">
+                                    <i class="bi bi-chat-dots"></i> {{ 'connect.btn_message'|trans }}
+                                    {% if unread > 0 %}<span style="background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700">{{ unread }}</span>{% endif %}
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-people"></i>
+                    <p>{{ 'connect.no_connections'|trans }}</p>
+                    <a href="{{ path('app_connect', {tab: 'discover'}) }}" class="btn btn-primary-custom mt-3" style="padding:10px 24px;font-size:0.9rem">{{ 'connect.start_discovering'|trans }}</a>
+                </div>
+            {% endif %}
+
+        {# ── REQUESTS TAB ── #}
+        {% elseif tab == 'requests' %}
+            {% if pendingReceived|length > 0 %}
+                <div class="request-banner">
+                    <h6 style="font-weight:700;margin-bottom:12px"><i class="bi bi-person-plus me-1"></i> {{ 'connect.pending_title'|trans }} ({{ pendingReceived|length }})</h6>
+                    {% for pr in pendingReceived %}
+                        {% set u = pr.user %}
+                        <div class="request-item">
+                            <div class="person-avatar" style="width:48px;height:48px;font-size:1rem;margin:0;flex-shrink:0">
+                                {% if u.profile and u.profile.profilePicturePath %}
+                                    <img src="{{ u.profile.profilePicturePath }}" alt="">
+                                {% else %}
+                                    {{ u.email|first|upper }}
+                                {% endif %}
+                            </div>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:600;font-size:0.9rem">
+                                    {% if u.profile and u.profile.firstName %}{{ u.profile.firstName }} {{ u.profile.lastName }}{% else %}{{ u.email }}{% endif %}
+                                </div>
+                                <div style="font-size:0.8rem;color:var(--fo-text-secondary)">{{ u.profile ? u.profile.professionalTitle : u.email }} · {{ pr.sync.reason == 'NETWORK' ? '🌐' : pr.sync.reasonEmoji }} {{ pr.sync.reason }}</div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <form method="post" action="{{ path('app_sync_accept', {id: pr.sync.id}) }}">
+                                    <button type="submit" class="btn-accept"><i class="bi bi-check2 me-1"></i>{{ 'connect.btn_accept'|trans }}</button>
+                                </form>
+                                <form method="post" action="{{ path('app_sync_decline', {id: pr.sync.id}) }}">
+                                    <button type="submit" class="btn-decline">{{ 'connect.btn_decline'|trans }}</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <p>{{ 'connect.no_requests'|trans }}</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</section>
+
+<script>
+function sendConnect(btn, uid) {
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Pending';
+    btn.classList.add('pending');
+    fetch('/connect/' + uid + '/request', {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    });
+}
+</script>
+{% endblock %}

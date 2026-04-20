@@ -1,6 +1,6 @@
 {% extends 'front/_base.html.twig' %}
 
-{% block title %}Talentos — Trouvez votre emploi idéal{% endblock %}
+{% block title %}Talentos — {{ 'title.home'|trans }}{% endblock %}
 
 {% block stylesheets %}
 <style>
@@ -112,6 +112,37 @@
         flex-shrink: 0; color: var(--primary);
     }
 
+    /* ── Connect Cards ── */
+    .connect-section { background: linear-gradient(160deg, #eef2ff 0%, #f0f9ff 50%, #faf5ff 100%); }
+    .connect-card {
+        background: rgba(255,255,255,0.85); backdrop-filter: blur(12px);
+        border: 1px solid rgba(79,70,229,0.1); border-radius: 16px;
+        padding: 24px; text-align: center; transition: all 0.3s;
+        text-decoration: none; color: var(--fo-text); display: block;
+    }
+    .connect-card:hover {
+        transform: translateY(-4px); box-shadow: 0 12px 32px rgba(79,70,229,0.12);
+        border-color: rgba(79,70,229,0.25); color: var(--fo-text);
+    }
+    .connect-avatar {
+        width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 1.2rem; color: white; flex-shrink: 0;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        border: 3px solid white; box-shadow: 0 4px 12px rgba(79,70,229,0.2);
+        overflow: hidden;
+    }
+    .connect-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .connect-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 18px; border-radius: 10px; font-size: 0.8rem;
+        font-weight: 600; border: 1.5px solid var(--primary);
+        color: var(--primary); background: transparent; cursor: pointer;
+        transition: all 0.2s; margin-top: 12px;
+    }
+    .connect-btn:hover { background: var(--primary); color: white; }
+    .connect-btn.sent { border-color: #94a3b8; color: #94a3b8; pointer-events: none; }
+
     @media (max-width: 992px) {
         .hero h1 { font-size: 2.5rem; }
         .hero-stats { gap: 24px; }
@@ -126,32 +157,30 @@
     <div class="container">
         <div class="row align-items-center">
             <div class="col-lg-6 hero-content">
-                <div class="fo-badge fo-badge-primary mb-3">🚀 Plateforme #1 en Tunisie</div>
+                <div class="fo-badge fo-badge-primary mb-3">{{ 'home.badge'|trans }}</div>
                 <h1>
-                    Trouvez votre<br>
-                    <span class="gradient-text">emploi idéal</span>
+                    {{ 'home.hero_title1'|trans }}<br>
+                    <span class="gradient-text">{{ 'home.hero_title2'|trans }}</span>
                 </h1>
-                <p>
-                    Explorez des centaines d'offres d'emploi, développez vos compétences avec nos formations, et connectez-vous avec les recruteurs les plus innovants.
-                </p>
+                <p>{{ 'home.hero_desc'|trans }}</p>
 
                 <form action="{{ path('app_offers') }}" method="get" class="hero-search">
-                    <input type="text" name="q" placeholder="Titre, compétence, entreprise...">
-                    <button type="submit"><i class="bi bi-search"></i> Rechercher</button>
+                    <input type="text" name="q" placeholder="{{ 'home.search_placeholder'|trans }}">
+                    <button type="submit"><i class="bi bi-search"></i> {{ 'home.search_btn'|trans }}</button>
                 </form>
 
                 <div class="hero-stats">
                     <div>
                         <div class="hero-stat-value">{{ offersCount }}+</div>
-                        <div class="hero-stat-label">Offres actives</div>
+                        <div class="hero-stat-label">{{ 'home.stat_offers'|trans }}</div>
                     </div>
                     <div>
                         <div class="hero-stat-value">{{ eventsCount }}+</div>
-                        <div class="hero-stat-label">Évènements</div>
+                        <div class="hero-stat-label">{{ 'home.stat_events'|trans }}</div>
                     </div>
                     <div>
                         <div class="hero-stat-value">{{ coursesCount }}+</div>
-                        <div class="hero-stat-label">Formations</div>
+                        <div class="hero-stat-label">{{ 'home.stat_courses'|trans }}</div>
                     </div>
                 </div>
             </div>
@@ -166,7 +195,7 @@
                                 {{ featuredOffer ? (featuredOffer.contractType ?: 'CDI') ~ ' · ' ~ (featuredOffer.location ?: 'Paris') : 'CDI · Paris' }}
                             </div>
                         </div>
-                        <span class="fo-badge fo-badge-success ms-auto">Nouvelle</span>
+                        <span class="fo-badge fo-badge-success ms-auto">{{ 'home.new'|trans }}</span>
                     </div>
                 </div>
                 <div class="hero-float-card mb-3" style="margin-left:40px">
@@ -177,7 +206,7 @@
                         <div>
                             <div style="font-weight:700;font-size:0.95rem">{{ featuredEvent ? featuredEvent.title : 'Tech Meetup' }}</div>
                             <div style="color:var(--fo-text-secondary);font-size:0.8rem">
-                                {{ featuredEvent ? featuredEvent.eventDate|date('d/m/Y') : 'Bientôt' }}
+                                {{ featuredEvent ? featuredEvent.eventDate|date('d/m/Y') : 'home.soon'|trans }}
                             </div>
                         </div>
                     </div>
@@ -188,8 +217,8 @@
                             <i class="bi bi-mortarboard"></i>
                         </div>
                         <div>
-                            <div style="font-weight:700;font-size:0.95rem">{{ coursesCount }} formations</div>
-                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">Développez vos skills</div>
+                            <div style="font-weight:700;font-size:0.95rem">{{ 'home.courses_count'|trans({'%count%': coursesCount}) }}</div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">{{ 'home.develop_skills'|trans }}</div>
                         </div>
                     </div>
                 </div>
@@ -202,9 +231,9 @@
 <section class="fo-section">
     <div class="container">
         <div class="text-center">
-            <div class="fo-badge fo-badge-accent mb-3">Comment ça marche</div>
-            <h2 class="fo-section-title">Tout pour réussir votre carrière</h2>
-            <p class="fo-section-subtitle mx-auto" style="max-width:600px">Talentos réunit tout ce dont vous avez besoin au même endroit</p>
+            <div class="fo-badge fo-badge-accent mb-3">{{ 'home.how_it_works'|trans }}</div>
+            <h2 class="fo-section-title">{{ 'home.features_title'|trans }}</h2>
+            <p class="fo-section-subtitle mx-auto" style="max-width:600px">{{ 'home.features_subtitle'|trans }}</p>
         </div>
         <div class="row g-4">
             <div class="col-md-4">
@@ -212,8 +241,8 @@
                     <div class="feature-icon mx-auto" style="background:rgba(79,70,229,0.08);color:var(--primary)">
                         <i class="bi bi-search-heart"></i>
                     </div>
-                    <h5 style="font-weight:700;margin-bottom:8px">Offres d'emploi</h5>
-                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">Parcourez des offres ciblées et postulez en quelques clics avec suivi en temps réel.</p>
+                    <h5 style="font-weight:700;margin-bottom:8px">{{ 'home.feature_offers_title'|trans }}</h5>
+                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">{{ 'home.feature_offers_desc'|trans }}</p>
                 </div>
             </div>
             <div class="col-md-4">
@@ -221,8 +250,8 @@
                     <div class="feature-icon mx-auto" style="background:rgba(16,185,129,0.08);color:var(--success)">
                         <i class="bi bi-calendar-heart"></i>
                     </div>
-                    <h5 style="font-weight:700;margin-bottom:8px">Évènements</h5>
-                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">Meetups, conférences et workshops pour élargir votre réseau professionnel.</p>
+                    <h5 style="font-weight:700;margin-bottom:8px">{{ 'home.feature_events_title'|trans }}</h5>
+                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">{{ 'home.feature_events_desc'|trans }}</p>
                 </div>
             </div>
             <div class="col-md-4">
@@ -230,13 +259,67 @@
                     <div class="feature-icon mx-auto" style="background:rgba(245,158,11,0.08);color:var(--warning)">
                         <i class="bi bi-lightbulb"></i>
                     </div>
-                    <h5 style="font-weight:700;margin-bottom:8px">Formations</h5>
-                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">Cours en ligne et quiz interactifs pour booster vos compétences techniques.</p>
+                    <h5 style="font-weight:700;margin-bottom:8px">{{ 'home.feature_courses_title'|trans }}</h5>
+                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">{{ 'home.feature_courses_desc'|trans }}</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+{# ════════ CONNECT WITH TALENT ════════ #}
+{% if app.user and suggestedUsers|length > 0 %}
+<section class="fo-section connect-section">
+    <div class="container">
+        <div class="text-center mb-4">
+            <div class="fo-badge fo-badge-primary mb-3"><i class="bi bi-people-fill me-1"></i> {{ 'home.connect_badge'|trans }}</div>
+            <h2 class="fo-section-title">{{ 'home.connect_title'|trans }}</h2>
+            <p class="fo-section-subtitle mx-auto" style="max-width:550px">{{ 'home.connect_subtitle'|trans }}</p>
+        </div>
+        <div class="row g-3 justify-content-center">
+            {% for u in suggestedUsers %}
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="connect-card">
+                        <a href="{{ path('app_user_profile', {id: u.id}) }}" style="text-decoration:none;color:inherit">
+                            <div class="connect-avatar">
+                                {% if u.profile and u.profile.profilePicturePath %}
+                                    <img src="{{ u.profile.profilePicturePath }}" alt="">
+                                {% else %}
+                                    {{ u.email|first|upper }}
+                                {% endif %}
+                            </div>
+                            <div style="font-weight:700;font-size:0.9rem;margin-bottom:2px">
+                                {% if u.profile and u.profile.firstName %}{{ u.profile.firstName }} {{ u.profile.lastName|first }}.{% else %}{{ u.email|split('@')[0] }}{% endif %}
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--fo-text-secondary);min-height:18px">
+                                {{ u.profile ? u.profile.professionalTitle : '' }}
+                            </div>
+                        </a>
+                        <button class="connect-btn" data-uid="{{ u.id }}" onclick="sendConnect(this, {{ u.id }})">
+                            <i class="bi bi-person-plus"></i> Connect
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{{ path('app_connect') }}" class="btn btn-primary-custom" style="padding:12px 28px;font-size:0.9rem">
+                {{ 'home.connect_browse_all'|trans }} <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</section>
+<script>
+function sendConnect(btn, uid) {
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Pending';
+    btn.classList.add('sent');
+    fetch('/connect/' + uid + '/request', {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    });
+}
+</script>
+{% endif %}
 
 {# ════════ RECENT OFFERS ════════ #}
 {% if recentOffers|length > 0 %}
@@ -244,11 +327,11 @@
     <div class="container">
         <div class="d-flex align-items-center justify-content-between mb-4">
             <div>
-                <h2 class="fo-section-title">Offres récentes 🔥</h2>
-                <p style="color:var(--fo-text-secondary);font-size:1rem">Les dernières opportunités publiées</p>
+                <h2 class="fo-section-title">{{ 'home.recent_offers'|trans }}</h2>
+                <p style="color:var(--fo-text-secondary);font-size:1rem">{{ 'home.latest_opportunities'|trans }}</p>
             </div>
             <a href="{{ path('app_offers') }}" class="btn btn-primary-custom" style="padding:10px 24px;font-size:0.9rem">
-                Voir tout <i class="bi bi-arrow-right ms-1"></i>
+                {{ 'home.view_all'|trans }} <i class="bi bi-arrow-right ms-1"></i>
             </a>
         </div>
         <div class="row g-3">
@@ -259,7 +342,7 @@
                         <div style="flex:1;min-width:0">
                             <div style="font-weight:600;font-size:0.95rem">{{ offer.title }}</div>
                             <div style="color:var(--fo-text-secondary);font-size:0.8rem">
-                                {{ offer.contractType ?: 'CDI' }} · {{ offer.location ?: 'Non spécifié' }}
+                                {{ offer.contractType ?: 'CDI' }} · {{ offer.location ?: 'home.not_specified'|trans }}
                                 {% if offer.salaryMin and offer.salaryMax %} · {{ offer.salaryMin|number_format(0,',',' ') }}–{{ offer.salaryMax|number_format(0,',',' ') }} DT{% endif %}
                             </div>
                         </div>
@@ -278,11 +361,11 @@
     <div class="container">
         <div class="d-flex align-items-center justify-content-between mb-4">
             <div>
-                <h2 class="fo-section-title">Évènements à venir 📅</h2>
-                <p style="color:var(--fo-text-secondary);font-size:1rem">Rejoignez la communauté</p>
+                <h2 class="fo-section-title">{{ 'home.upcoming_events'|trans }}</h2>
+                <p style="color:var(--fo-text-secondary);font-size:1rem">{{ 'home.join_community'|trans }}</p>
             </div>
             <a href="{{ path('app_events') }}" class="btn btn-primary-custom" style="padding:10px 24px;font-size:0.9rem">
-                Tous les évènements <i class="bi bi-arrow-right ms-1"></i>
+                {{ 'home.all_events'|trans }} <i class="bi bi-arrow-right ms-1"></i>
             </a>
         </div>
         <div class="row g-4">
@@ -312,14 +395,14 @@
 {# ════════ CTA ════════ #}
 <section style="padding:80px 0;background:linear-gradient(135deg,#4f46e5 0%,#4338ca 50%,#3730a3 100%);color:white;text-align:center">
     <div class="container" style="max-width:700px">
-        <h2 style="font-size:2.25rem;font-weight:800;margin-bottom:12px;letter-spacing:-0.5px">Prêt à lancer votre carrière ?</h2>
-        <p style="font-size:1.1rem;opacity:0.85;margin-bottom:32px;line-height:1.7">Rejoignez des milliers de candidats qui ont trouvé leur emploi idéal sur Talentos</p>
+        <h2 style="font-size:2.25rem;font-weight:800;margin-bottom:12px;letter-spacing:-0.5px">{{ 'home.cta_title'|trans }}</h2>
+        <p style="font-size:1.1rem;opacity:0.85;margin-bottom:32px;line-height:1.7">{{ 'home.cta_desc'|trans }}</p>
         <div class="d-flex gap-3 justify-content-center flex-wrap">
             <a href="{{ path('app_register') }}" class="btn" style="background:white;color:var(--primary);font-weight:700;padding:14px 32px;border-radius:12px;font-size:1rem;transition:all 0.2s">
-                Créer un compte gratuit <i class="bi bi-arrow-right ms-1"></i>
+                {{ 'home.cta_register'|trans }} <i class="bi bi-arrow-right ms-1"></i>
             </a>
             <a href="{{ path('app_offers') }}" class="btn" style="border:2px solid rgba(255,255,255,0.3);color:white;font-weight:600;padding:14px 32px;border-radius:12px;font-size:1rem;transition:all 0.2s">
-                Explorer les offres
+                {{ 'home.cta_explore'|trans }}
             </a>
         </div>
     </div>

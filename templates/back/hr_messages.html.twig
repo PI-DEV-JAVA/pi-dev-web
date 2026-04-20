@@ -1,0 +1,121 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Messages candidats{% endblock %}
+{% block content %}
+<style>
+    .hr-msg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .hr-msg-card {
+        background: var(--bo-bg-input); border: 1.5px solid var(--bo-border);
+        border-radius: 14px; padding: 18px; transition: all 0.3s;
+        display: flex; align-items: center; gap: 14px;
+    }
+    .hr-msg-card:hover { border-color: rgba(79,70,229,0.3); transform: translateY(-2px); }
+    .hr-msg-avatar {
+        width: 48px; height: 48px; border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 1.1rem; color: white; flex-shrink: 0;
+        overflow: hidden;
+    }
+    .hr-msg-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .hr-msg-info { flex: 1; min-width: 0; }
+    .hr-msg-name { font-weight: 700; font-size: 0.9rem; }
+    .hr-msg-sub { font-size: 0.78rem; color: var(--bo-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .hr-msg-action {
+        padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem;
+        border: none; cursor: pointer; text-decoration: none; transition: all 0.2s;
+        display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    }
+    .hr-msg-action.chat { background: linear-gradient(135deg, var(--primary), #6366f1); color: white; }
+    .hr-msg-action.chat:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,0.3); color: white; }
+    .hr-msg-action.new { background: rgba(79,70,229,0.12); color: var(--primary-light); }
+    .hr-msg-action.new:hover { background: rgba(79,70,229,0.2); color: var(--primary-light); }
+    .hr-msg-unread {
+        width: 22px; height: 22px; border-radius: 50%; background: #ef4444;
+        color: white; font-size: 0.65rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        margin-right: 4px;
+    }
+    .section-divider {
+        font-size: 0.8rem; font-weight: 700; color: var(--bo-text-secondary);
+        text-transform: uppercase; letter-spacing: 0.5px; margin: 28px 0 14px;
+        padding-bottom: 8px; border-bottom: 1px solid var(--bo-border);
+    }
+</style>
+
+{% if conversations|length > 0 %}
+<div class="section-divider">
+    <i class="bi bi-chat-dots-fill me-1"></i> Conversations actives ({{ conversations|length }})
+</div>
+<div class="hr-msg-grid">
+    {% for c in conversations %}
+        {% set u = c.user %}
+        <div class="hr-msg-card">
+            <div class="hr-msg-avatar">
+                {% if u.profile and u.profile.profilePicturePath %}
+                    <img src="{{ u.profile.profilePicturePath }}" alt="">
+                {% else %}
+                    {{ u.email|first|upper }}
+                {% endif %}
+            </div>
+            <div class="hr-msg-info">
+                <div class="hr-msg-name">
+                    {% if u.profile and u.profile.firstName %}{{ u.profile.firstName }} {{ u.profile.lastName }}{% else %}{{ u.email|split('@')[0] }}{% endif %}
+                </div>
+                <div class="hr-msg-sub">
+                    {% if c.lastMessage %}
+                        💬 {{ c.lastMessage.message|length > 40 ? c.lastMessage.message|slice(0,40) ~ '…' : c.lastMessage.message }}
+                    {% else %}
+                        {{ u.profile ? u.profile.professionalTitle : u.email }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                {% if c.unread > 0 %}
+                    <span class="hr-msg-unread">{{ c.unread }}</span>
+                {% endif %}
+                <a href="{{ path('admin_message_candidate', {id: u.id}) }}" class="hr-msg-action chat">
+                    <i class="bi bi-chat-dots"></i> Ouvrir
+                </a>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if newCandidates|length > 0 %}
+<div class="section-divider">
+    <i class="bi bi-person-plus me-1"></i> Candidats sans conversation ({{ newCandidates|length }})
+</div>
+<div class="hr-msg-grid">
+    {% for u in newCandidates %}
+        <div class="hr-msg-card">
+            <div class="hr-msg-avatar">
+                {% if u.profile and u.profile.profilePicturePath %}
+                    <img src="{{ u.profile.profilePicturePath }}" alt="">
+                {% else %}
+                    {{ u.email|first|upper }}
+                {% endif %}
+            </div>
+            <div class="hr-msg-info">
+                <div class="hr-msg-name">
+                    {% if u.profile and u.profile.firstName %}{{ u.profile.firstName }} {{ u.profile.lastName }}{% else %}{{ u.email|split('@')[0] }}{% endif %}
+                </div>
+                <div class="hr-msg-sub">{{ u.profile ? u.profile.professionalTitle : u.email }}</div>
+            </div>
+            <a href="{{ path('admin_message_candidate', {id: u.id}) }}" class="hr-msg-action new">
+                <i class="bi bi-chat-dots"></i> Démarrer
+            </a>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if conversations|length == 0 and newCandidates|length == 0 %}
+<div class="bo-card text-center" style="padding:50px">
+    <i class="bi bi-chat-square-text" style="font-size:3rem;color:var(--bo-text-secondary);opacity:0.3;display:block;margin-bottom:12px"></i>
+    <p style="color:var(--bo-text-secondary)">Aucun candidat n'a encore postulé à vos offres.</p>
+    <a href="{{ path('admin_offers') }}" style="color:var(--primary-light);font-weight:600;font-size:0.9rem">Gérer mes offres</a>
+</div>
+{% endif %}
+
+{% endblock %}
