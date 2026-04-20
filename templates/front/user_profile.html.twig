@@ -1,0 +1,162 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}{{ targetUser.profile ? targetUser.profile.fullName : targetUser.email }} — Talentos{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .profile-cover {
+        background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 50%, #8b5cf6 100%);
+        height: 200px; position: relative;
+    }
+    .profile-cover::after {
+        content: ''; position: absolute; inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .profile-header {
+        max-width: 800px; margin: -80px auto 0; position: relative; z-index: 2;
+        padding: 0 20px;
+    }
+    .profile-main-card {
+        background: white; border-radius: 20px; padding: 32px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.08); border: 1px solid var(--fo-border);
+    }
+    .profile-avatar-lg {
+        width: 120px; height: 120px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.5rem; font-weight: 800; color: white;
+        border: 5px solid white; box-shadow: 0 4px 20px rgba(79,70,229,0.3);
+        overflow: hidden; margin-top: -60px;
+    }
+    .profile-avatar-lg img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-info h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .profile-info .title { color: var(--primary); font-weight: 600; font-size: 1rem; }
+    .profile-info .location { color: var(--fo-text-secondary); font-size: 0.9rem; margin-top: 4px; }
+    .profile-info .summary {
+        color: var(--fo-text-secondary); font-size: 0.9rem;
+        line-height: 1.7; margin-top: 16px; padding-top: 16px;
+        border-top: 1px solid var(--fo-border);
+    }
+
+    .profile-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+    .profile-btn {
+        padding: 10px 24px; border-radius: 12px; font-weight: 600; font-size: 0.9rem;
+        border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+        transition: all 0.2s; text-decoration: none;
+    }
+    .profile-btn-primary {
+        background: linear-gradient(135deg, var(--primary), #6366f1); color: white;
+    }
+    .profile-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(79,70,229,0.3); color: white; }
+    .profile-btn-outline {
+        background: transparent; color: var(--primary); border: 1.5px solid var(--primary);
+    }
+    .profile-btn-outline:hover { background: rgba(79,70,229,0.06); color: var(--primary); }
+    .profile-btn-muted {
+        background: rgba(148,163,184,0.1); color: #94a3b8; border: 1.5px solid rgba(148,163,184,0.2);
+        pointer-events: none;
+    }
+
+    .profile-detail { margin-top: 24px; }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    .detail-item {
+        background: var(--fo-bg-section); border-radius: 12px; padding: 16px;
+    }
+    .detail-label { font-size: 0.75rem; color: var(--fo-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .detail-value { font-weight: 700; font-size: 1rem; margin-top: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-cover"></div>
+<div class="profile-header">
+    <div class="profile-main-card">
+        <div class="d-flex align-items-start gap-4 flex-wrap">
+            <div class="profile-avatar-lg">
+                {% if targetUser.profile and targetUser.profile.profilePicturePath %}
+                    <img src="{{ targetUser.profile.profilePicturePath }}" alt="">
+                {% else %}
+                    {{ targetUser.email|first|upper }}
+                {% endif %}
+            </div>
+            <div class="profile-info" style="flex:1;min-width:0">
+                <h1>
+                    {% if targetUser.profile and targetUser.profile.firstName %}
+                        {{ targetUser.profile.firstName }} {{ targetUser.profile.lastName }}
+                    {% else %}
+                        {{ targetUser.email|split('@')[0] }}
+                    {% endif %}
+                </h1>
+                {% if targetUser.profile and targetUser.profile.professionalTitle %}
+                    <div class="title">{{ targetUser.profile.professionalTitle }}</div>
+                {% endif %}
+                {% if targetUser.profile and targetUser.profile.location %}
+                    <div class="location"><i class="bi bi-geo-alt me-1"></i>{{ targetUser.profile.location }}</div>
+                {% endif %}
+
+                {% if app.user and app.user != targetUser %}
+                <div class="profile-actions">
+                    {% if syncStatus == 'ACCEPTED' %}
+                        <span class="profile-btn profile-btn-muted"><i class="bi bi-check-circle-fill"></i> {{ 'profile.connected'|trans }}</span>
+                        <a href="{{ path('app_messages', {chat: syncObj.id}) }}" class="profile-btn profile-btn-primary">
+                            <i class="bi bi-chat-dots"></i> {{ 'profile.send_message'|trans }}
+                        </a>
+                    {% elseif syncStatus == 'PENDING' %}
+                        <span class="profile-btn profile-btn-muted"><i class="bi bi-hourglass-split"></i> {{ 'profile.pending'|trans }}</span>
+                    {% else %}
+                        <button class="profile-btn profile-btn-primary" onclick="sendConnect(this, {{ targetUser.id }})">
+                            <i class="bi bi-person-plus"></i> {{ 'profile.connect'|trans }}
+                        </button>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if targetUser.profile and targetUser.profile.summary %}
+                    <div class="summary">{{ targetUser.profile.summary }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if targetUser.profile %}
+        <div class="profile-detail">
+            <div class="detail-grid">
+                {% if targetUser.profile.yearsOfExperience %}
+                <div class="detail-item">
+                    <div class="detail-label">{{ 'profile.experience'|trans }}</div>
+                    <div class="detail-value">{{ targetUser.profile.yearsOfExperience }} {{ 'profile.years'|trans }}</div>
+                </div>
+                {% endif %}
+                {% if targetUser.profile.location %}
+                <div class="detail-item">
+                    <div class="detail-label">{{ 'profile.location'|trans }}</div>
+                    <div class="detail-value">{{ targetUser.profile.location }}</div>
+                </div>
+                {% endif %}
+                {% if targetUser.profile.phoneNumber %}
+                <div class="detail-item">
+                    <div class="detail-label">{{ 'profile.phone'|trans }}</div>
+                    <div class="detail-value">{{ targetUser.profile.phoneNumber }}</div>
+                </div>
+                {% endif %}
+                <div class="detail-item">
+                    <div class="detail-label">{{ 'profile.member_since'|trans }}</div>
+                    <div class="detail-value">{{ targetUser.profile.user ? '2024' : '—' }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div style="height:60px"></div>
+
+<script>
+function sendConnect(btn, uid) {
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> {{ 'profile.pending'|trans }}';
+    btn.className = 'profile-btn profile-btn-muted';
+    fetch('/connect/' + uid + '/request', {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    });
+}
+</script>
+{% endblock %}

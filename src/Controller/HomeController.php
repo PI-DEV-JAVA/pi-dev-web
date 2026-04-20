@@ -5,6 +5,8 @@ namespace App\Controller;
 use App\Entity\Event;
 use App\Entity\Formation;
 use App\Entity\Offer;
+use App\Entity\Sync;
+use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -36,6 +38,32 @@ class HomeController extends AbstractController
         $featuredOffer = $recentOffers[0] ?? null;
         $featuredEvent = $upcomingEvents[0] ?? null;
 
+        // Suggested users for Connect section
+        $suggestedUsers = [];
+        if ($user) {
+            // Get IDs of users already connected/pending
+            $syncedIds = [];
+            $syncs = $em->getRepository(Sync::class)->createQueryBuilder('s')
+                ->where('s.sender = :u OR s.receiver = :u')
+                ->setParameter('u', $user)
+                ->getQuery()->getResult();
+            foreach ($syncs as $s) {
+                $other = $s->getOtherUser($user);
+                if ($other) $syncedIds[] = $other->getId();
+            }
+            $excludeIds = array_merge($syncedIds, [$user->getId()]);
+
+            $suggestedUsers = $em->createQueryBuilder()
+                ->select('u', 'p')
+                ->from(User::class, 'u')
+                ->join('u.profile', 'p')
+                ->where('u.id NOT IN (:exclude)')
+                ->andWhere('p.profileCompleted = true')
+                ->setParameter('exclude', $excludeIds ?: [0])
+                ->setMaxResults(6)
+                ->getQuery()->getResult();
+        }
+
         return $this->render('front/home.html.twig', [
             'offersCount' => $offersCount,
             'eventsCount' => $eventsCount,
@@ -44,6 +72,7 @@ class HomeController extends AbstractController
             'upcomingEvents' => $upcomingEvents,
             'featuredOffer' => $featuredOffer,
             'featuredEvent' => $featuredEvent,
+            'suggestedUsers' => $suggestedUsers,
         ]);
     }
 }

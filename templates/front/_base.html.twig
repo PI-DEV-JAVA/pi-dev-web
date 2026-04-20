@@ -273,12 +273,17 @@
         cursor: pointer; box-shadow: 0 4px 20px rgba(79,70,229,0.35);
         transition: all 0.3s ease;
     }
-    .chat-fab:hover {
-        transform: scale(1.08); box-shadow: 0 6px 28px rgba(79,70,229,0.45);
+    .chat-fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(79,70,229,0.45); }
+    .chat-fab .fab-badge {
+        position: absolute; top: -2px; right: -2px;
+        width: 20px; height: 20px; border-radius: 50%;
+        background: #ef4444; color: white; font-size: 0.6rem; font-weight: 700;
+        display: none; align-items: center; justify-content: center;
+        border: 2px solid white;
     }
     .chat-widget {
         position: fixed; bottom: 92px; right: 24px; z-index: 1500;
-        width: 380px; height: 500px;
+        width: 380px; height: 520px;
         background: white; border: 1px solid var(--fo-border);
         border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
         overflow: hidden; display: flex; flex-direction: column;
@@ -286,30 +291,71 @@
         pointer-events: none;
         transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .chat-widget.open {
-        opacity: 1; transform: translateY(0) scale(1);
-        pointer-events: auto;
-    }
+    .chat-widget.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
     .chat-widget-header {
-        padding: 16px 20px; background: linear-gradient(135deg, var(--primary), #6366f1);
+        padding: 14px 16px; background: linear-gradient(135deg, var(--primary), #6366f1);
         color: white; display: flex; justify-content: space-between; align-items: center;
+        flex-shrink: 0;
     }
-    .chat-widget-header h6 { font-weight: 700; margin: 0; color: white; }
-    .chat-contact-list {
-        flex: 1; overflow-y: auto; padding: 8px;
-    }
+    .chat-widget-header h6 { font-weight: 700; margin: 0; color: white; font-size: 0.9rem; }
+    .chat-widget-header button { background: none; border: none; color: white; cursor: pointer; padding: 0; font-size: 1.1rem; }
+    .chat-contact-list { flex: 1; overflow-y: auto; }
     .chat-contact {
         display: flex; align-items: center; gap: 10px;
-        padding: 10px 12px; border-radius: 12px; text-decoration: none;
-        color: var(--fo-text); transition: background 0.15s;
+        padding: 12px 16px; text-decoration: none;
+        color: var(--fo-text); transition: background 0.15s; cursor: pointer;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
     }
-    .chat-contact:hover { background: #f1f5f9; }
+    .chat-contact:hover { background: rgba(79,70,229,0.04); color: var(--fo-text); }
     .chat-contact-avatar {
         width: 40px; height: 40px; border-radius: 50%;
         background: linear-gradient(135deg, var(--primary), var(--accent));
         display: flex; align-items: center; justify-content: center;
         font-weight: 700; font-size: 0.8rem; color: white; flex-shrink: 0;
+        overflow: hidden;
     }
+    .chat-contact-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .chat-contact-info { flex: 1; min-width: 0; }
+    .chat-contact-name { font-weight: 600; font-size: 0.85rem; }
+    .chat-contact-preview { font-size: 0.75rem; color: var(--fo-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-contact-unread {
+        width: 18px; height: 18px; border-radius: 50%; background: var(--primary);
+        color: white; font-size: 0.6rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    /* Chat view inside widget */
+    .cw-chat-view { display: none; flex-direction: column; flex: 1; min-height: 0; }
+    .cw-chat-view.active { display: flex; }
+    .cw-chat-body { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 3px; }
+    .cw-bubble-row { display: flex; margin-bottom: 1px; }
+    .cw-bubble-row.mine { justify-content: flex-end; }
+    .cw-bubble {
+        max-width: 75%; padding: 8px 14px; font-size: 0.85rem; line-height: 1.4; word-break: break-word;
+    }
+    .cw-bubble.mine {
+        background: linear-gradient(135deg, #4f46e5, #6366f1); color: white;
+        border-radius: 16px 16px 4px 16px;
+    }
+    .cw-bubble.theirs {
+        background: #f1f5f9; color: var(--fo-text);
+        border-radius: 16px 16px 16px 4px;
+    }
+    .cw-bubble .cw-time { font-size: 0.6rem; opacity: 0.6; margin-top: 2px; text-align: right; }
+    .cw-input-wrap { padding: 10px 12px; border-top: 1px solid var(--fo-border); display: flex; gap: 8px; flex-shrink: 0; }
+    .cw-input {
+        flex: 1; border: 1.5px solid var(--fo-border); border-radius: 20px;
+        padding: 8px 16px; font-size: 0.85rem; outline: none;
+    }
+    .cw-input:focus { border-color: var(--primary); }
+    .cw-send {
+        width: 36px; height: 36px; border-radius: 50%; border: none;
+        background: linear-gradient(135deg, var(--primary), #6366f1);
+        color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; transition: transform 0.15s;
+    }
+    .cw-send:hover { transform: scale(1.08); }
+    .cw-empty { text-align: center; padding: 40px 20px; color: var(--fo-text-secondary); }
+    .cw-empty i { font-size: 2rem; opacity: 0.2; display: block; margin-bottom: 8px; }
 
     @media (max-width: 768px) {
         .notif-panel { width: 100vw; right: -16px; border-radius: 0 0 16px 16px; }
@@ -322,6 +368,25 @@
         .fo-section-title { font-size: 1.5rem; }
         .fo-page-header h1 { font-size: 1.75rem; }
     }
+
+    /* ── Language Toggle (FO) ── */
+    .lang-toggle {
+        display:flex; background:rgba(0,0,0,0.03); border-radius:10px;
+        border:1px solid var(--fo-border); overflow:hidden;
+    }
+    .lang-btn {
+        display:flex; align-items:center; gap:4px; padding:5px 10px;
+        border:none; background:transparent; color:var(--fo-text-secondary);
+        font-size:0.72rem; font-weight:600; cursor:pointer; transition:all 0.25s;
+    }
+    .lang-btn.active {
+        background:rgba(79,70,229,0.1); color:var(--primary);
+        box-shadow:inset 0 0 0 1px rgba(79,70,229,0.2);
+        border-radius:8px;
+    }
+    .lang-btn:hover:not(.active) { color:var(--fo-text); background:rgba(0,0,0,0.04); }
+    .lang-flag { font-size:0.85rem; }
+    .lang-label { letter-spacing:0.5px; }
 </style>
 {% endblock %}
 
@@ -335,38 +400,44 @@
             </a>
 
             <div class="d-none d-md-flex align-items-center gap-1">
-                <a href="{{ path('app_offers') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_offer' ? 'active' : '' }}">Offres</a>
-                <a href="{{ path('app_events') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_event' ? 'active' : '' }}">Évènements</a>
-                <a href="{{ path('app_courses') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_course' ? 'active' : '' }}">Formations</a>
+                <a href="{{ path('app_offers') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_offer' ? 'active' : '' }}">{{ 'nav.offers'|trans }}</a>
+                <a href="{{ path('app_events') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_event' ? 'active' : '' }}">{{ 'nav.events'|trans }}</a>
+                <a href="{{ path('app_courses') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_course' ? 'active' : '' }}">{{ 'nav.courses'|trans }}</a>
+                {% if app.user %}
+                <a href="{{ path('app_connect') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_connect' or app.request.attributes.get('_route') == 'app_user_profile' ? 'active' : '' }}">{{ 'nav.connect'|trans }}</a>
+                {% endif %}
             </div>
 
             <div class="d-flex align-items-center gap-2">
+                {# Language Toggle #}
+                <div class="lang-toggle" role="group">
+                    <a href="{{ path('switch_locale', {locale: 'fr'}) }}" class="lang-btn lang-fr {{ app.request.locale == 'fr' ? 'active' : '' }}" title="Français"><span class="lang-flag">🇫🇷</span><span class="lang-label">FR</span></a>
+                    <a href="{{ path('switch_locale', {locale: 'en'}) }}" class="lang-btn lang-en {{ app.request.locale == 'en' ? 'active' : '' }}" title="English"><span class="lang-flag">🇬🇧</span><span class="lang-label">EN</span></a>
+                </div>
+
                 {% if app.user %}
-                    {# Messaging Icon #}
-                    <div class="notif-bell" id="chatToggleNav" title="Messages">
-                        <i class="bi bi-chat-dots"></i>
-                    </div>
+
 
                     {# Notification Bell + Panel #}
                     <div style="position:relative">
-                        <div class="notif-bell" id="notifBellBtn" title="Notifications">
+                        <div class="notif-bell" id="notifBellBtn" title="{{ 'nav.notifications'|trans }}">
                             <i class="bi bi-bell"></i>
                             <span class="notif-badge" id="notifBadge" style="display:none">0</span>
                         </div>
                         <div class="notif-overlay" id="notifOverlay"></div>
                         <div class="notif-panel" id="notifPanel">
                             <div class="notif-panel-header">
-                                <h6>Notifications</h6>
-                                <a href="{{ path('app_notifications_read_all') }}" style="font-size:0.8rem;color:var(--primary);text-decoration:none;font-weight:600">Tout marquer lu</a>
+                                <h6>{{ 'notif.title'|trans }}</h6>
+                                <a href="{{ path('app_notifications_read_all') }}" style="font-size:0.8rem;color:var(--primary);text-decoration:none;font-weight:600">{{ 'notif.mark_all'|trans }}</a>
                             </div>
                             <div class="notif-panel-body" id="notifPanelBody">
                                 <div style="padding:40px 20px;text-align:center;color:var(--fo-text-secondary)">
                                     <i class="bi bi-bell" style="font-size:1.5rem;opacity:0.3"></i>
-                                    <p style="margin:8px 0 0;font-size:0.85rem">Chargement...</p>
+                                    <p style="margin:8px 0 0;font-size:0.85rem">{{ 'notif.loading'|trans }}</p>
                                 </div>
                             </div>
                             <div class="notif-panel-footer">
-                                <a href="{{ path('app_notifications') }}">Voir toutes les notifications</a>
+                                <a href="{{ path('app_notifications') }}">{{ 'notif.view_all'|trans }}</a>
                             </div>
                         </div>
                     </div>
@@ -379,26 +450,26 @@
                                 <div class="user-avatar-sm">{{ app.user.email|first|upper }}</div>
                             {% endif %}
                             <span style="font-weight:600;font-size:0.85rem">
-                                {% if app.user.profile and app.user.profile.firstName %}{{ app.user.profile.firstName }}{% else %}Mon compte{% endif %}
+                                {% if app.user.profile and app.user.profile.firstName %}{{ app.user.profile.firstName }}{% else %}{{ 'nav.my_account'|trans }}{% endif %}
                             </span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" style="border-radius:12px;border:1px solid var(--fo-border);box-shadow:var(--fo-card-shadow-hover);padding:8px;min-width:200px">
-                            <li><a class="dropdown-item" href="{{ path('app_account') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-grid me-2"></i>Dashboard</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_profile') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-person me-2"></i>Profil</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_my_applications') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-file-text me-2"></i>Candidatures</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_activities') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-clipboard-data me-2"></i>Activités</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_my_circle') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-people me-2"></i>Mon Cercle</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_account') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-grid me-2"></i>{{ 'nav.dashboard'|trans }}</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_profile') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-person me-2"></i>{{ 'nav.profile'|trans }}</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_my_applications') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-file-text me-2"></i>{{ 'nav.applications'|trans }}</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_activities') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-clipboard-data me-2"></i>{{ 'nav.activities'|trans }}</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_my_circle') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-people me-2"></i>{{ 'nav.my_circle'|trans }}</a></li>
                             {% if app.user.role in ['ADMIN', 'HR'] %}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ path('admin_dashboard') }}" style="border-radius:8px;padding:10px 16px;color:var(--primary)"><i class="bi bi-gear me-2"></i>Administration</a></li>
+                                <li><a class="dropdown-item" href="{{ path('admin_dashboard') }}" style="border-radius:8px;padding:10px 16px;color:var(--primary)"><i class="bi bi-gear me-2"></i>{{ 'nav.administration'|trans }}</a></li>
                             {% endif %}
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="{{ path('app_logout') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-box-arrow-right me-2"></i>Déconnexion</a></li>
+                            <li><a class="dropdown-item text-danger" href="{{ path('app_logout') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-box-arrow-right me-2"></i>{{ 'nav.logout'|trans }}</a></li>
                         </ul>
                     </div>
                 {% else %}
-                    <a href="{{ path('app_login') }}" class="btn-login">Se connecter</a>
-                    <a href="{{ path('app_register') }}" class="btn-register">S'inscrire</a>
+                    <a href="{{ path('app_login') }}" class="btn-login">{{ 'nav.login'|trans }}</a>
+                    <a href="{{ path('app_register') }}" class="btn-register">{{ 'nav.register'|trans }}</a>
                 {% endif %}
             </div>
         </div>
@@ -406,20 +477,42 @@
 </nav>
 
 {% if app.user %}
-{# ── Chat Floating Widget (Messenger-style) ── #}
+{# ── Chat FAB + Messenger Widget ── #}
 <button class="chat-fab" id="chatFab" title="Messages">
     <i class="bi bi-chat-dots-fill"></i>
+    <span class="fab-badge" id="fabBadge">0</span>
 </button>
 <div class="chat-widget" id="chatWidget">
-    <div class="chat-widget-header">
-        <h6><i class="bi bi-chat-dots me-2"></i>Messages</h6>
-        <button onclick="document.getElementById('chatWidget').classList.remove('open')" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;padding:0"><i class="bi bi-x-lg"></i></button>
+    {# — Contact List View — #}
+    <div id="cwListView">
+        <div class="chat-widget-header">
+            <h6><i class="bi bi-chat-dots me-2"></i>Messages</h6>
+            <div style="display:flex;gap:8px;align-items:center">
+                <a href="{{ path('app_messages') }}" style="color:rgba(255,255,255,0.8);font-size:0.85rem" title="Ouvrir en plein écran"><i class="bi bi-arrows-fullscreen"></i></a>
+                <button onclick="chatWidget.classList.remove('open')"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </div>
+        <div class="chat-contact-list" id="chatContactList">
+            <div class="cw-empty">
+                <i class="bi bi-chat-square-text"></i>
+                <p style="font-size:0.85rem;margin:0">Loading...</p>
+            </div>
+        </div>
     </div>
-    <div class="chat-contact-list" id="chatContactList">
-        <div style="padding:40px 20px;text-align:center;color:var(--fo-text-secondary)">
-            <i class="bi bi-chat-square-text" style="font-size:2rem;opacity:0.3"></i>
-            <p style="margin:12px 0 4px;font-weight:600;font-size:0.9rem">Vos conversations</p>
-            <p style="font-size:0.8rem;margin:0">Cliquez sur un contact dans <a href="{{ path('app_my_circle') }}" style="color:var(--primary)">Mon Cercle</a> pour démarrer</p>
+    {# — Active Chat View — #}
+    <div class="cw-chat-view" id="cwChatView">
+        <div class="chat-widget-header">
+            <div style="display:flex;align-items:center;gap:10px">
+                <button onclick="cwBack()" style="font-size:1rem"><i class="bi bi-arrow-left"></i></button>
+                <div id="cwChatAvatar" class="chat-contact-avatar" style="width:32px;height:32px;font-size:0.7rem"></div>
+                <span id="cwChatName" style="font-weight:600;font-size:0.85rem"></span>
+            </div>
+            <button onclick="chatWidget.classList.remove('open')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="cw-chat-body" id="cwChatBody"></div>
+        <div class="cw-input-wrap">
+            <input type="text" class="cw-input" id="cwInput" placeholder="Écrire..." autocomplete="off">
+            <button class="cw-send" id="cwSendBtn"><i class="bi bi-send-fill" style="font-size:0.8rem"></i></button>
         </div>
     </div>
 </div>
@@ -441,7 +534,7 @@
                     </span>
                 </div>
                 <p style="font-size:0.9rem;line-height:1.7;color:#94a3b8">
-                    La plateforme de recrutement nouvelle génération. Trouvez votre emploi idéal, développez vos compétences et connectez-vous avec les meilleurs recruteurs.
+                    {{ 'footer.desc'|trans }}
                 </p>
                 <div class="fo-footer-social mt-3">
                     <a href="#"><i class="bi bi-linkedin"></i></a>
@@ -451,22 +544,22 @@
                 </div>
             </div>
             <div class="col-lg-2 col-md-6">
-                <h6>Plateforme</h6>
-                <a href="{{ path('app_offers') }}">Offres d'emploi</a>
-                <a href="{{ path('app_events') }}">Évènements</a>
-                <a href="{{ path('app_courses') }}">Formations</a>
+                <h6>{{ 'footer.platform'|trans }}</h6>
+                <a href="{{ path('app_offers') }}">{{ 'footer.jobs'|trans }}</a>
+                <a href="{{ path('app_events') }}">{{ 'nav.events'|trans }}</a>
+                <a href="{{ path('app_courses') }}">{{ 'nav.courses'|trans }}</a>
             </div>
             <div class="col-lg-2 col-md-6">
-                <h6>Candidat</h6>
-                <a href="{{ path('app_register') }}">Créer un compte</a>
-                <a href="{{ path('app_login') }}">Se connecter</a>
-                <a href="#">FAQ</a>
+                <h6>{{ 'footer.candidate'|trans }}</h6>
+                <a href="{{ path('app_register') }}">{{ 'footer.create_account'|trans }}</a>
+                <a href="{{ path('app_login') }}">{{ 'nav.login'|trans }}</a>
+                <a href="#">{{ 'footer.faq'|trans }}</a>
             </div>
             <div class="col-lg-4 col-md-6">
-                <h6>Newsletter</h6>
-                <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:16px">Recevez les dernières offres et actualités</p>
+                <h6>{{ 'footer.newsletter'|trans }}</h6>
+                <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:16px">{{ 'footer.newsletter_desc'|trans }}</p>
                 <div class="d-flex gap-2">
-                    <input type="email" placeholder="Votre email" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(71,85,105,0.3);border-radius:10px;padding:10px 16px;color:white;font-size:0.9rem">
+                    <input type="email" placeholder="{{ 'footer.your_email'|trans }}" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(71,85,105,0.3);border-radius:10px;padding:10px 16px;color:white;font-size:0.9rem">
                     <button class="btn-primary-custom" style="padding:10px 20px;white-space:nowrap;border-radius:10px">
                         <i class="bi bi-send"></i>
                     </button>
@@ -474,10 +567,10 @@
             </div>
         </div>
         <div class="fo-footer-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span>© 2026 Talentos. Tous droits réservés.</span>
+            <span>{{ 'footer.rights'|trans }}</span>
             <div class="d-flex gap-3">
-                <a href="#" style="margin:0">Confidentialité</a>
-                <a href="#" style="margin:0">Conditions</a>
+                <a href="#" style="margin:0">{{ 'footer.privacy'|trans }}</a>
+                <a href="#" style="margin:0">{{ 'footer.terms'|trans }}</a>
             </div>
         </div>
     </div>
@@ -576,15 +669,130 @@
     updateNotifBadge();
     setInterval(() => { updateNotifBadge(); notifLoaded = false; }, 30000);
 
-    // ── Chat Widget ──
+    // ── Chat Messenger Widget ──
     const chatFab = document.getElementById('chatFab');
     const chatWidget = document.getElementById('chatWidget');
-    const chatToggleNav = document.getElementById('chatToggleNav');
-    function toggleChat() {
+    const cwListView = document.getElementById('cwListView');
+    const cwChatView = document.getElementById('cwChatView');
+    const cwChatBody = document.getElementById('cwChatBody');
+    const cwInput = document.getElementById('cwInput');
+    const cwSendBtn = document.getElementById('cwSendBtn');
+    const fabBadge = document.getElementById('fabBadge');
+    let cwActiveSyncId = null;
+    let cwLastMsgId = 0;
+    let cwPollTimer = null;
+
+    chatFab?.addEventListener('click', () => {
         chatWidget?.classList.toggle('open');
+        if (chatWidget?.classList.contains('open') && !cwActiveSyncId) cwLoadContacts();
+    });
+
+    // Load conversation list
+    function cwLoadContacts() {
+        fetch('/messages?_fmt=contacts', {headers:{'X-Requested-With':'XMLHttpRequest'}})
+            .then(r => r.text())
+            .then(() => {
+                // Use the poll endpoint to build contact list from syncs data
+                fetch('/connect?tab=connections&_xhr=1', {headers:{'X-Requested-With':'XMLHttpRequest'}})
+                    .catch(() => {});
+            }).catch(() => {});
+        // Simpler: just fetch contacts from a dedicated lightweight endpoint
+        cwFetchContacts();
     }
-    chatFab?.addEventListener('click', toggleChat);
-    chatToggleNav?.addEventListener('click', toggleChat);
+
+    function cwFetchContacts() {
+        fetch('/api/chat/contacts', {headers:{'X-Requested-With':'XMLHttpRequest'}})
+            .then(r => r.json())
+            .then(contacts => {
+                const list = document.getElementById('chatContactList');
+                if (!contacts || contacts.length === 0) {
+                    list.innerHTML = '<div class="cw-empty"><i class="bi bi-chat-square-text"></i><p style="font-size:0.85rem;margin:4px 0 0">Aucune conversation</p><a href="/connect" style="color:var(--primary);font-size:0.8rem">Découvrir des personnes</a></div>';
+                    return;
+                }
+                let totalUnread = 0;
+                list.innerHTML = contacts.map(c => {
+                    totalUnread += c.unread;
+                    return `<div class="chat-contact" onclick="cwOpenChat(${c.syncId}, '${cwEsc(c.name)}', '${cwEsc(c.avatar)}', '${cwEsc(c.initial)}')"><div class="chat-contact-avatar">${c.avatar ? '<img src="'+cwEsc(c.avatar)+'" alt="">' : cwEsc(c.initial)}</div><div class="chat-contact-info"><div class="chat-contact-name">${cwEsc(c.name)}</div><div class="chat-contact-preview">${c.lastMsg ? cwEsc(c.lastMsg) : 'Démarrez la conversation'}</div></div>${c.unread > 0 ? '<span class="chat-contact-unread">'+c.unread+'</span>' : ''}</div>`;
+                }).join('');
+                if (totalUnread > 0) { fabBadge.textContent = totalUnread; fabBadge.style.display = 'flex'; }
+                else { fabBadge.style.display = 'none'; }
+            })
+            .catch(() => {});
+    }
+
+    // Open a chat inside the widget
+    function cwOpenChat(syncId, name, avatar, initial) {
+        cwActiveSyncId = syncId;
+        cwLastMsgId = 0;
+        document.getElementById('cwChatName').textContent = name;
+        const av = document.getElementById('cwChatAvatar');
+        av.innerHTML = avatar ? '<img src="'+avatar+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : initial;
+        cwChatBody.innerHTML = '<div class="cw-empty"><i class="bi bi-hourglass-split"></i></div>';
+        cwListView.style.display = 'none';
+        cwChatView.classList.add('active');
+        cwLoadMessages();
+        if (cwPollTimer) clearInterval(cwPollTimer);
+        cwPollTimer = setInterval(cwLoadMessages, 4000);
+    }
+
+    function cwBack() {
+        cwActiveSyncId = null;
+        if (cwPollTimer) { clearInterval(cwPollTimer); cwPollTimer = null; }
+        cwChatView.classList.remove('active');
+        cwListView.style.display = '';
+        cwFetchContacts();
+    }
+
+    function cwLoadMessages() {
+        if (!cwActiveSyncId) return;
+        fetch('/messages/' + cwActiveSyncId + '/poll?after=' + cwLastMsgId)
+            .then(r => r.json())
+            .then(msgs => {
+                if (cwLastMsgId === 0) cwChatBody.innerHTML = '';
+                if (msgs.length === 0 && cwLastMsgId === 0) {
+                    cwChatBody.innerHTML = '<div class="cw-empty" style="margin:auto"><p style="font-size:0.85rem">👋 Dites bonjour !</p></div>';
+                }
+                msgs.forEach(m => {
+                    if (m.id <= cwLastMsgId && cwLastMsgId > 0) return;
+                    if (m.isMine && m.id <= cwLastMsgId) return;
+                    const empty = cwChatBody.querySelector('.cw-empty');
+                    if (empty) empty.remove();
+                    const row = document.createElement('div');
+                    row.className = 'cw-bubble-row ' + (m.isMine ? 'mine' : '');
+                    row.innerHTML = '<div class="cw-bubble '+(m.isMine?'mine':'theirs')+'">'+cwEsc(m.message)+'<div class="cw-time">'+m.time+'</div></div>';
+                    cwChatBody.appendChild(row);
+                    cwLastMsgId = Math.max(cwLastMsgId, m.id);
+                });
+                cwChatBody.scrollTop = cwChatBody.scrollHeight;
+            }).catch(() => {});
+    }
+
+    // Send message
+    function cwSend() {
+        const text = cwInput.value.trim();
+        if (!text || !cwActiveSyncId) return;
+        const empty = cwChatBody.querySelector('.cw-empty');
+        if (empty) empty.remove();
+        const row = document.createElement('div');
+        row.className = 'cw-bubble-row mine';
+        row.innerHTML = '<div class="cw-bubble mine">'+cwEsc(text)+'<div class="cw-time">'+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';
+        cwChatBody.appendChild(row);
+        cwChatBody.scrollTop = cwChatBody.scrollHeight;
+        cwInput.value = '';
+        fetch('/messages/' + cwActiveSyncId + '/send', {
+            method: 'POST',
+            headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
+            body: 'message=' + encodeURIComponent(text)
+        });
+    }
+    cwSendBtn?.addEventListener('click', cwSend);
+    cwInput?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); cwSend(); } });
+
+    function cwEsc(t) { const d = document.createElement('div'); d.textContent = t||''; return d.innerHTML; }
+
+    // Refresh contacts every 15s for unread badge
+    setInterval(cwFetchContacts, 15000);
+    setTimeout(cwFetchContacts, 1000);
 </script>
 {% endblock %}
 {% endblock %}

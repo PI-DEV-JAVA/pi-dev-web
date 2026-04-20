@@ -1,0 +1,217 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}
+    <a href="{{ path('admin_hr_messages') }}" style="color:var(--bo-text-secondary);text-decoration:none;font-size:0.85rem;display:inline-flex;align-items:center;gap:6px;margin-right:12px">
+        <i class="bi bi-arrow-left"></i> Retour
+    </a>
+    Chat — {% if otherUser.profile and otherUser.profile.firstName %}{{ otherUser.profile.firstName }} {{ otherUser.profile.lastName }}{% else %}{{ otherUser.email|split('@')[0] }}{% endif %}
+{% endblock %}
+
+{% block content %}
+<style>
+    .bo-chat-wrap {
+        display: flex; flex-direction: column;
+        height: calc(100vh - 120px);
+        background: var(--bo-bg-card); border-radius: 16px;
+        border: 1.5px solid var(--bo-border); overflow: hidden;
+    }
+    .bo-chat-header {
+        padding: 14px 20px; border-bottom: 1px solid var(--bo-border);
+        display: flex; align-items: center; gap: 12px;
+        background: rgba(30,41,59,0.8); flex-shrink: 0;
+    }
+    .bo-chat-avatar {
+        width: 40px; height: 40px; border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.9rem; color: white; flex-shrink: 0;
+        overflow: hidden;
+    }
+    .bo-chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .bo-chat-name { font-weight: 700; font-size: 0.95rem; color: var(--bo-text); }
+    .bo-chat-sub { font-size: 0.78rem; color: var(--bo-text-secondary); }
+
+    .bo-chat-body {
+        flex: 1; overflow-y: auto; padding: 20px 24px;
+        display: flex; flex-direction: column; gap: 4px;
+    }
+    .bo-date-divider {
+        text-align: center; margin: 16px 0 8px;
+        font-size: 0.7rem; color: var(--bo-text-secondary); font-weight: 600;
+    }
+    .bo-date-divider span {
+        background: rgba(71,85,105,0.3); padding: 4px 14px; border-radius: 20px;
+    }
+    .bo-bubble-row { display: flex; margin-bottom: 2px; }
+    .bo-bubble-row.mine { justify-content: flex-end; }
+    .bo-bubble-row.theirs { justify-content: flex-start; }
+    .bo-bubble {
+        max-width: 60%; padding: 10px 16px; font-size: 0.88rem;
+        line-height: 1.5; word-break: break-word;
+    }
+    .bo-bubble.mine {
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        color: white; border-radius: 16px 16px 4px 16px;
+    }
+    .bo-bubble.theirs {
+        background: var(--bo-bg-input); color: var(--bo-text);
+        border: 1px solid var(--bo-border);
+        border-radius: 16px 16px 16px 4px;
+    }
+    .bo-bubble .bo-time {
+        font-size: 0.6rem; opacity: 0.55; margin-top: 3px; text-align: right;
+    }
+    .bo-bubble.theirs .bo-time { text-align: left; }
+
+    .bo-chat-input {
+        padding: 14px 20px; border-top: 1px solid var(--bo-border);
+        display: flex; gap: 10px; align-items: center;
+        background: rgba(30,41,59,0.6); flex-shrink: 0;
+    }
+    .bo-msg-input {
+        flex: 1; border: 1.5px solid var(--bo-border); border-radius: 24px;
+        padding: 11px 20px; font-size: 0.88rem; outline: none;
+        background: var(--bo-bg-input); color: var(--bo-text);
+        transition: border-color 0.2s;
+    }
+    .bo-msg-input::placeholder { color: var(--bo-text-secondary); }
+    .bo-msg-input:focus { border-color: var(--primary-light); }
+    .bo-send-btn {
+        width: 42px; height: 42px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #6366f1);
+        border: none; color: white; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s; flex-shrink: 0;
+    }
+    .bo-send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 14px rgba(79,70,229,0.4); }
+
+    .bo-chat-empty {
+        flex: 1; display: flex; align-items: center; justify-content: center;
+        flex-direction: column; color: var(--bo-text-secondary); text-align: center;
+    }
+    .bo-chat-empty i { font-size: 3rem; opacity: 0.15; margin-bottom: 12px; }
+</style>
+
+<div class="bo-chat-wrap">
+    {# Header #}
+    <div class="bo-chat-header">
+        <div class="bo-chat-avatar">
+            {% if otherUser.profile and otherUser.profile.profilePicturePath %}
+                <img src="{{ otherUser.profile.profilePicturePath }}" alt="">
+            {% else %}
+                {{ otherUser.email|first|upper }}
+            {% endif %}
+        </div>
+        <div style="flex:1;min-width:0">
+            <div class="bo-chat-name">
+                {% if otherUser.profile and otherUser.profile.firstName %}{{ otherUser.profile.firstName }} {{ otherUser.profile.lastName }}{% else %}{{ otherUser.email|split('@')[0] }}{% endif %}
+            </div>
+            <div class="bo-chat-sub">
+                {{ otherUser.profile ? otherUser.profile.professionalTitle : otherUser.email }}
+                {% if otherUser.profile and otherUser.profile.location %} · <i class="bi bi-geo-alt"></i> {{ otherUser.profile.location }}{% endif %}
+            </div>
+        </div>
+        <a href="{{ path('admin_user_profile', {id: otherUser.id}) }}" style="color:var(--primary-light);font-size:0.8rem;text-decoration:none;font-weight:600">
+            <i class="bi bi-person-vcard me-1"></i>Voir profil
+        </a>
+    </div>
+
+    {# Messages #}
+    <div class="bo-chat-body" id="chatBody">
+        {% set lastDate = '' %}
+        {% if messages|length > 0 %}
+            {% for msg in messages %}
+                {% set msgDate = msg.createdAt|date('Y-m-d') %}
+                {% if msgDate != lastDate %}
+                    {% set lastDate = msgDate %}
+                    <div class="bo-date-divider">
+                        <span>
+                            {% if msgDate == 'now'|date('Y-m-d') %}Aujourd'hui
+                            {% elseif msgDate == 'yesterday'|date('Y-m-d') %}Hier
+                            {% else %}{{ msg.createdAt|date('d/m/Y') }}{% endif %}
+                        </span>
+                    </div>
+                {% endif %}
+                <div class="bo-bubble-row {{ msg.sender == app.user ? 'mine' : 'theirs' }}">
+                    <div class="bo-bubble {{ msg.sender == app.user ? 'mine' : 'theirs' }}" data-id="{{ msg.id }}">
+                        {{ msg.message }}
+                        <div class="bo-time">{{ msg.createdAt|date('H:i') }}</div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="bo-chat-empty">
+                <i class="bi bi-chat-square-text"></i>
+                <p>Démarrez la conversation avec ce candidat 👋</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {# Input #}
+    <form id="msgForm" class="bo-chat-input" onsubmit="return sendMsg(event)">
+        <input type="text" class="bo-msg-input" id="msgInput" placeholder="Écrire un message..." autocomplete="off" autofocus>
+        <button type="submit" class="bo-send-btn"><i class="bi bi-send-fill"></i></button>
+    </form>
+</div>
+
+<script>
+const syncId = {{ sync.id }};
+const chatBody = document.getElementById('chatBody');
+let lastMsgId = 0;
+
+document.querySelectorAll('.bo-bubble').forEach(b => {
+    const id = parseInt(b.dataset.id);
+    if (id > lastMsgId) lastMsgId = id;
+});
+chatBody.scrollTop = chatBody.scrollHeight;
+
+function sendMsg(e) {
+    e.preventDefault();
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
+    if (!text) return false;
+
+    const empty = chatBody.querySelector('.bo-chat-empty');
+    if (empty) empty.remove();
+
+    const row = document.createElement('div');
+    row.className = 'bo-bubble-row mine';
+    row.innerHTML = '<div class="bo-bubble mine">' + escapeHtml(text) + '<div class="bo-time">' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</div></div>';
+    chatBody.appendChild(row);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    input.value = '';
+
+    fetch('/messages/' + syncId + '/send', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+        body: 'message=' + encodeURIComponent(text)
+    });
+    return false;
+}
+
+function escapeHtml(t) {
+    const d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+}
+
+// Poll every 4s
+setInterval(() => {
+    fetch('/messages/' + syncId + '/poll?after=' + lastMsgId)
+        .then(r => r.json())
+        .then(msgs => {
+            msgs.forEach(m => {
+                if (m.id <= lastMsgId) return;
+                if (m.isMine) { lastMsgId = m.id; return; }
+                const empty = chatBody.querySelector('.bo-chat-empty');
+                if (empty) empty.remove();
+                const row = document.createElement('div');
+                row.className = 'bo-bubble-row theirs';
+                row.innerHTML = '<div class="bo-bubble theirs" data-id="' + m.id + '">' + escapeHtml(m.message) + '<div class="bo-time">' + m.time + '</div></div>';
+                chatBody.appendChild(row);
+                chatBody.scrollTop = chatBody.scrollHeight;
+                lastMsgId = m.id;
+            });
+        });
+}, 4000);
+</script>
+{% endblock %}

@@ -255,6 +255,26 @@
     .notif-item-msg { font-size: 0.75rem; color: var(--bo-text-secondary); margin-top: 2px; }
     .notif-item-time { font-size: 0.65rem; color: var(--bo-text-secondary); margin-top: 4px; }
     .notif-empty { text-align: center; padding: 30px; color: var(--bo-text-secondary); }
+
+    /* ── Language Toggle ── */
+    .lang-toggle {
+        display:flex; background:rgba(255,255,255,0.04); border-radius:10px;
+        border:1px solid var(--bo-border); overflow:hidden;
+    }
+    .lang-btn {
+        display:flex; align-items:center; gap:4px; padding:6px 12px;
+        border:none; background:transparent; color:var(--bo-text-secondary);
+        font-size:0.75rem; font-weight:600; cursor:pointer; transition:all 0.25s;
+        position:relative; z-index:1;
+    }
+    .lang-btn.active {
+        background:rgba(79,70,229,0.15); color:var(--primary-light);
+        box-shadow:inset 0 0 0 1px rgba(79,70,229,0.3);
+        border-radius:8px;
+    }
+    .lang-btn:hover:not(.active) { color:var(--bo-text); background:rgba(255,255,255,0.06); }
+    .lang-flag { font-size:0.9rem; }
+    .lang-label { letter-spacing:0.5px; }
 </style>
 {% endblock %}
 
@@ -262,46 +282,60 @@
 {# ── Sidebar ── #}
 <aside class="bo-sidebar">
     <div class="bo-sidebar-header">
-        <div class="bo-sidebar-logo"><i class="bi bi-briefcase-fill me-1"></i> Talentos</div>
-        <div class="bo-sidebar-label">Administration</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="bo-sidebar-logo"><i class="bi bi-briefcase-fill me-1"></i> Talentos</div>
+            <div class="lang-toggle" role="group">
+                <a href="{{ path('switch_locale', {locale: 'fr'}) }}" class="lang-btn lang-fr {{ app.request.locale == 'fr' ? 'active' : '' }}" title="Français">
+                    <span class="lang-flag">🇫🇷</span><span class="lang-label">FR</span>
+                </a>
+                <a href="{{ path('switch_locale', {locale: 'en'}) }}" class="lang-btn lang-en {{ app.request.locale == 'en' ? 'active' : '' }}" title="English">
+                    <span class="lang-flag">🇬🇧</span><span class="lang-label">EN</span>
+                </a>
+            </div>
+        </div>
+        <div class="bo-sidebar-label">{{ 'nav.administration'|trans }}</div>
     </div>
 
     <nav class="bo-sidebar-nav">
-        <div class="bo-nav-section">Principal</div>
+        <div class="bo-nav-section">{{ 'nav.main'|trans }}</div>
         <a href="{{ path('admin_dashboard') }}" class="bo-nav-link {{ app.request.attributes.get('_route') == 'admin_dashboard' ? 'active' : '' }}">
-            <i class="bi bi-grid-1x2-fill"></i> Dashboard
+            <i class="bi bi-grid-1x2-fill"></i> {{ 'nav.dashboard'|trans }}
         </a>
 
-        <div class="bo-nav-section">Gestion</div>
+        <div class="bo-nav-section">{{ 'nav.management'|trans }}</div>
         <a href="{{ path('admin_offers') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_offer' ? 'active' : '' }}">
-            <i class="bi bi-megaphone"></i> Offres
+            <i class="bi bi-megaphone"></i> {{ 'nav.offers'|trans }}
         </a>
         <a href="{{ path('admin_events') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_event' ? 'active' : '' }}">
-            <i class="bi bi-calendar-event"></i> Évènements
+            <i class="bi bi-calendar-event"></i> {{ 'nav.events'|trans }}
         </a>
         <a href="{{ path('admin_projects') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_project' ? 'active' : '' }}">
-            <i class="bi bi-kanban"></i> Projets
+            <i class="bi bi-kanban"></i> {{ 'nav.projects'|trans }}
         </a>
         <a href="{{ path('admin_activities') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_activit' ? 'active' : '' }}">
-            <i class="bi bi-clipboard-data"></i> Activités
+            <i class="bi bi-clipboard-data"></i> {{ 'nav.activities'|trans }}
         </a>
         <a href="{{ path('admin_courses') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_course' ? 'active' : '' }}">
-            <i class="bi bi-book"></i> Formations
+            <i class="bi bi-book"></i> {{ 'nav.courses'|trans }}
+        </a>
+
+        <a href="{{ path('admin_hr_messages') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_hr_messages' or app.request.attributes.get('_route') == 'admin_message_candidate' ? 'active' : '' }}">
+            <i class="bi bi-chat-dots-fill"></i> Messages candidats
         </a>
 
         {% if app.user.role == 'ADMIN' %}
-        <div class="bo-nav-section">Administration</div>
+        <div class="bo-nav-section">{{ 'nav.administration'|trans }}</div>
         <a href="{{ path('admin_users') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_user' ? 'active' : '' }}">
-            <i class="bi bi-people-fill"></i> Utilisateurs
+            <i class="bi bi-people-fill"></i> {{ 'nav.users'|trans }}
         </a>
         <a href="{{ path('admin_support') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_support' ? 'active' : '' }}">
-            <i class="bi bi-headset"></i> Tickets
+            <i class="bi bi-headset"></i> {{ 'nav.tickets'|trans }}
         </a>
         {% endif %}
 
         <hr style="border-color:var(--bo-border);margin:8px 0">
         <a href="{{ path('app_home') }}" class="bo-nav-link">
-            <i class="bi bi-box-arrow-up-right"></i> Voir le site
+            <i class="bi bi-box-arrow-up-right"></i> {{ 'nav.view_site'|trans }}
         </a>
     </nav>
 
@@ -320,7 +354,7 @@
                 <div style="font-size:0.7rem;color:var(--bo-text-secondary)">{{ app.user.role }}</div>
             </div>
         </a>
-        <a href="{{ path('app_logout') }}" class="bo-topbar-btn" title="Déconnexion">
+        <a href="{{ path('app_logout') }}" class="bo-topbar-btn" title="{{ 'nav.logout'|trans }}">
             <i class="bi bi-box-arrow-right" style="font-size:0.9rem"></i>
         </a>
     </div>
@@ -328,11 +362,11 @@
 
 {# ── Top Bar ── #}
 <header class="bo-topbar">
-    <div class="bo-topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+    <div class="bo-topbar-title">{% block page_title %}{{ 'nav.dashboard'|trans }}{% endblock %}</div>
     <div class="bo-topbar-actions">
         {# Notification bell #}
         <div class="notif-wrapper">
-            <button class="bo-topbar-btn" id="notifToggle" title="Notifications" onclick="toggleNotifDropdown()" style="position:relative">
+            <button class="bo-topbar-btn" id="notifToggle" title="{{ 'nav.notifications'|trans }}" onclick="toggleNotifDropdown()" style="position:relative">
                 <i class="bi bi-bell"></i>
                 {% if notif_unread_count is defined and notif_unread_count > 0 %}
                     <span class="notif-badge">{{ notif_unread_count > 9 ? '9+' : notif_unread_count }}</span>
@@ -340,9 +374,9 @@
             </button>
             <div class="notif-dropdown" id="notifDropdown">
                 <div class="notif-dropdown-header">
-                    <h6><i class="bi bi-bell me-1"></i> Notifications</h6>
-                    {% if notif_unread_count is defined and notif_unread_count > 0 %}
-                        <a href="{{ path('admin_notifications_read_all') }}" style="font-size:0.75rem;color:var(--primary-light);text-decoration:none">Tout marquer lu</a>
+                    <h6><i class="bi bi-bell me-1"></i> {{ 'notif.title'|trans }}</h6>
+                {% if notif_unread_count is defined and notif_unread_count > 0 %}
+                    <a href="{{ path('admin_notifications_read_all') }}" style="font-size:0.75rem;color:var(--primary-light);text-decoration:none">{{ 'notif.mark_all'|trans }}</a>
                     {% endif %}
                 </div>
                 <div class="notif-list">
@@ -358,15 +392,15 @@
                             </a>
                         {% endfor %}
                     {% else %}
-                        <div class="notif-empty"><i class="bi bi-bell-slash" style="font-size:1.5rem;opacity:0.3;display:block;margin-bottom:6px"></i>Aucune notification</div>
+                        <div class="notif-empty"><i class="bi bi-bell-slash" style="font-size:1.5rem;opacity:0.3;display:block;margin-bottom:6px"></i>{{ 'notif.empty'|trans }}</div>
                     {% endif %}
                 </div>
-                <a href="{{ path('admin_notifications') }}" style="display:block;text-align:center;padding:10px;font-size:0.8rem;color:var(--primary-light);text-decoration:none;border-top:1px solid var(--bo-border);font-weight:600">Voir toutes les notifications</a>
+                <a href="{{ path('admin_notifications') }}" style="display:block;text-align:center;padding:10px;font-size:0.8rem;color:var(--primary-light);text-decoration:none;border-top:1px solid var(--bo-border);font-weight:600">{{ 'notif.view_all'|trans }}</a>
             </div>
         </div>
-        <a href="{{ path('admin_profile') }}" class="bo-topbar-btn" title="Profil"><i class="bi bi-person-circle"></i></a>
-        <a href="{{ path('app_home') }}" class="bo-topbar-btn" title="Voir le site"><i class="bi bi-box-arrow-up-right"></i></a>
-        <a href="{{ path('app_logout') }}" class="bo-topbar-btn" title="Déconnexion"><i class="bi bi-power"></i></a>
+        <a href="{{ path('admin_profile') }}" class="bo-topbar-btn" title="{{ 'nav.profile'|trans }}"><i class="bi bi-person-circle"></i></a>
+        <a href="{{ path('app_home') }}" class="bo-topbar-btn" title="{{ 'nav.view_site'|trans }}"><i class="bi bi-box-arrow-up-right"></i></a>
+        <a href="{{ path('app_logout') }}" class="bo-topbar-btn" title="{{ 'nav.logout'|trans }}"><i class="bi bi-power"></i></a>
     </div>
 </header>
 

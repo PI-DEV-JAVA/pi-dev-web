@@ -1,0 +1,328 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}{{ 'messages.page_title'|trans }} — Talentos{% endblock %}
+
+{% block stylesheets %}
+<style>
+    /* Force navbar visible & push content below it */
+    .fo-navbar { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(20px); border-bottom: 1px solid var(--fo-border); padding: 10px 0 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .fo-content { padding: 0 !important; margin: 0 !important; }
+    .fo-footer { display: none; }
+    .chat-fab { display: none !important; }
+    .chat-widget { display: none !important; }
+    .msg-container {
+        display: flex; height: calc(100vh - 64px); background: #f8fafc;
+        margin-top: 64px;
+    }
+
+    /* ── Conversation List ── */
+    .msg-sidebar {
+        width: 340px; background: white; border-right: 1px solid var(--fo-border);
+        display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .msg-sidebar-header {
+        padding: 20px; border-bottom: 1px solid var(--fo-border);
+    }
+    .msg-sidebar-header h3 { font-size: 1.2rem; font-weight: 800; margin: 0; }
+    .msg-list { flex: 1; overflow-y: auto; }
+    .msg-conv {
+        display: flex; align-items: center; gap: 12px;
+        padding: 14px 20px; border-bottom: 1px solid rgba(0,0,0,0.04);
+        cursor: pointer; transition: background 0.15s; text-decoration: none; color: inherit;
+    }
+    .msg-conv:hover { background: rgba(79,70,229,0.03); color: inherit; }
+    .msg-conv.active { background: rgba(79,70,229,0.06); border-left: 3px solid var(--primary); }
+    .msg-conv-avatar {
+        width: 44px; height: 44px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.9rem; color: white; flex-shrink: 0;
+        overflow: hidden; position: relative;
+    }
+    .msg-conv-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .msg-conv-info { flex: 1; min-width: 0; }
+    .msg-conv-name { font-weight: 600; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-conv-preview { font-size: 0.78rem; color: var(--fo-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .msg-conv-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .msg-conv-time { font-size: 0.7rem; color: var(--fo-text-secondary); }
+    .msg-conv-unread {
+        width: 20px; height: 20px; border-radius: 50%;
+        background: var(--primary); color: white; font-size: 0.65rem;
+        font-weight: 700; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Chat Panel ── */
+    .msg-chat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .msg-chat-header {
+        padding: 16px 24px; background: white; border-bottom: 1px solid var(--fo-border);
+        display: flex; align-items: center; gap: 12px;
+    }
+    .msg-chat-name { font-weight: 700; font-size: 1rem; }
+    .msg-chat-title { font-size: 0.8rem; color: var(--fo-text-secondary); }
+
+    .msg-chat-body {
+        flex: 1; overflow-y: auto; padding: 24px;
+        display: flex; flex-direction: column; gap: 4px;
+    }
+
+    /* ── Bubbles ── */
+    .msg-date-divider {
+        text-align: center; margin: 16px 0 8px;
+        font-size: 0.7rem; color: var(--fo-text-secondary); font-weight: 600;
+    }
+    .msg-date-divider span {
+        background: rgba(148,163,184,0.12); padding: 4px 14px; border-radius: 20px;
+    }
+    .msg-bubble-row {
+        display: flex; margin-bottom: 2px;
+    }
+    .msg-bubble-row.mine { justify-content: flex-end; }
+    .msg-bubble-row.theirs { justify-content: flex-start; }
+    .msg-bubble {
+        max-width: 65%; padding: 10px 16px; font-size: 0.9rem; line-height: 1.5;
+        position: relative; word-break: break-word;
+    }
+    .msg-bubble.mine {
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        color: white; border-radius: 18px 18px 4px 18px;
+    }
+    .msg-bubble.theirs {
+        background: white; color: var(--fo-text);
+        border: 1px solid var(--fo-border);
+        border-radius: 18px 18px 18px 4px;
+    }
+    .msg-time {
+        font-size: 0.65rem; opacity: 0.6; margin-top: 4px;
+        text-align: right;
+    }
+    .msg-bubble.theirs .msg-time { text-align: left; color: var(--fo-text-secondary); }
+
+    /* ── Input ── */
+    .msg-input-wrap {
+        padding: 16px 24px; background: white; border-top: 1px solid var(--fo-border);
+        display: flex; gap: 10px; align-items: center;
+    }
+    .msg-input {
+        flex: 1; border: 1.5px solid var(--fo-border); border-radius: 24px;
+        padding: 12px 20px; font-size: 0.9rem; outline: none;
+        transition: border-color 0.2s; background: #f8fafc;
+    }
+    .msg-input:focus { border-color: var(--primary); background: white; }
+    .msg-send-btn {
+        width: 44px; height: 44px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #6366f1);
+        border: none; color: white; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s; flex-shrink: 0;
+    }
+    .msg-send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(79,70,229,0.3); }
+    .msg-send-btn:active { transform: scale(0.95); }
+
+    .msg-empty {
+        flex: 1; display: flex; align-items: center; justify-content: center;
+        flex-direction: column; color: var(--fo-text-secondary); text-align: center;
+    }
+    .msg-empty i { font-size: 4rem; opacity: 0.15; margin-bottom: 16px; }
+
+    @media (max-width: 768px) {
+        .msg-sidebar { width: 100%; }
+        .msg-chat { display: none; }
+        .msg-container.has-chat .msg-sidebar { display: none; }
+        .msg-container.has-chat .msg-chat { display: flex; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="msg-container {{ activeSync ? 'has-chat' : '' }}">
+    {# ── Sidebar: Conversations ── #}
+    <div class="msg-sidebar">
+        <div class="msg-sidebar-header">
+            <h3><i class="bi bi-chat-heart me-2"></i>{{ 'messages.title'|trans }}</h3>
+        </div>
+        <div class="msg-list">
+            {% if conversations|length > 0 %}
+                {% for c in conversations %}
+                    {% set u = c.user %}
+                    <a href="{{ path('app_messages', {chat: c.sync.id}) }}" class="msg-conv {{ activeSync and activeSync.id == c.sync.id ? 'active' : '' }}">
+                        <div class="msg-conv-avatar">
+                            {% if u.profile and u.profile.profilePicturePath %}
+                                <img src="{{ u.profile.profilePicturePath }}" alt="">
+                            {% else %}
+                                {{ u.email|first|upper }}
+                            {% endif %}
+                        </div>
+                        <div class="msg-conv-info">
+                            <div class="msg-conv-name">
+                                {% if u.profile and u.profile.firstName %}{{ u.profile.firstName }} {{ u.profile.lastName }}{% else %}{{ u.email|split('@')[0] }}{% endif %}
+                            </div>
+                            <div class="msg-conv-preview">
+                                {% if c.lastMessage %}
+                                    {{ c.lastMessage.sender == app.user ? 'You: ' : '' }}{{ c.lastMessage.message|length > 35 ? c.lastMessage.message|slice(0,35) ~ '…' : c.lastMessage.message }}
+                                {% else %}
+                                    {{ 'messages.start_conversation'|trans }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="msg-conv-meta">
+                            {% if c.lastMessage %}
+                                <span class="msg-conv-time">{{ c.lastMessage.createdAt|date('H:i') }}</span>
+                            {% endif %}
+                            {% if c.unread > 0 %}
+                                <span class="msg-conv-unread">{{ c.unread }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            {% else %}
+                <div class="msg-empty" style="padding:40px">
+                    <i class="bi bi-chat-dots" style="font-size:2rem"></i>
+                    <p style="font-size:0.85rem">{{ 'messages.no_conversations'|trans }}</p>
+                    <a href="{{ path('app_connect') }}" style="color:var(--primary);font-weight:600;font-size:0.85rem">{{ 'messages.find_people'|trans }}</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ── Chat Panel ── #}
+    {% if activeSync and activeOther %}
+    <div class="msg-chat">
+        <div class="msg-chat-header">
+            <a href="{{ path('app_messages') }}" class="d-md-none" style="color:var(--fo-text-secondary);margin-right:8px"><i class="bi bi-arrow-left" style="font-size:1.2rem"></i></a>
+            <div class="msg-conv-avatar" style="width:40px;height:40px;font-size:0.85rem">
+                {% if activeOther.profile and activeOther.profile.profilePicturePath %}
+                    <img src="{{ activeOther.profile.profilePicturePath }}" alt="">
+                {% else %}
+                    {{ activeOther.email|first|upper }}
+                {% endif %}
+            </div>
+            <div>
+                <div class="msg-chat-name">
+                    {% if activeOther.profile and activeOther.profile.firstName %}{{ activeOther.profile.firstName }} {{ activeOther.profile.lastName }}{% else %}{{ activeOther.email|split('@')[0] }}{% endif %}
+                </div>
+                <div class="msg-chat-title">{{ activeOther.profile ? activeOther.profile.professionalTitle : activeOther.email }}</div>
+            </div>
+            <a href="{{ path('app_user_profile', {id: activeOther.id}) }}" style="margin-left:auto;color:var(--fo-text-secondary);font-size:0.8rem;text-decoration:none;font-weight:600">
+                <i class="bi bi-person-circle me-1"></i>{{ 'messages.view_profile'|trans }}
+            </a>
+        </div>
+
+        <div class="msg-chat-body" id="chatBody">
+            {% set lastDate = '' %}
+            {% if activeMessages|length > 0 %}
+                {% for msg in activeMessages %}
+                    {% set msgDate = msg.createdAt|date('Y-m-d') %}
+                    {% if msgDate != lastDate %}
+                        {% set lastDate = msgDate %}
+                        <div class="msg-date-divider">
+                            <span>
+                                {% if msgDate == 'now'|date('Y-m-d') %}{{ 'messages.today'|trans }}
+                                {% elseif msgDate == 'yesterday'|date('Y-m-d') %}{{ 'messages.yesterday'|trans }}
+                                {% else %}{{ msg.createdAt|date('d/m/Y') }}{% endif %}
+                            </span>
+                        </div>
+                    {% endif %}
+                    <div class="msg-bubble-row {{ msg.sender == app.user ? 'mine' : 'theirs' }}">
+                        <div class="msg-bubble {{ msg.sender == app.user ? 'mine' : 'theirs' }}" data-id="{{ msg.id }}">
+                            {{ msg.message }}
+                            <div class="msg-time">{{ msg.createdAt|date('H:i') }}</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="msg-empty">
+                    <i class="bi bi-emoji-smile"></i>
+                    <p>{{ 'messages.say_hello'|trans }} 👋</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <form id="msgForm" class="msg-input-wrap" onsubmit="return sendMsg(event)">
+            <input type="text" class="msg-input" id="msgInput" placeholder="{{ 'messages.type_message'|trans }}" autocomplete="off" autofocus>
+            <button type="submit" class="msg-send-btn"><i class="bi bi-send-fill"></i></button>
+        </form>
+    </div>
+    {% else %}
+    <div class="msg-chat">
+        <div class="msg-empty">
+            <i class="bi bi-chat-square-text"></i>
+            <h5 style="font-weight:700;color:var(--fo-text);margin-bottom:4px">{{ 'messages.select_conversation'|trans }}</h5>
+            <p style="font-size:0.9rem">{{ 'messages.select_hint'|trans }}</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if activeSync %}
+<script>
+const syncId = {{ activeSync.id }};
+const chatBody = document.getElementById('chatBody');
+let lastMsgId = 0;
+
+// Get last message ID
+document.querySelectorAll('.msg-bubble').forEach(b => {
+    const id = parseInt(b.dataset.id);
+    if (id > lastMsgId) lastMsgId = id;
+});
+
+// Scroll to bottom
+chatBody.scrollTop = chatBody.scrollHeight;
+
+// Send message via AJAX
+function sendMsg(e) {
+    e.preventDefault();
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
+    if (!text) return false;
+
+    // Optimistic UI — add bubble immediately
+    const row = document.createElement('div');
+    row.className = 'msg-bubble-row mine';
+    row.innerHTML = '<div class="msg-bubble mine">' + escapeHtml(text) + '<div class="msg-time">' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</div></div>';
+
+    // Remove empty state if present
+    const empty = chatBody.querySelector('.msg-empty');
+    if (empty) empty.remove();
+
+    chatBody.appendChild(row);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    input.value = '';
+
+    fetch('/messages/' + syncId + '/send', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+        body: 'message=' + encodeURIComponent(text)
+    });
+
+    return false;
+}
+
+function escapeHtml(t) {
+    const d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+}
+
+// Poll for new messages every 4 seconds
+setInterval(() => {
+    fetch('/messages/' + syncId + '/poll?after=' + lastMsgId)
+        .then(r => r.json())
+        .then(msgs => {
+            msgs.forEach(m => {
+                if (m.id <= lastMsgId) return;
+                if (m.isMine) { lastMsgId = m.id; return; } // Already shown optimistically
+
+                const empty = chatBody.querySelector('.msg-empty');
+                if (empty) empty.remove();
+
+                const row = document.createElement('div');
+                row.className = 'msg-bubble-row theirs';
+                row.innerHTML = '<div class="msg-bubble theirs" data-id="' + m.id + '">' + escapeHtml(m.message) + '<div class="msg-time">' + m.time + '</div></div>';
+                chatBody.appendChild(row);
+                chatBody.scrollTop = chatBody.scrollHeight;
+                lastMsgId = m.id;
+            });
+        });
+}, 4000);
+</script>
+{% endif %}
+{% endblock %}
