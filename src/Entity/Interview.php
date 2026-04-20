@@ -5,39 +5,54 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Metadata\ApiResource;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'interviews')]
+#[ApiResource(
+    normalizationContext: ['groups' => ['interview:read']],
+    denormalizationContext: ['groups' => ['interview:write']]
+)]
 class Interview
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['interview:read', 'meet:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Application::class)]
     #[ORM\JoinColumn(name: 'application_id', nullable: false)]
+    #[Groups(['interview:read', 'interview:write'])]
     private ?Application $application = null;
 
     #[ORM\Column(name: 'interview_date', type: Types::DATETIME_MUTABLE)]
+    #[Groups(['interview:read', 'interview:write', 'meet:read'])]
     private ?\DateTimeInterface $interviewDate = null;
 
     #[ORM\Column(length: 50, options: ['default' => 'SCHEDULED'])]
+    #[Groups(['interview:read', 'interview:write', 'meet:read'])]
     private string $status = 'SCHEDULED';
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['interview:read', 'interview:write'])]
     private ?string $notes = null;
 
     #[ORM\Column(length: 100, nullable: true)]
+    #[Groups(['interview:read', 'interview:write', 'meet:read'])]
     private ?string $location = null;
 
     #[ORM\Column(name: 'meeting_link', length: 500, nullable: true)]
+    #[Groups(['interview:read', 'interview:write'])]
     private ?string $meetingLink = null;
 
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_MUTABLE, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[Groups(['interview:read'])]
     private ?\DateTimeInterface $createdAt = null;
 
     #[ORM\OneToMany(mappedBy: 'interview', targetEntity: Meet::class, cascade: ['persist', 'remove'])]
+    #[Groups(['interview:read'])]
     private Collection $meets;
 
     public function __construct()
