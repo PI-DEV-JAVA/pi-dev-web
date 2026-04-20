@@ -1,0 +1,127 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}Dashboard — Talentos{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="page-header">
+        <h2>Bienvenue 👋</h2>
+        <p>Votre espace candidat — trouvez les meilleures opportunités</p>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <a href="{{ path('app_my_applications') }}" class="text-decoration-none">
+                <div class="stat-card" style="cursor:pointer">
+                    <div class="stat-icon" style="background:rgba(79,70,229,0.15);color:var(--primary-light)">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <div class="stat-value">{{ applicationsCount }}</div>
+                    <div class="stat-label">Candidatures</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ path('app_offers') }}" class="text-decoration-none">
+                <div class="stat-card" style="cursor:pointer">
+                    <div class="stat-icon" style="background:rgba(6,182,212,0.15);color:var(--accent)">
+                        <i class="bi bi-bookmark-star"></i>
+                    </div>
+                    <div class="stat-value">{{ recentOffers|length }}</div>
+                    <div class="stat-label">Offres dispo</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ path('app_my_circle') }}" class="text-decoration-none">
+                <div class="stat-card" style="cursor:pointer">
+                    <div class="stat-icon" style="background:rgba(16,185,129,0.15);color:var(--success)">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <div class="stat-value">{{ syncsCount }}</div>
+                    <div class="stat-label">Connexions</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ path('app_courses') }}" class="text-decoration-none">
+                <div class="stat-card" style="cursor:pointer">
+                    <div class="stat-icon" style="background:rgba(245,158,11,0.15);color:var(--warning)">
+                        <i class="bi bi-mortarboard"></i>
+                    </div>
+                    <div class="stat-value">{{ formationsCount }}</div>
+                    <div class="stat-label">Formations</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 style="font-weight:600;margin:0"><i class="bi bi-fire me-2" style="color:var(--warning)"></i>Offres récentes</h5>
+                    <a href="{{ path('app_offers') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.85rem">Voir tout →</a>
+                </div>
+                {% if recentOffers is empty %}
+                    <p style="color:var(--text-secondary)">Aucune offre pour le moment.</p>
+                {% else %}
+                    {% for offer in recentOffers %}
+                        <a href="{{ path('app_offer_detail', {id: offer.id}) }}" class="text-decoration-none d-block mb-2">
+                            <div class="d-flex align-items-center gap-3 p-3" style="background:var(--bg-input);border-radius:10px;transition:all 0.2s">
+                                <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,rgba(79,70,229,0.2),rgba(6,182,212,0.15));
+                                            display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                    <i class="bi bi-briefcase" style="color:var(--primary-light)"></i>
+                                </div>
+                                <div style="flex:1;min-width:0">
+                                    <div style="font-weight:600;color:var(--text-primary);font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ offer.title }}</div>
+                                    <div style="color:var(--text-secondary);font-size:0.8rem">
+                                        {{ offer.contractType ?: 'CDI' }} · {{ offer.location ?: 'Non spécifié' }}
+                                    </div>
+                                </div>
+                                <i class="bi bi-chevron-right" style="color:var(--text-secondary)"></i>
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="stat-card" style="margin-bottom:16px">
+                <h5 style="font-weight:600;margin-bottom:16px"><i class="bi bi-calendar-event me-2" style="color:var(--accent)"></i>Évènements</h5>
+                {% if upcomingEvents is empty %}
+                    <p style="color:var(--text-secondary);font-size:0.9rem">Aucun évènement à venir.</p>
+                {% else %}
+                    {% for e in upcomingEvents %}
+                        <a href="{{ path('app_event_detail', {id: e.id}) }}" class="text-decoration-none d-block mb-2">
+                            <div class="p-3" style="background:var(--bg-input);border-radius:10px">
+                                <div style="font-weight:600;color:var(--text-primary);font-size:0.85rem">{{ e.title }}</div>
+                                <div style="color:var(--text-secondary);font-size:0.75rem;margin-top:4px">
+                                    <i class="bi bi-calendar3 me-1"></i>{{ e.eventDate|date('d/m/Y H:i') }}
+                                </div>
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="stat-card">
+                <h5 style="font-weight:600;margin-bottom:16px"><i class="bi bi-lightning me-2" style="color:var(--warning)"></i>Actions rapides</h5>
+                <a href="{{ path('app_offers') }}" class="btn btn-primary-custom d-block mb-2" style="border-radius:10px;padding:10px;font-size:0.85rem">
+                    <i class="bi bi-search me-2"></i>Explorer les offres
+                </a>
+                <a href="{{ path('app_profile') }}" class="btn btn-outline-light d-block mb-2" style="border-radius:10px;padding:10px;font-size:0.85rem">
+                    <i class="bi bi-person-circle me-2"></i>Mon profil
+                </a>
+                <a href="{{ path('app_courses') }}" class="btn btn-outline-light d-block" style="border-radius:10px;padding:10px;font-size:0.85rem">
+                    <i class="bi bi-book me-2"></i>Formations
+                </a>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

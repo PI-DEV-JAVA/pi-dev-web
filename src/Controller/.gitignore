@@ -1,0 +1,17 @@
+/var/
+/vendor/
+/node_modules/
+/public/build/
+
+.env.local
+.env.local.php
+.env.*.local
+
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+.env
+.env.dev
+.env.test

@@ -1,0 +1,112 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}Modifier le profil — Talentos{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="page-header">
+        <h2>{% if not profile.profileCompleted %}Complétez votre profil 📝{% else %}Modifier le profil{% endif %}</h2>
+        <p>{% if not profile.profileCompleted %}Remplissez vos informations pour accéder à toutes les fonctionnalités{% else %}Mettez à jour vos informations personnelles{% endif %}</p>
+    </div>
+
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}</div>
+    {% endfor %}
+
+    {{ form_start(form, {'attr': {'enctype': 'multipart/form-data', 'novalidate': 'novalidate'}}) }}
+    <div class="row g-4">
+        {# Left: Avatar + Files #}
+        <div class="col-md-4">
+            <div class="stat-card text-center" style="padding:32px">
+                {% if profile.profilePicturePath %}
+                    <img src="{{ profile.profilePicturePath }}" alt="Avatar" id="avatar-preview"
+                         style="width:120px;height:120px;border-radius:50%;object-fit:cover;margin-bottom:16px;border:3px solid var(--primary)">
+                {% else %}
+                    <div id="avatar-placeholder" style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));
+                                display:flex;align-items:center;justify-content:center;font-size:3rem;font-weight:700;
+                                margin:0 auto 16px;color:white">
+                        {{ profile.firstName|default(app.user.email)|first|upper }}
+                    </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">Photo de profil</label>
+                    {{ form_widget(form.profilePicture, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px;font-size:0.85rem'}}) }}
+                </div>
+
+                <div>
+                    <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">CV (PDF)</label>
+                    {{ form_widget(form.cvFile, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px;font-size:0.85rem'}}) }}
+                    {% if profile.cvPath %}
+                        <small style="color:var(--success)"><i class="bi bi-check-circle me-1"></i>CV existant</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# Right: Form Fields #}
+        <div class="col-md-8">
+            <div class="stat-card" style="margin-bottom:16px">
+                <h5 style="font-weight:600;margin-bottom:20px"><i class="bi bi-person me-2" style="color:var(--primary-light)"></i>Informations personnelles</h5>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">Prénom *</label>
+                        {{ form_widget(form.firstName, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px'}}) }}
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">Nom *</label>
+                        {{ form_widget(form.lastName, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px'}}) }}
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">Date de naissance</label>
+                        {{ form_widget(form.birthDate, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px'}}) }}
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">Téléphone</label>
+                        {{ form_widget(form.phoneNumber, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px'}}) }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">Localisation</label>
+                        {{ form_widget(form.location, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px'}}) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card" style="margin-bottom:16px">
+                <h5 style="font-weight:600;margin-bottom:20px"><i class="bi bi-briefcase me-2" style="color:var(--accent)"></i>Profil professionnel</h5>
+
+                <div class="row g-3">
+                    <div class="col-8">
+                        <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">Titre professionnel</label>
+                        {{ form_widget(form.professionalTitle, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px'}}) }}
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">Expérience (ans)</label>
+                        {{ form_widget(form.yearsOfExperience, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px'}}) }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem">À propos de moi</label>
+                        {{ form_widget(form.summary, {'attr': {'class': 'form-control', 'style': 'background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px'}}) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-3">
+                <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:12px 32px">
+                    <i class="bi bi-check-lg me-2"></i>Enregistrer
+                </button>
+                {% if profile.profileCompleted %}
+                    <a href="{{ path('app_profile') }}" class="btn btn-outline-light" style="border-radius:12px;padding:12px 24px">
+                        Annuler
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {{ form_end(form) }}
+</main>
+{% endblock %}

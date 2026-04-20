@@ -1,0 +1,358 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}{{ formation.titre }} — Talentos{% endblock %}
+
+{% block content %}
+<style>
+    .seance-card { background: var(--fo-bg-section, #f8fafc); border-radius: 12px; margin-bottom: 10px; overflow: hidden; border: 1.5px solid transparent; transition: all 0.3s; cursor: pointer; }
+    .seance-card:hover { border-color: rgba(79,70,229,0.2); }
+    .seance-card.expanded { border-color: rgba(79,70,229,0.3); background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+    .seance-header { padding: 16px; display: flex; align-items: center; gap: 14px; }
+    .seance-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+    .seance-icon.online { background: rgba(79,70,229,0.1); color: var(--primary, #4f46e5); }
+    .seance-icon.onsite { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .seance-detail { display: none; padding: 0 16px 16px; animation: slideDown 0.3s ease; }
+    .seance-card.expanded .seance-detail { display: block; }
+    @keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 800px; } }
+    .seance-meta { display: flex; flex-wrap: wrap; gap: 16px; padding: 12px 14px; background: var(--fo-bg-section, #f1f5f9); border-radius: 10px; margin-bottom: 12px; }
+    .seance-meta-item { font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 4px; }
+    .seance-type-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+    .badge-online { background: rgba(79,70,229,0.1); color: var(--primary, #4f46e5); }
+    .badge-onsite { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .chevron-indicator { transition: transform 0.3s; color: #94a3b8; font-size: 0.8rem; }
+    .seance-card.expanded .chevron-indicator { transform: rotate(180deg); color: var(--primary, #4f46e5); }
+    .video-container { position: relative; padding-bottom: 56.25%; height: 0; border-radius: 10px; overflow: hidden; margin-top: 8px; }
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+    /* Enrollment card */
+    .enroll-card { border-radius: 16px; padding: 28px; text-align: center; margin-bottom: 24px; }
+    .enroll-pending  { background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 2px solid #fbbf24; }
+    .enroll-approved { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 2px solid #22c55e; }
+    .enroll-rejected { background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 2px solid #f87171; }
+    .enroll-none     { background: linear-gradient(135deg, #f8faff, #eff6ff); border: 2px solid rgba(79,70,229,0.25); }
+
+    /* Quiz access states */
+    .quiz-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; margin-bottom: 8px; text-decoration: none; transition: all 0.2s; }
+    .quiz-row:hover { transform: translateX(4px); }
+    .quiz-locked  { background: var(--fo-bg-section, #f1f5f9); cursor: not-allowed; opacity: 0.6; }
+    .quiz-open    { background: rgba(245,158,11,0.08); border: 1.5px solid rgba(245,158,11,0.3); }
+    .quiz-done    { background: rgba(16,185,129,0.06); border: 1.5px solid rgba(16,185,129,0.2); }
+    .quiz-expired { background: rgba(239,68,68,0.06); border: 1.5px solid rgba(239,68,68,0.15); opacity: 0.6; }
+    .map-preview  { border-radius: 12px; overflow: hidden; height: 160px; margin-top: 8px; border: 1px solid #e2e8f0; }
+</style>
+
+<div class="fo-page-header">
+    <div class="container">
+        <a href="{{ path('app_courses') }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500">
+            <i class="bi bi-arrow-left me-1"></i> Retour aux formations
+        </a>
+        <h1 class="mt-2">{{ formation.titre }}</h1>
+        <div class="d-flex gap-3 mt-2 flex-wrap">
+            <span class="fo-badge fo-badge-primary"><i class="bi bi-clock me-1"></i>{{ formation.duree }}h</span>
+            <span class="fo-badge fo-badge-accent">{{ formation.niveau ?: 'Tous niveaux' }}</span>
+            <span class="fo-badge" style="background:rgba(16,185,129,0.1);color:#059669"><i class="bi bi-calendar3 me-1"></i>{{ seances|length }} séance(s)</span>
+        </div>
+    </div>
+</div>
+
+<section class="fo-section" style="padding-top:40px">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-8">
+
+                {# ── Description ── #}
+                <div class="fo-card" style="margin-bottom:20px">
+                    <h5 style="font-weight:700;margin-bottom:16px">Description</h5>
+                    <div style="color:var(--fo-text-secondary);line-height:1.8;white-space:pre-line">{{ formation.description|default('Aucune description.') }}</div>
+                </div>
+
+                {# ── Enrollment Banner (Candidate only) ── #}
+                {% set user = app.user %}
+                {% if user and user.role == 'CANDIDATE' %}
+                    {% if not enrollment %}
+                        <div class="enroll-card enroll-none" style="margin-bottom:20px">
+                            <i class="bi bi-lock-fill" style="font-size:2rem;color:#6366f1;display:block;margin-bottom:12px"></i>
+                            <h5 style="font-weight:700;margin-bottom:6px">Rejoignez cette formation</h5>
+                            <p style="color:#64748b;margin-bottom:20px">Postulez pour accéder aux séances et aux quiz de cette formation.</p>
+                            <form method="post" action="{{ path('app_course_apply', {id: formation.id}) }}">
+                                <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:12px 32px">
+                                    <i class="bi bi-send me-2"></i>Postuler à cette formation
+                                </button>
+                            </form>
+                        </div>
+                    {% elseif enrollment.pending %}
+                        <div class="enroll-card enroll-pending" style="margin-bottom:20px">
+                            <i class="bi bi-hourglass-split" style="font-size:2rem;color:#d97706;display:block;margin-bottom:12px"></i>
+                            <h5 style="font-weight:700;margin-bottom:6px;color:#92400e">Demande en attente</h5>
+                            <p style="color:#78350f;margin-bottom:0">Votre demande d'inscription a été envoyée. En attente de validation par l'administrateur.</p>
+                            <div style="font-size:0.8rem;color:#b45309;margin-top:8px"><i class="bi bi-calendar3 me-1"></i>Soumise le {{ enrollment.requestedAt|date('d/m/Y') }}</div>
+                        </div>
+                    {% elseif enrollment.rejected %}
+                        <div class="enroll-card enroll-rejected" style="margin-bottom:20px">
+                            <i class="bi bi-x-circle-fill" style="font-size:2rem;color:#ef4444;display:block;margin-bottom:12px"></i>
+                            <h5 style="font-weight:700;margin-bottom:6px;color:#991b1b">Demande refusée</h5>
+                            <p style="color:#7f1d1d;margin-bottom:0">Votre demande d'inscription a été refusée. Contactez l'administrateur pour plus d'informations.</p>
+                        </div>
+                    {% elseif enrollment.approved %}
+                        <div class="enroll-card enroll-approved" style="margin-bottom:20px">
+                            <i class="bi bi-patch-check-fill" style="font-size:2rem;color:#22c55e;display:block;margin-bottom:12px"></i>
+                            <h5 style="font-weight:700;margin-bottom:6px;color:#14532d">Inscrit(e) ✓</h5>
+                            <p style="color:#166534;margin-bottom:12px">Vous êtes inscrit à cette formation. Les quiz sont disponibles à la fin de chaque séance (délai de 24h).</p>
+                            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                                {% if attemptedQuizIds|length > 0 %}
+                                <a href="{{ path('app_certificate', {id: formation.id}) }}"
+                                   target="_blank"
+                                   style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;padding:10px 22px;border-radius:12px;text-decoration:none;font-weight:700;font-size:0.88rem;box-shadow:0 4px 12px rgba(16,185,129,0.3)">
+                                    <i class="bi bi-award-fill"></i> Télécharger mon certificat
+                                </a>
+                                {% endif %}
+                                <a href="{{ path('app_analytics') }}"
+                                   style="display:inline-flex;align-items:center;gap:8px;background:rgba(79,70,229,0.1);color:#4f46e5;padding:10px 22px;border-radius:12px;text-decoration:none;font-weight:700;font-size:0.88rem;border:1.5px solid rgba(79,70,229,0.2)">
+                                    <i class="bi bi-graph-up-arrow"></i> Mes analytiques
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endif %}
+
+                {# ── Séances ── #}
+                {% if seances|length > 0 %}
+                <div class="fo-card" style="margin-bottom:20px">
+                    <h5 style="font-weight:700;margin-bottom:16px">
+                        <i class="bi bi-collection-play me-2" style="color:var(--primary)"></i>Séances ({{ seances|length }})
+                    </h5>
+                    {% for s in seances %}
+                        <div class="seance-card" onclick="toggleSeance(this)">
+                            <div class="seance-header">
+                                <div class="seance-icon {{ s.type == 'EN_LIGNE' ? 'online' : 'onsite' }}">
+                                    <i class="bi {{ s.type == 'EN_LIGNE' ? 'bi-camera-video-fill' : 'bi-building' }}"></i>
+                                </div>
+                                <div style="flex:1;min-width:0">
+                                    <div style="font-weight:600;font-size:0.95rem">{{ s.titre }}</div>
+                                    <div style="font-size:0.8rem;color:#64748b;margin-top:2px">
+                                        {{ s.dateDebut|date('d/m/Y') }} · {{ s.dateDebut|date('H:i') }} → {{ s.dateFin|date('H:i') }}
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="seance-type-badge {{ s.type == 'EN_LIGNE' ? 'badge-online' : 'badge-onsite' }}">
+                                        {{ s.type == 'EN_LIGNE' ? '🖥 En ligne' : '📍 Présentiel' }}
+                                    </span>
+                                    {% if s.terminee %}
+                                        <span style="font-size:0.7rem;padding:3px 8px;border-radius:20px;background:rgba(16,185,129,0.1);color:#059669;font-weight:600">✓ Terminée</span>
+                                    {% endif %}
+                                    <i class="bi bi-chevron-down chevron-indicator"></i>
+                                </div>
+                            </div>
+
+                            <div class="seance-detail">
+                                <div class="seance-meta">
+                                    <div class="seance-meta-item"><i class="bi bi-calendar3"></i> {{ s.dateDebut|date('l d F Y') }}</div>
+                                    <div class="seance-meta-item"><i class="bi bi-clock"></i> {{ s.dateDebut|date('H:i') }} — {{ s.dateFin|date('H:i') }}</div>
+                                    {% if s.dureeMinutes %}<div class="seance-meta-item"><i class="bi bi-hourglass-split"></i> {{ s.dureeMinutes }} minutes</div>{% endif %}
+                                    {% if s.adresse %}<div class="seance-meta-item"><i class="bi bi-geo-alt"></i> {{ s.adresse }}</div>{% endif %}
+                                </div>
+
+                                {% if s.type == 'EN_LIGNE' and s.videoPath %}
+                                    <div style="margin-top:8px">
+                                        <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;color:var(--primary)">
+                                            <i class="bi bi-play-circle-fill me-1"></i> Vidéo de la séance
+                                        </div>
+                                        <div class="video-container" data-video-url="{{ s.videoPath }}"></div>
+                                    </div>
+                                {% elseif s.type == 'EN_LIGNE' and not s.videoPath %}
+                                    <div style="text-align:center;padding:24px;background:var(--fo-bg-section, #f1f5f9);border-radius:10px;margin-top:8px">
+                                        <i class="bi bi-camera-video" style="font-size:1.5rem;color:#94a3b8;display:block;margin-bottom:6px"></i>
+                                        <span style="font-size:0.85rem;color:#94a3b8">La vidéo sera disponible prochainement</span>
+                                    </div>
+                                {% elseif s.type == 'PRESENTIEL' %}
+                                    {% if s.latitude and s.longitude %}
+                                        <div style="padding:12px;background:var(--fo-bg-section,#f1f5f9);border-radius:10px;margin-top:8px">
+                                            <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;color:#f59e0b">
+                                                <i class="bi bi-pin-map-fill me-1"></i> Lieu de la séance
+                                            </div>
+                                            {% if s.adresse %}<div style="font-size:0.85rem;color:#475569;margin-bottom:8px">{{ s.adresse }}</div>{% endif %}
+                                            <div class="map-preview" id="map-{{ s.id }}" data-lat="{{ s.latitude }}" data-lng="{{ s.longitude }}"></div>
+                                        </div>
+                                    {% elseif s.adresse %}
+                                        <div style="padding:12px;background:var(--fo-bg-section, #f1f5f9);border-radius:10px;margin-top:8px">
+                                            <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;color:#f59e0b">
+                                                <i class="bi bi-pin-map-fill me-1"></i> Lieu de la séance
+                                            </div>
+                                            <div style="font-size:0.9rem;color:#334155">{{ s.adresse }}</div>
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+
+                                {# ── Quiz for this Seance ── #}
+                                {% if s.quiz %}
+                                    {% set quiz = s.quiz %}
+                                    {% set attempt = attemptedQuizIds[quiz.id] ?? null %}
+                                    <div style="margin-top:12px;padding-top:12px;border-top:1px dashed #e2e8f0">
+                                        <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;letter-spacing:0.05em">Quiz de cette séance</div>
+                                        {% if attempt %}
+                                            {# Already done #}
+                                            <a href="{{ path('app_quiz_result', {id: quiz.id}) }}" class="quiz-row quiz-done">
+                                                <div style="width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                                    <i class="bi bi-patch-check-fill" style="color:#10b981"></i>
+                                                </div>
+                                                <div style="flex:1">
+                                                    <div style="font-weight:600;font-size:0.9rem;color:#065f46">{{ quiz.titre }}</div>
+                                                    <div style="font-size:0.75rem;color:#059669">Quiz terminé · Voir mon résultat</div>
+                                                </div>
+                                                <span style="font-weight:800;font-size:1.1rem;color:#10b981">{{ attempt.score }}/20</span>
+                                            </a>
+                                        {% elseif not enrollment or not enrollment.approved %}
+                                            {# Not enrolled #}
+                                            <div class="quiz-row quiz-locked">
+                                                <div style="width:36px;height:36px;border-radius:10px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                                    <i class="bi bi-lock-fill" style="color:#94a3b8"></i>
+                                                </div>
+                                                <div style="flex:1">
+                                                    <div style="font-weight:600;font-size:0.9rem;color:#64748b">{{ quiz.titre }}</div>
+                                                    <div style="font-size:0.75rem;color:#94a3b8">Inscription requise</div>
+                                                </div>
+                                            </div>
+                                        {% elseif not s.terminee %}
+                                            {# Seance not finished yet #}
+                                            <div class="quiz-row quiz-locked">
+                                                <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,158,11,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                                    <i class="bi bi-hourglass" style="color:#f59e0b"></i>
+                                                </div>
+                                                <div style="flex:1">
+                                                    <div style="font-weight:600;font-size:0.9rem;color:#64748b">{{ quiz.titre }}</div>
+                                                    <div style="font-size:0.75rem;color:#94a3b8">Disponible à la fin de la séance ({{ s.dateFin|date('d/m H:i') }})</div>
+                                                </div>
+                                                <i class="bi bi-lock" style="color:#94a3b8"></i>
+                                            </div>
+                                        {% elseif not s.quizUnlocked %}
+                                            {# Seance ended but 24h window expired #}
+                                            <div class="quiz-row quiz-expired">
+                                                <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                                    <i class="bi bi-alarm-fill" style="color:#ef4444"></i>
+                                                </div>
+                                                <div style="flex:1">
+                                                    <div style="font-weight:600;font-size:0.9rem;color:#64748b">{{ quiz.titre }}</div>
+                                                    <div style="font-size:0.75rem;color:#ef4444">Délai expiré (24h après la séance)</div>
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            {# Open! #}
+                                            <a href="{{ path('app_quiz', {id: quiz.id}) }}" class="quiz-row quiz-open text-decoration-none">
+                                                <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,158,11,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                                    <i class="bi bi-lightbulb-fill" style="color:#f59e0b"></i>
+                                                </div>
+                                                <div style="flex:1">
+                                                    <div style="font-weight:600;font-size:0.9rem;color:#92400e">{{ quiz.titre }}</div>
+                                                    <div style="font-size:0.75rem;color:#b45309">
+                                                        <i class="bi bi-clock me-1"></i>Ouvert jusqu'au {{ s.dateFin|date_modify('+24 hours')|date('d/m à H:i') }}
+                                                    </div>
+                                                </div>
+                                                <span class="fo-badge fo-badge-warning">Passer →</span>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+            </div>
+
+            <div class="col-lg-4">
+                <div class="fo-card" style="position:sticky;top:100px">
+                    <h5 style="font-weight:700;margin-bottom:20px">Informations</h5>
+                    <div class="mb-3">
+                        <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Durée</div>
+                        <div style="font-weight:600">{{ formation.duree }} heures</div>
+                    </div>
+                    <div class="mb-3">
+                        <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Niveau</div>
+                        <div style="font-weight:600">{{ formation.niveau ?: 'Tous niveaux' }}</div>
+                    </div>
+                    {% if formation.dateDebut %}
+                    <div class="mb-3">
+                        <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Date de début</div>
+                        <div style="font-weight:600">{{ formation.dateDebut|date('d/m/Y') }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Séances</div>
+                        <div style="font-weight:600">{{ seances|length }}</div>
+                    </div>
+                    <div>
+                        <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Statut</div>
+                        {% if not app.user or app.user.role != 'CANDIDATE' %}
+                            <span style="font-weight:600;color:#64748b">Connectez-vous comme candidat</span>
+                        {% elseif not enrollment %}
+                            <span style="font-weight:600;color:#6366f1">Non inscrit</span>
+                        {% elseif enrollment.pending %}
+                            <span style="font-weight:600;color:#d97706">⏳ En attente</span>
+                        {% elseif enrollment.approved %}
+                            <span style="font-weight:600;color:#22c55e">✓ Inscrit</span>
+                        {% else %}
+                            <span style="font-weight:600;color:#ef4444">✗ Refusé</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+// Track mini-map instances for invalidateSize on accordion expand
+var _seanceMaps = {};
+
+function toggleSeance(card) {
+    card.classList.toggle('expanded');
+    // Fix Leaflet tile rendering when card was collapsed during init
+    if (card.classList.contains('expanded')) {
+        var mapEl = card.querySelector('[id^="map-"]');
+        if (mapEl && _seanceMaps[mapEl.id]) {
+            setTimeout(function() { _seanceMaps[mapEl.id].invalidateSize(); }, 60);
+        }
+    }
+}
+
+// Auto-embed YouTube videos
+function getYouTubeId(url) {
+    var m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+}
+document.querySelectorAll('.video-container[data-video-url]').forEach(function(container) {
+    var url = container.getAttribute('data-video-url');
+    var ytId = getYouTubeId(url);
+    if (ytId) {
+        container.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>';
+    } else {
+        container.innerHTML = '<a href="' + url + '" target="_blank" style="display:flex;align-items:center;justify-content:center;padding:30px;background:var(--fo-bg-section,#f1f5f9);border-radius:10px;text-decoration:none;color:var(--primary);font-weight:600"><i class="bi bi-box-arrow-up-right me-2"></i>Ouvrir la vidéo</a>';
+        container.style.paddingBottom = '0'; container.style.height = 'auto';
+    }
+});
+
+// Leaflet mini-maps for PRESENTIEL seances (read-only, shows the saved location)
+document.querySelectorAll('[id^="map-"]').forEach(function(el) {
+    var lat = parseFloat(el.getAttribute('data-lat'));
+    var lng = parseFloat(el.getAttribute('data-lng'));
+    if (!isNaN(lat) && !isNaN(lng)) {
+        el.style.height = '160px';  // ensure explicit height before Leaflet init
+        var map = L.map(el, {
+            zoomControl: true,
+            dragging: true,
+            scrollWheelZoom: false
+        }).setView([lat, lng], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org">OpenStreetMap</a>',
+            maxZoom: 19
+        }).addTo(map);
+        L.marker([lat, lng]).addTo(map);
+        _seanceMaps[el.id] = map;  // store for later invalidateSize
+    }
+});
+
+</script>
+{% endblock %}

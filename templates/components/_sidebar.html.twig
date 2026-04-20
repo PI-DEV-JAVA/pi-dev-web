@@ -1,0 +1,59 @@
+{% macro sidebar(user) %}
+<nav class="app-sidebar">
+    <div class="sidebar-logo">
+        <i class="bi bi-briefcase-fill"></i> Talentos
+    </div>
+
+    <div class="sidebar-nav">
+        <a href="{{ path('app_dashboard') }}" class="sidebar-link {{ app.request.attributes.get('_route') == 'app_dashboard' ? 'active' : '' }}">
+            <i class="bi bi-grid-1x2-fill"></i> Dashboard
+        </a>
+
+        {% if user.role == 'CANDIDATE' %}
+            <a href="{{ path('app_offers') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_offer' ? 'active' : '' }}"><i class="bi bi-search"></i> Offres</a>
+            <a href="{{ path('app_my_applications') }}" class="sidebar-link {{ app.request.attributes.get('_route') == 'app_my_applications' ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i> Mes Candidatures</a>
+            <a href="{{ path('app_courses') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_course' or app.request.attributes.get('_route') starts with 'app_quiz' ? 'active' : '' }}"><i class="bi bi-book"></i> Formations</a>
+            <a href="{{ path('app_events') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_event' ? 'active' : '' }}"><i class="bi bi-calendar-event"></i> Évènements</a>
+            <a href="{{ path('app_my_circle') }}" class="sidebar-link {{ app.request.attributes.get('_route') in ['app_my_circle', 'app_chat', 'app_chat_send'] ? 'active' : '' }}"><i class="bi bi-people"></i> Mon Cercle</a>
+            <a href="{{ path('app_interviews') }}" class="sidebar-link {{ app.request.attributes.get('_route') == 'app_interviews' ? 'active' : '' }}"><i class="bi bi-camera-video"></i> Entretiens</a>
+            <a href="{{ path('app_support') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_support' ? 'active' : '' }}"><i class="bi bi-headset"></i> Support</a>
+        {% elseif user.role == 'HR' %}
+            <a href="{{ path('app_offers') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_offer' ? 'active' : '' }}"><i class="bi bi-megaphone"></i> Mes Offres</a>
+            <a href="{{ path('app_my_applications') }}" class="sidebar-link {{ app.request.attributes.get('_route') == 'app_my_applications' ? 'active' : '' }}"><i class="bi bi-people-fill"></i> Candidatures</a>
+            <a href="{{ path('app_interviews') }}" class="sidebar-link {{ app.request.attributes.get('_route') == 'app_interviews' ? 'active' : '' }}"><i class="bi bi-camera-video"></i> Entretiens</a>
+            <a href="{{ path('app_events') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_event' ? 'active' : '' }}"><i class="bi bi-calendar-event"></i> Évènements</a>
+            <a href="{{ path('app_courses') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_course' ? 'active' : '' }}"><i class="bi bi-book"></i> Formations</a>
+            <a href="{{ path('app_my_circle') }}" class="sidebar-link {{ app.request.attributes.get('_route') in ['app_my_circle', 'app_chat'] ? 'active' : '' }}"><i class="bi bi-people"></i> Mon Cercle</a>
+            <a href="{{ path('app_activities') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_activit' or app.request.attributes.get('_route') == 'app_project_new' ? 'active' : '' }}"><i class="bi bi-clipboard-data"></i> Activités</a>
+            <a href="{{ path('app_support') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_support' ? 'active' : '' }}"><i class="bi bi-headset"></i> Support</a>
+        {% elseif user.role == 'ADMIN' %}
+            <a href="{{ path('app_offers') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_offer' ? 'active' : '' }}"><i class="bi bi-megaphone"></i> Offres</a>
+            <a href="{{ path('app_courses') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_course' ? 'active' : '' }}"><i class="bi bi-book"></i> Formations</a>
+            <a href="{{ path('app_events') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_event' ? 'active' : '' }}"><i class="bi bi-calendar-event"></i> Évènements</a>
+            <a href="{{ path('app_activities') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_activit' ? 'active' : '' }}"><i class="bi bi-clipboard-data"></i> Activités</a>
+            <a href="{{ path('app_my_circle') }}" class="sidebar-link {{ app.request.attributes.get('_route') in ['app_my_circle', 'app_chat'] ? 'active' : '' }}"><i class="bi bi-people"></i> Cercle</a>
+            <a href="{{ path('app_support') }}" class="sidebar-link {{ app.request.attributes.get('_route') starts with 'app_support' ? 'active' : '' }}"><i class="bi bi-headset"></i> Support</a>
+        {% endif %}
+
+        <hr style="border-color:rgba(71,85,105,0.3);margin:12px 0">
+        <a href="{{ path('app_profile') }}" class="sidebar-link {{ app.request.attributes.get('_route') == 'app_profile' ? 'active' : '' }}"><i class="bi bi-person-circle"></i> Profil</a>
+    </div>
+
+    <div class="sidebar-user">
+        <div class="sidebar-avatar">
+            {{ user.email|first|upper }}
+        </div>
+        <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {{ user.email }}
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-secondary)">
+                {{ user.role }}
+            </div>
+        </div>
+        <a href="{{ path('app_logout') }}" style="color:var(--text-secondary)" title="Déconnexion">
+            <i class="bi bi-box-arrow-right"></i>
+        </a>
+    </div>
+</nav>
+{% endmacro %}

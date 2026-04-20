@@ -1,0 +1,62 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}Ticket #{{ ticket.id }} — Talentos{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="mb-3">
+        <a href="{{ path('app_support') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem">
+            <i class="bi bi-arrow-left me-1"></i> Retour aux tickets
+        </a>
+    </div>
+
+    <div class="stat-card" style="max-width:750px;margin-bottom:16px">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="badge" style="background:{{ ticket.status == 'OPEN' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)' }};
+                                       color:{{ ticket.status == 'OPEN' ? 'var(--warning)' : 'var(--success)' }};
+                                       padding:4px 12px;border-radius:6px">{{ ticket.status }}</span>
+            <span style="color:var(--text-secondary);font-size:0.8rem">Créé le {{ ticket.createdAt|date('d/m/Y à H:i') }}</span>
+        </div>
+        <h4 style="font-weight:700;margin-bottom:8px">{{ ticket.subject }}</h4>
+        <p style="color:var(--text-secondary);line-height:1.7">{{ ticket.description }}</p>
+    </div>
+
+    <div class="stat-card" style="max-width:750px">
+        <h5 style="font-weight:600;margin-bottom:16px">Réponses</h5>
+
+        {% for reply in replies %}
+            <div class="d-flex gap-3 mb-3 pb-3" style="border-bottom:1px solid rgba(71,85,105,0.2)">
+                <div style="width:36px;height:36px;border-radius:8px;
+                            background:{{ reply.user.role == 'ADMIN' ? 'rgba(239,68,68,0.15)' : 'rgba(79,70,229,0.15)' }};
+                            display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <i class="bi bi-{{ reply.user.role == 'ADMIN' ? 'headset' : 'person' }}"
+                       style="color:{{ reply.user.role == 'ADMIN' ? 'var(--danger)' : 'var(--primary-light)' }}"></i>
+                </div>
+                <div>
+                    <div style="font-weight:600;font-size:0.85rem">
+                        {{ reply.user.email }}
+                        {% if reply.user.role == 'ADMIN' %}
+                            <span class="badge ms-1" style="background:rgba(239,68,68,0.15);color:var(--danger);font-size:0.65rem;padding:2px 6px;border-radius:4px">Admin</span>
+                        {% endif %}
+                        <span style="color:var(--text-secondary);font-weight:400;font-size:0.75rem;margin-left:8px">{{ reply.createdAt|date('d/m/Y H:i') }}</span>
+                    </div>
+                    <div style="color:var(--text-secondary);font-size:0.9rem;margin-top:4px;line-height:1.6">{{ reply.message }}</div>
+                </div>
+            </div>
+        {% else %}
+            <p style="color:var(--text-secondary)">Aucune réponse pour le moment.</p>
+        {% endfor %}
+
+        <form method="post" action="{{ path('app_support_reply', {id: ticket.id}) }}" class="d-flex gap-2 mt-3">
+            <input type="text" name="content" class="form-control" placeholder="Votre réponse..." required
+                   style="background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px">
+            <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:10px 20px;border-radius:10px;white-space:nowrap">
+                <i class="bi bi-send me-1"></i>Répondre
+            </button>
+        </form>
+    </div>
+</main>
+{% endblock %}

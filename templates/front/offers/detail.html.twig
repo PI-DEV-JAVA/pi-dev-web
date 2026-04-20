@@ -1,0 +1,112 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}{{ offer.title }} — Talentos{% endblock %}
+
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <a href="{{ path('app_offers') }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500">
+            <i class="bi bi-arrow-left me-1"></i> Retour aux offres
+        </a>
+        <h1 class="mt-2">{{ offer.title }}</h1>
+        <div class="d-flex gap-3 mt-2 flex-wrap">
+            {% if offer.contractType %}<span class="fo-badge fo-badge-primary">{{ offer.contractType }}</span>{% endif %}
+            {% if offer.experienceLevel %}<span class="fo-badge fo-badge-accent">{{ offer.experienceLevel }}</span>{% endif %}
+            {% if offer.status %}<span class="fo-badge fo-badge-success">{{ offer.status }}</span>{% endif %}
+        </div>
+    </div>
+</div>
+
+<section class="fo-section" style="padding-top:40px">
+    <div class="container">
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success mb-3"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+        {% endfor %}
+        {% for message in app.flashes('error') %}
+            <div class="alert alert-danger mb-3"><i class="bi bi-exclamation-circle-fill me-2"></i>{{ message }}</div>
+        {% endfor %}
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="fo-card" style="margin-bottom:20px">
+                    <h5 style="font-weight:700;margin-bottom:16px">Description du poste</h5>
+                    <div style="color:var(--fo-text-secondary);line-height:1.8;white-space:pre-line">{{ offer.description|default('Aucune description disponible.') }}</div>
+                </div>
+
+                {% if offer.department %}
+                <div class="fo-card">
+                    <h5 style="font-weight:700;margin-bottom:12px">Informations</h5>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Département</div>
+                            <div style="font-weight:600">{{ offer.department }}</div>
+                        </div>
+                        {% if offer.location %}
+                        <div class="col-sm-6">
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Localisation</div>
+                            <div style="font-weight:600">{{ offer.location }}</div>
+                        </div>
+                        {% endif %}
+                        {% if offer.salaryMin and offer.salaryMax %}
+                        <div class="col-sm-6">
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Salaire</div>
+                            <div style="font-weight:600">{{ offer.salaryMin|number_format(0,',',' ') }} — {{ offer.salaryMax|number_format(0,',',' ') }} DT</div>
+                        </div>
+                        {% endif %}
+                        <div class="col-sm-6">
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Postes disponibles</div>
+                            <div style="font-weight:600">{{ offer.positionsAvailable }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="col-lg-4">
+                {# Apply Card #}
+                <div class="fo-card" style="position:sticky;top:100px">
+                    {% if app.user %}
+                        {% if alreadyApplied %}
+                            <div class="text-center" style="padding:20px 0">
+                                <div style="width:56px;height:56px;border-radius:50%;background:rgba(16,185,129,0.1);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px">
+                                    <i class="bi bi-check-lg" style="font-size:1.5rem;color:var(--success)"></i>
+                                </div>
+                                <h6 style="font-weight:700">Candidature envoyée !</h6>
+                                <p style="color:var(--fo-text-secondary);font-size:0.85rem">Statut : <strong>{{ application.status }}</strong></p>
+                            </div>
+                        {% else %}
+                            <h6 style="font-weight:700;margin-bottom:16px">Postuler</h6>
+                            <form method="post" action="{{ path('app_offer_apply', {id: offer.id}) }}" enctype="multipart/form-data" class="fo-form">
+                                <div class="mb-3">
+                                    <label>Lettre de motivation</label>
+                                    <textarea name="motivation" class="form-control" rows="4" placeholder="Pourquoi ce poste vous intéresse ?"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label>CV (PDF)</label>
+                                    <input type="file" name="cv" class="form-control" accept=".pdf,.doc,.docx">
+                                </div>
+                                <button type="submit" class="btn btn-primary-custom w-100">
+                                    <i class="bi bi-send me-2"></i>Envoyer ma candidature
+                                </button>
+                            </form>
+                        {% endif %}
+
+                        <hr style="margin:16px 0;border-color:var(--fo-border)">
+                        <a href="{{ path('app_offer_bookmark', {id: offer.id}) }}" class="btn w-100"
+                           style="border:1.5px solid var(--fo-border);border-radius:10px;padding:10px;font-weight:600;color:{{ bookmarked ? 'var(--warning)' : 'var(--fo-text-secondary)' }}">
+                            <i class="bi bi-{{ bookmarked ? 'bookmark-fill' : 'bookmark' }} me-1"></i>
+                            {{ bookmarked ? 'Retirer des favoris' : 'Ajouter aux favoris' }}
+                        </a>
+                    {% else %}
+                        <div class="text-center" style="padding:20px 0">
+                            <i class="bi bi-person-lock" style="font-size:2.5rem;color:var(--fo-text-secondary)"></i>
+                            <p class="mt-3" style="color:var(--fo-text-secondary);font-size:0.9rem">Connectez-vous pour postuler</p>
+                            <a href="{{ path('app_login') }}" class="btn btn-primary-custom w-100 mt-2">Se connecter</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

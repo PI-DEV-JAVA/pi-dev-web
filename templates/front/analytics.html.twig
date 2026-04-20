@@ -1,0 +1,265 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}Mes Analytiques — Talentos{% endblock %}
+
+{% block content %}
+<style>
+.an-hero { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%); padding: 52px 0 40px; }
+.an-hero h1 { font-size: 2rem; font-weight: 800; color: #fff; margin: 0 0 6px; }
+.an-hero p  { color: rgba(255,255,255,0.7); margin: 0; }
+
+.stat-card { background: var(--fo-bg-card,#fff); border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; text-align: center; }
+.stat-num  { font-size: 2.2rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+.stat-label{ font-size: 0.8rem; color: var(--fo-text-secondary,#64748b); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+
+.chart-card { background: var(--fo-bg-card,#fff); border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; }
+.chart-card h5 { font-weight: 700; font-size: 1rem; margin-bottom: 18px; color: var(--fo-text,#0f172a); }
+
+.table-card { background: var(--fo-bg-card,#fff); border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; }
+.table-card table { width: 100%; border-collapse: collapse; }
+.table-card th { background: #f8fafc; padding: 12px 16px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: .5px; color: #64748b; font-weight: 700; text-align: left; border-bottom: 1px solid #e2e8f0; }
+.table-card td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.88rem; color: var(--fo-text,#0f172a); }
+.table-card tr:last-child td { border-bottom: none; }
+
+.score-bar { height: 8px; border-radius: 4px; background: #e2e8f0; overflow: hidden; margin-top: 6px; }
+.score-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #4f46e5, #06b6d4); transition: width 1s ease; }
+
+.empty-msg { text-align:center; padding: 60px 20px; color: var(--fo-text-secondary,#64748b); }
+.empty-msg i { font-size: 3rem; opacity: 0.2; display: block; margin-bottom: 16px; }
+</style>
+
+<div class="an-hero">
+    <div class="container">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px">
+            <div>
+                <h1><i class="bi bi-graph-up-arrow me-2"></i>Mes analytiques</h1>
+                <p>Suivez vos scores, votre progression et votre taux de complétion</p>
+            </div>
+            <a href="{{ path('app_my_formations') }}"
+               style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);color:#fff;padding:10px 20px;border-radius:12px;text-decoration:none;font-weight:700;font-size:0.9rem;border:1px solid rgba(255,255,255,0.25)">
+                <i class="bi bi-bookmark-heart-fill"></i> Mes formations
+            </a>
+        </div>
+    </div>
+</div>
+
+<section style="padding: 36px 0 60px">
+<div class="container">
+
+{% if totalEnrollments == 0 %}
+    <div class="empty-msg">
+        <i class="bi bi-bar-chart-line"></i>
+        <p style="font-weight:600;font-size:1.1rem;margin-bottom:8px">Aucune donnée disponible</p>
+        <p>Inscrivez-vous à des formations et complétez des quiz pour voir vos analytiques.</p>
+        <a href="{{ path('app_courses') }}" style="display:inline-flex;align-items:center;gap:8px;background:#4f46e5;color:#fff;padding:12px 28px;border-radius:12px;text-decoration:none;font-weight:700;margin-top:16px">
+            <i class="bi bi-search"></i> Découvrir les formations
+        </a>
+    </div>
+{% else %}
+
+{# ── Global KPI cards ── #}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-num" style="color:#4f46e5">{{ totalEnrollments }}</div>
+            <div class="stat-label">Formations inscrites</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-num" style="color:#10b981">{{ totalAttempts }}</div>
+            <div class="stat-label">Quiz complétés</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-num" style="color:{{ globalAvg >= 10 ? '#10b981' : '#f59e0b' }}">{{ globalAvg }}/20</div>
+            <div class="stat-label">Score moyen global</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-num" style="color:#06b6d4">{{ globalCompletion }}%</div>
+            <div class="stat-label">Complétion globale</div>
+        </div>
+    </div>
+</div>
+
+{# ── Charts row ── #}
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <h5><i class="bi bi-bar-chart-fill me-2" style="color:#4f46e5"></i>Score moyen par formation</h5>
+            <div style="position:relative;height:220px">
+                <canvas id="chartScores"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-card">
+            <h5><i class="bi bi-pie-chart-fill me-2" style="color:#10b981"></i>Taux de complétion</h5>
+            <div style="position:relative;height:220px">
+                <canvas id="chartCompletion"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Per-formation breakdown ── #}
+<div class="table-card mb-4">
+    <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;font-weight:700;font-size:0.95rem">
+        <i class="bi bi-table me-2" style="color:#4f46e5"></i>Détail par formation
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Formation</th>
+                <th>Quiz terminés</th>
+                <th>Score moyen</th>
+                <th>Progression</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in formationStats %}
+            <tr>
+                <td style="font-weight:600">{{ s.formation.titre }}</td>
+                <td>
+                    <span style="background:rgba(79,70,229,0.1);color:#4f46e5;padding:2px 10px;border-radius:20px;font-size:0.78rem;font-weight:700">
+                        {{ s.done }} / {{ s.quizzes }}
+                    </span>
+                </td>
+                <td>
+                    {% if s.avgScore is not null %}
+                        <span style="font-weight:800;color:{{ s.avgScore >= 10 ? '#10b981' : '#ef4444' }}">{{ s.avgScore }}/20</span>
+                    {% else %}
+                        <span style="color:#94a3b8">—</span>
+                    {% endif %}
+                </td>
+                <td style="min-width:120px">
+                    <div style="font-size:0.75rem;color:#64748b;margin-bottom:4px">{{ s.completion }}%</div>
+                    <div class="score-bar">
+                        <div class="score-bar-fill" style="width:{{ s.completion }}%;background:{{ s.completion == 100 ? '#10b981' : 'linear-gradient(90deg,#4f46e5,#06b6d4)' }}"></div>
+                    </div>
+                </td>
+                <td>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <a href="{{ path('app_course_detail', {id: s.formation.id}) }}"
+                           style="font-size:0.78rem;padding:4px 10px;background:#eef2ff;color:#4f46e5;border-radius:8px;text-decoration:none;font-weight:600">
+                            <i class="bi bi-arrow-right me-1"></i>Voir
+                        </a>
+                        {% if s.done > 0 %}
+                        <a href="{{ path('app_certificate', {id: s.formation.id}) }}"
+                           style="font-size:0.78rem;padding:4px 10px;background:#f0fdf4;color:#10b981;border-radius:8px;text-decoration:none;font-weight:600">
+                            <i class="bi bi-award me-1"></i>Certificat
+                        </a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# ── Recent attempts ── #}
+{% if recentAttempts|length > 0 %}
+<div class="chart-card">
+    <h5><i class="bi bi-clock-history me-2" style="color:#06b6d4"></i>Dernières tentatives de quiz</h5>
+    <div class="row g-3">
+        {% for attempt in recentAttempts %}
+        <div class="col-md-6">
+            <div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">
+                <div style="width:44px;height:44px;border-radius:12px;background:{{ attempt.score >= 10 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem">
+                    {{ attempt.score >= 10 ? '✅' : '❌' }}
+                </div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-weight:700;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        {{ attempt.quiz.titre }}
+                    </div>
+                    <div style="font-size:0.75rem;color:#64748b;margin-top:2px">
+                        {{ attempt.submittedAt|date('d/m/Y à H:i') }}
+                    </div>
+                </div>
+                <div style="font-size:1.2rem;font-weight:900;color:{{ attempt.score >= 10 ? '#10b981' : '#ef4444' }};flex-shrink:0">
+                    {{ attempt.score }}/20
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+</div>
+</section>
+
+{# Chart.js via CDN #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const labels   = {{ chartLabels|json_encode|raw }};
+const scores   = {{ chartScores|json_encode|raw }};
+const compData = {{ chartCompletion|json_encode|raw }};
+
+// Bar chart — scores
+if (document.getElementById('chartScores') && labels.length > 0) {
+    new Chart(document.getElementById('chartScores'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Score moyen /20',
+                data: scores,
+                backgroundColor: scores.map(s => s >= 10 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.6)'),
+                borderColor:     scores.map(s => s >= 10 ? '#10b981' : '#ef4444'),
+                borderWidth: 2,
+                borderRadius: 8,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { min: 0, max: 20, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+// Doughnut — completion
+if (document.getElementById('chartCompletion') && labels.length > 0) {
+    const done    = compData.map(c => c);
+    const notDone = compData.map(c => 100 - c);
+    const avgComp = compData.length ? Math.round(compData.reduce((a,b) => a+b,0)/compData.length) : 0;
+    new Chart(document.getElementById('chartCompletion'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Complété', 'Restant'],
+            datasets: [{ data: [avgComp, 100 - avgComp], backgroundColor: ['#10b981','#e2e8f0'], borderWidth: 0, cutout: '75%' }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 16 } },
+                tooltip: { callbacks: { label: ctx => ctx.parsed + '%' } }
+            }
+        },
+        plugins: [{
+            id: 'centerText',
+            beforeDraw(chart) {
+                const {width,height,ctx} = chart;
+                ctx.restore();
+                ctx.font = 'bold 22px sans-serif';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#10b981';
+                const text = avgComp + '%';
+                const tx = (width - ctx.measureText(text).width) / 2;
+                ctx.fillText(text, tx, height / 2);
+                ctx.save();
+            }
+        }]
+    });
+}
+</script>
+{% endblock %}

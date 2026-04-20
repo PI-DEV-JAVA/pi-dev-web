@@ -1,0 +1,66 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 style="font-weight:800;margin:0"><i class="bi bi-bell me-2" style="color:var(--primary-light)"></i>Notifications</h4>
+        <p style="color:var(--bo-text-secondary);margin:4px 0 0;font-size:0.85rem">
+            {{ notifications|filter(n => not n.isRead)|length }} non lue(s) sur {{ notifications|length }} au total
+        </p>
+    </div>
+    {% if notifications|filter(n => not n.isRead)|length > 0 %}
+        <a href="{{ path('admin_notifications_read_all') }}" class="bo-btn bo-btn-primary" style="font-size:0.8rem">
+            <i class="bi bi-check2-all me-1"></i> Tout marquer lu
+        </a>
+    {% endif %}
+</div>
+
+{% if notifications|length > 0 %}
+<div class="bo-card" style="padding:0;overflow:hidden">
+    {% for n in notifications %}
+        <a href="{{ path('admin_notification_read', {id: n.id}) }}"
+           style="display:flex;gap:14px;padding:16px 20px;border-bottom:1px solid var(--bo-border);text-decoration:none;color:var(--bo-text);transition:background 0.2s;{{ not n.isRead ? 'background:rgba(79,70,229,0.04)' : '' }}"
+           onmouseover="this.style.background='rgba(79,70,229,0.08)'" onmouseout="this.style.background='{{ not n.isRead ? 'rgba(79,70,229,0.04)' : '' }}'">
+
+            {# Icon #}
+            <div style="width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;
+                {% if n.type == 'OFFER_DECISION' %}background:rgba(16,185,129,0.12);color:#10b981
+                {% elseif n.type == 'INTERVIEW' %}background:rgba(79,70,229,0.12);color:var(--primary-light)
+                {% elseif n.type == 'ACTIVITY' %}background:rgba(245,158,11,0.12);color:#f59e0b
+                {% elseif n.type == 'EVENT' %}background:rgba(6,182,212,0.12);color:#06b6d4
+                {% elseif n.type == 'REPLY' %}background:rgba(139,92,246,0.12);color:#8b5cf6
+                {% else %}background:rgba(100,116,139,0.12);color:#64748b{% endif %}">
+                <i class="bi bi-{% if n.type == 'OFFER_DECISION' %}briefcase{% elseif n.type == 'INTERVIEW' %}camera-video{% elseif n.type == 'ACTIVITY' %}lightning{% elseif n.type == 'EVENT' %}calendar-event{% elseif n.type == 'REPLY' %}chat-dots{% else %}bell{% endif %}"></i>
+            </div>
+
+            {# Content #}
+            <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-weight:{{ n.isRead ? '500' : '700' }};font-size:0.88rem">{{ n.title }}</span>
+                    {% if not n.isRead %}
+                        <span style="width:8px;height:8px;border-radius:50%;background:var(--primary-light);flex-shrink:0"></span>
+                    {% endif %}
+                </div>
+                {% if n.message %}
+                    <div style="font-size:0.8rem;color:var(--bo-text-secondary);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ n.message }}</div>
+                {% endif %}
+                <div style="font-size:0.7rem;color:var(--bo-text-secondary);margin-top:6px">
+                    <i class="bi bi-clock me-1"></i>{{ n.createdAt|date('d/m/Y à H:i') }}
+                    <span style="margin-left:10px;padding:2px 8px;border-radius:4px;font-size:0.65rem;font-weight:600;text-transform:uppercase;
+                        {% if n.type == 'OFFER_DECISION' %}background:rgba(16,185,129,0.1);color:#10b981
+                        {% elseif n.type == 'INTERVIEW' %}background:rgba(79,70,229,0.1);color:var(--primary-light)
+                        {% else %}background:rgba(100,116,139,0.1);color:#64748b{% endif %}">{{ n.type|replace({'_': ' '}) }}</span>
+                </div>
+            </div>
+        </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bo-card" style="text-align:center;padding:60px 20px">
+    <i class="bi bi-bell-slash" style="font-size:3rem;color:var(--bo-text-secondary);opacity:0.3;display:block;margin-bottom:12px"></i>
+    <h5 style="color:var(--bo-text-secondary);font-weight:600">Aucune notification</h5>
+    <p style="color:var(--bo-text-secondary);font-size:0.85rem">Les notifications apparaîtront ici lorsque des actions seront effectuées.</p>
+</div>
+{% endif %}
+{% endblock %}

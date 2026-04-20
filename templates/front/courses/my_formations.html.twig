@@ -1,0 +1,157 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}Mes formations — Talentos{% endblock %}
+
+{% block content %}
+<style>
+    .mf-hero { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%); padding: 52px 0 40px; }
+    .mf-hero h1 { font-size: 2rem; font-weight: 800; color: #fff; margin: 0 0 8px; }
+    .mf-hero p  { color: rgba(255,255,255,0.7); margin: 0; }
+
+    .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+    .filter-tab  { padding: 8px 20px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+                   text-decoration: none; border: 1.5px solid transparent; transition: all 0.2s; }
+    .filter-tab.all      { background: var(--fo-bg-card,#fff); color: var(--fo-text,#1e293b); border-color: #e2e8f0; }
+    .filter-tab.approved { background: rgba(16,185,129,0.1); color: #065f46; border-color: rgba(16,185,129,0.3); }
+    .filter-tab.pending  { background: rgba(245,158,11,0.1); color: #92400e; border-color: rgba(245,158,11,0.3); }
+    .filter-tab.rejected { background: rgba(239,68,68,0.1);  color: #991b1b; border-color: rgba(239,68,68,0.3);  }
+    .filter-tab.active   { box-shadow: 0 4px 12px rgba(79,70,229,0.25); transform: translateY(-1px); border-color: #6366f1; }
+    .filter-tab.all.active      { background: #6366f1; color: #fff; border-color: #6366f1; }
+    .filter-tab.approved.active { background: #10b981; color: #fff; border-color: #10b981; }
+    .filter-tab.pending.active  { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+    .filter-tab.rejected.active { background: #ef4444; color: #fff; border-color: #ef4444; }
+
+    .enroll-card { background: var(--fo-bg-card,#fff); border-radius: 16px; padding: 20px;
+                   border: 1px solid #e2e8f0; transition: all 0.2s; display: flex; gap: 16px; align-items: flex-start; }
+    .enroll-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
+    .enroll-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.4rem; }
+    .enroll-icon.approved { background: rgba(16,185,129,0.12); }
+    .enroll-icon.pending  { background: rgba(245,158,11,0.12); }
+    .enroll-icon.rejected { background: rgba(239,68,68,0.12);  }
+
+    .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px;
+                   border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+    .status-pill.approved { background: rgba(16,185,129,0.1); color: #065f46; }
+    .status-pill.pending  { background: rgba(245,158,11,0.1);  color: #92400e; }
+    .status-pill.rejected { background: rgba(239,68,68,0.1);   color: #991b1b; }
+
+    .empty-state { text-align: center; padding: 64px 20px; }
+    .empty-state i { font-size: 3rem; opacity: 0.25; display: block; margin-bottom: 16px; }
+    .empty-state p { color: var(--fo-text-secondary,#64748b); margin-bottom: 20px; }
+</style>
+
+<div class="mf-hero">
+    <div class="container">
+        <h1><i class="bi bi-bookmark-heart-fill me-2"></i>Mes formations</h1>
+        <p>Suivez l'état de vos candidatures et accédez à vos formations approuvées</p>
+    </div>
+</div>
+
+<section style="padding: 36px 0 60px">
+    <div class="container">
+
+        {# Filter tabs #}
+        <div class="filter-tabs">
+            <a href="{{ path('app_my_formations') }}"
+               class="filter-tab all {{ statusFilter == '' ? 'active' : '' }}">
+                📋 Toutes
+            </a>
+            <a href="{{ path('app_my_formations', {status: 'APPROVED'}) }}"
+               class="filter-tab approved {{ statusFilter == 'APPROVED' ? 'active' : '' }}">
+                <i class="bi bi-check-circle-fill me-1"></i> Acceptées
+            </a>
+            <a href="{{ path('app_my_formations', {status: 'PENDING'}) }}"
+               class="filter-tab pending {{ statusFilter == 'PENDING' ? 'active' : '' }}">
+                <i class="bi bi-hourglass-split me-1"></i> En attente
+            </a>
+            <a href="{{ path('app_my_formations', {status: 'REJECTED'}) }}"
+               class="filter-tab rejected {{ statusFilter == 'REJECTED' ? 'active' : '' }}">
+                <i class="bi bi-x-circle-fill me-1"></i> Refusées
+            </a>
+        </div>
+
+        {% if enrollments is empty %}
+            <div class="empty-state">
+                <i class="bi bi-folder2-open"></i>
+                {% if statusFilter == 'APPROVED' %}
+                    <p>Aucune formation acceptée pour le moment.</p>
+                {% elseif statusFilter == 'PENDING' %}
+                    <p>Aucune candidature en attente.</p>
+                {% elseif statusFilter == 'REJECTED' %}
+                    <p>Aucune candidature refusée.</p>
+                {% else %}
+                    <p>Vous n'avez encore postulé à aucune formation.</p>
+                {% endif %}
+                <a href="{{ path('app_courses') }}"
+                   style="display:inline-flex;align-items:center;gap:8px;background:#6366f1;color:#fff;padding:12px 28px;border-radius:12px;text-decoration:none;font-weight:700">
+                    <i class="bi bi-search"></i> Découvrir les formations
+                </a>
+            </div>
+        {% else %}
+            <div class="row g-3">
+                {% for enrollment in enrollments %}
+                    {% set f = enrollment.formation %}
+                    {% set st = enrollment.status %}
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="enroll-card">
+                            <div class="enroll-icon {{ st|lower }}">
+                                {% if st == 'APPROVED' %}✅
+                                {% elseif st == 'PENDING' %}⏳
+                                {% else %}❌{% endif %}
+                            </div>
+                            <div style="flex:1;min-width:0">
+                                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+                                    <div style="font-weight:700;font-size:0.95rem;color:var(--fo-text,#1e293b);line-height:1.3">
+                                        {{ f.titre }}
+                                    </div>
+                                    <span class="status-pill {{ st|lower }}">
+                                        {% if st == 'APPROVED' %}<i class="bi bi-check-circle-fill"></i> Acceptée
+                                        {% elseif st == 'PENDING' %}<i class="bi bi-hourglass-split"></i> En attente
+                                        {% else %}<i class="bi bi-x-circle-fill"></i> Refusée{% endif %}
+                                    </span>
+                                </div>
+                                <div style="font-size:0.8rem;color:var(--fo-text-secondary,#64748b);margin-bottom:10px">
+                                    <i class="bi bi-calendar3 me-1"></i>Candidature : {{ enrollment.requestedAt|date('d/m/Y') }}
+                                    {% if enrollment.respondedAt %}
+                                        &nbsp;·&nbsp; <i class="bi bi-reply me-1"></i>Réponse : {{ enrollment.respondedAt|date('d/m/Y') }}
+                                    {% endif %}
+                                </div>
+                                <div style="font-size:0.8rem;color:var(--fo-text-secondary,#64748b);margin-bottom:12px">
+                                    {% if f.duree %}<span class="me-2"><i class="bi bi-clock me-1"></i>{{ f.duree }}h</span>{% endif %}
+                                    {% if f.niveau %}<span><i class="bi bi-bar-chart me-1"></i>{{ f.niveau }}</span>{% endif %}
+                                </div>
+                                {% if st == 'APPROVED' %}
+                                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                        <a href="{{ path('app_course_detail', {id: f.id}) }}"
+                                           style="display:inline-flex;align-items:center;gap:6px;background:#10b981;color:#fff;padding:7px 16px;border-radius:10px;text-decoration:none;font-size:0.82rem;font-weight:700">
+                                            <i class="bi bi-arrow-right-circle"></i> Accéder à la formation
+                                        </a>
+                                        <a href="{{ path('app_certificate', {id: f.id}) }}" target="_blank"
+                                           style="display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.1);color:#059669;padding:7px 14px;border-radius:10px;text-decoration:none;font-size:0.82rem;font-weight:700;border:1px solid rgba(16,185,129,0.25)">
+                                            <i class="bi bi-award-fill"></i> Certificat
+                                        </a>
+                                    </div>
+                                {% elseif st == 'PENDING' %}
+                                    <div style="font-size:0.8rem;color:#92400e;background:rgba(245,158,11,0.08);padding:6px 12px;border-radius:8px;border:1px solid rgba(245,158,11,0.2)">
+                                        <i class="bi bi-info-circle me-1"></i> En attente de validation par l'administrateur
+                                    </div>
+                                {% else %}
+                                    <div style="font-size:0.8rem;color:#991b1b;background:rgba(239,68,68,0.06);padding:6px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.15)">
+                                        <i class="bi bi-x-circle me-1"></i> Candidature non retenue
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top:32px;text-align:center">
+                <a href="{{ path('app_courses') }}"
+                   style="display:inline-flex;align-items:center;gap:8px;color:#6366f1;text-decoration:none;font-weight:600;font-size:0.9rem">
+                    <i class="bi bi-arrow-left"></i> Toutes les formations
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { margin: 0; size: A4 landscape; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DejaVu Sans', Arial, sans-serif;
+    background: #fff;
+    width: 297mm;
+    height: 210mm;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Background decorations */
+  .bg-top-left  { position:absolute; top:-60px; left:-60px; width:220px; height:220px; border-radius:50%; background:linear-gradient(135deg,#4f46e5,#6366f1); opacity:0.08; }
+  .bg-bot-right { position:absolute; bottom:-80px; right:-80px; width:280px; height:280px; border-radius:50%; background:linear-gradient(135deg,#06b6d4,#0ea5e9); opacity:0.07; }
+  .bg-top-right { position:absolute; top:-40px; right:100px; width:150px; height:150px; border-radius:50%; background:#f59e0b; opacity:0.05; }
+
+  /* Border frame */
+  .frame-outer { position:absolute; inset:14px; border:3px solid #4f46e5; border-radius:12px; pointer-events:none; }
+  .frame-inner { position:absolute; inset:20px; border:1px solid rgba(79,70,229,0.25); border-radius:8px; pointer-events:none; }
+
+  /* Corner ornaments */
+  .corner { position:absolute; width:32px; height:32px; }
+  .corner-tl { top:12px; left:12px; border-top:4px solid #4f46e5; border-left:4px solid #4f46e5; border-radius:4px 0 0 0; }
+  .corner-tr { top:12px; right:12px; border-top:4px solid #4f46e5; border-right:4px solid #4f46e5; border-radius:0 4px 0 0; }
+  .corner-bl { bottom:12px; left:12px; border-bottom:4px solid #4f46e5; border-left:4px solid #4f46e5; border-radius:0 0 0 4px; }
+  .corner-br { bottom:12px; right:12px; border-bottom:4px solid #4f46e5; border-right:4px solid #4f46e5; border-radius:0 0 4px 0; }
+
+  /* Content */
+  .content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px 60px;
+    text-align: center;
+  }
+
+  .logo {
+    font-size: 18px;
+    font-weight: 900;
+    color: #4f46e5;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .divider-top {
+    width: 80px; height: 3px;
+    background: linear-gradient(90deg,#4f46e5,#06b6d4);
+    border-radius: 2px;
+    margin: 8px auto 16px;
+  }
+  .cert-label {
+    font-size: 11px;
+    color: #94a3b8;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .cert-title {
+    font-size: 36px;
+    font-weight: 900;
+    color: #0f172a;
+    letter-spacing: -1px;
+    margin-bottom: 4px;
+  }
+  .cert-subtitle {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 20px;
+    font-style: italic;
+  }
+  .presents-to {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .recipient {
+    font-size: 32px;
+    font-weight: 800;
+    color: #4f46e5;
+    margin-bottom: 14px;
+    font-style: italic;
+  }
+  .completed-text {
+    font-size: 13px;
+    color: #475569;
+    margin-bottom: 8px;
+    max-width: 460px;
+    line-height: 1.6;
+  }
+  .course-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+    background: linear-gradient(135deg,#eef2ff,#f0f9ff);
+    padding: 10px 28px;
+    border-radius: 50px;
+    border: 1.5px solid #c7d2fe;
+    margin: 6px auto 16px;
+    display: inline-block;
+  }
+  .score-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    margin: 4px 0 20px;
+  }
+  .score-box {
+    text-align: center;
+  }
+  .score-num {
+    font-size: 28px;
+    font-weight: 900;
+    color: #10b981;
+    line-height: 1;
+  }
+  .score-label {
+    font-size: 10px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 3px;
+  }
+  .score-divider {
+    width: 1px;
+    height: 40px;
+    background: #e2e8f0;
+  }
+
+  .footer-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 10px;
+    color: #94a3b8;
+  }
+  .sig-block { text-align: center; flex:1; }
+  .sig-line { width: 100px; height: 1px; background: #cbd5e1; margin: 0 auto 4px; }
+  .date-block { text-align: center; flex:1; }
+  .seal-block { flex:1; text-align: center; }
+  .seal {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg,#4f46e5,#06b6d4);
+    display: inline-flex; align-items:center; justify-content:center;
+    color: white; font-size: 20px; margin-bottom: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-top-left"></div>
+<div class="bg-bot-right"></div>
+<div class="bg-top-right"></div>
+
+<div class="frame-outer"></div>
+<div class="frame-inner"></div>
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<div class="content">
+  <div class="logo">⚡ Talentos</div>
+  <div class="divider-top"></div>
+  <div class="cert-label">Certificat de réussite</div>
+  <div class="cert-title">Certificate of Completion</div>
+  <div class="cert-subtitle">Plateforme de formation professionnelle Talentos</div>
+
+  <div class="presents-to">Décerné à</div>
+  <div class="recipient">
+    {% if user.firstname is defined and user.firstname %}{{ user.firstname }} {{ user.lastname ?? '' }}
+    {% else %}{{ user.email }}{% endif %}
+  </div>
+
+  <div class="completed-text">
+    pour avoir complété avec succès la formation
+  </div>
+
+  <div class="course-name">{{ formation.titre }}</div>
+
+  <div class="score-wrap">
+    <div class="score-box">
+      <div class="score-num">{{ avgScore }}/20</div>
+      <div class="score-label">Score moyen</div>
+    </div>
+    <div class="score-divider"></div>
+    <div class="score-box">
+      <div class="score-num">{{ attempts|length }}</div>
+      <div class="score-label">Quiz complétés</div>
+    </div>
+    {% if formation.duree %}
+    <div class="score-divider"></div>
+    <div class="score-box">
+      <div class="score-num">{{ formation.duree }}h</div>
+      <div class="score-label">Durée totale</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="footer-row">
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div>Directeur Pédagogique</div>
+      <div style="color:#0f172a;font-weight:700;margin-top:2px">Talentos Platform</div>
+    </div>
+    <div class="seal-block">
+      <div class="seal">🏅</div>
+      <div style="color:#4f46e5;font-weight:700;font-size:9px;letter-spacing:1px">CERTIFIÉ</div>
+    </div>
+    <div class="date-block">
+      <div class="sig-line"></div>
+      <div>Date de délivrance</div>
+      <div style="color:#0f172a;font-weight:700;margin-top:2px">{{ date|date('d/m/Y') }}</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

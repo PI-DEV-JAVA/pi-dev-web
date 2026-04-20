@@ -1,0 +1,214 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}{{ offer ? 'Modifier l\'offre' : 'Nouvelle offre' }}{% endblock %}
+{% block title %}{{ offer ? 'Modifier' : 'Nouvelle' }} offre — Admin{% endblock %}
+
+{% block content %}
+<style>
+    .field-valid { border-color: #10b981 !important; }
+    .field-valid:focus { box-shadow: 0 0 0 3px rgba(16,185,129,0.15) !important; }
+    .field-invalid { border-color: #ef4444 !important; }
+    .field-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.15) !important; }
+    .field-msg { font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px; min-height: 18px; }
+    .field-msg.error { color: #ef4444; }
+    .field-msg.success { color: #10b981; }
+    .req { color: #ef4444; font-weight: 700; }
+    .bo-form label { display: flex; align-items: center; gap: 4px; }
+</style>
+
+<div class="mb-3">
+    <a href="{{ path('admin_offers') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour</a>
+</div>
+
+{% for message in app.flashes('danger') %}
+    <div class="alert" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+    </div>
+{% endfor %}
+
+<div class="bo-card bo-form" style="max-width:700px">
+    <form method="post" id="offerForm" novalidate>
+        <div class="row g-3">
+            {# Title #}
+            <div class="col-12">
+                <label>Titre <span class="req">*</span></label>
+                <input type="text" name="title" id="fTitle" class="form-control" value="{{ offer ? offer.title : '' }}" placeholder="Ex: Développeur Full Stack" required>
+                <div class="field-msg" id="msgTitle"></div>
+            </div>
+
+            {# Description #}
+            <div class="col-12">
+                <label>Description <span class="req">*</span></label>
+                <textarea name="description" id="fDesc" class="form-control" rows="4" placeholder="Décrivez le poste, les missions et les compétences requises..." required>{{ offer ? offer.description : '' }}</textarea>
+                <div class="field-msg" id="msgDesc"></div>
+            </div>
+
+            {# Contract Type + Location #}
+            <div class="col-md-6">
+                <label>Type de contrat <span class="req">*</span></label>
+                <select name="contractType" id="fContract" class="form-select">
+                    <option value="CDI" {{ offer and offer.contractType == 'CDI' ? 'selected' }}>CDI</option>
+                    <option value="CDD" {{ offer and offer.contractType == 'CDD' ? 'selected' }}>CDD</option>
+                    <option value="Stage" {{ offer and offer.contractType == 'Stage' ? 'selected' }}>Stage</option>
+                    <option value="Freelance" {{ offer and offer.contractType == 'Freelance' ? 'selected' }}>Freelance</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label>Localisation <span class="req">*</span></label>
+                <input type="text" name="location" id="fLocation" class="form-control" value="{{ offer ? offer.location : '' }}" placeholder="Ex: Paris, Tunis, Remote" required>
+                <div class="field-msg" id="msgLocation"></div>
+            </div>
+
+            {# Department + Experience #}
+            <div class="col-md-6">
+                <label>Département</label>
+                <input type="text" name="department" class="form-control" value="{{ offer ? offer.department : '' }}" placeholder="Ex: IT, Marketing">
+            </div>
+            <div class="col-md-6">
+                <label>Niveau d'expérience</label>
+                <input type="text" name="experienceLevel" class="form-control" value="{{ offer ? offer.experienceLevel : '' }}" placeholder="Ex: Junior, Senior">
+            </div>
+
+            {# Positions + Salary #}
+            <div class="col-md-4">
+                <label>Postes disponibles <span class="req">*</span></label>
+                <input type="number" name="positionsAvailable" id="fPositions" class="form-control" value="{{ offer ? offer.positionsAvailable : 1 }}" min="1" required>
+                <div class="field-msg" id="msgPositions"></div>
+            </div>
+            <div class="col-md-4">
+                <label>Salaire min</label>
+                <input type="number" name="salaryMin" id="fSalMin" class="form-control" value="{{ offer ? offer.salaryMin : '' }}" min="0" placeholder="0">
+            </div>
+            <div class="col-md-4">
+                <label>Salaire max</label>
+                <input type="number" name="salaryMax" id="fSalMax" class="form-control" value="{{ offer ? offer.salaryMax : '' }}" min="0" placeholder="0">
+                <div class="field-msg" id="msgSalary"></div>
+            </div>
+        </div>
+
+        <div class="mt-4 d-flex align-items-center gap-3">
+            <button type="submit" class="bo-btn bo-btn-primary" id="submitBtn" disabled style="opacity:0.5;transition:opacity 0.3s">
+                <i class="bi bi-check-lg me-1"></i> {{ offer ? 'Enregistrer' : 'Créer' }}
+            </button>
+            <span id="formStatus" style="font-size:0.8rem;color:var(--bo-text-secondary)"></span>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    const title = document.getElementById('fTitle');
+    const desc = document.getElementById('fDesc');
+    const location = document.getElementById('fLocation');
+    const positions = document.getElementById('fPositions');
+    const salMin = document.getElementById('fSalMin');
+    const salMax = document.getElementById('fSalMax');
+    const submitBtn = document.getElementById('submitBtn');
+    const formStatus = document.getElementById('formStatus');
+
+    const msgs = {
+        title: document.getElementById('msgTitle'),
+        desc: document.getElementById('msgDesc'),
+        location: document.getElementById('msgLocation'),
+        positions: document.getElementById('msgPositions'),
+        salary: document.getElementById('msgSalary'),
+    };
+
+    const state = { title: false, desc: false, location: false, positions: true, salary: true };
+
+    function setField(input, valid) {
+        input.classList.remove('field-valid', 'field-invalid');
+        if (input.value.length > 0 || input === positions) {
+            input.classList.add(valid ? 'field-valid' : 'field-invalid');
+        }
+    }
+
+    function setMsg(el, text, type) {
+        el.className = 'field-msg ' + type;
+        el.innerHTML = '<i class="bi bi-' + (type === 'error' ? 'x-circle-fill' : 'check-circle-fill') + '"></i> ' + text;
+    }
+    function clearMsg(el) { el.className = 'field-msg'; el.innerHTML = ''; }
+
+    function checkForm() {
+        const ok = state.title && state.desc && state.location && state.positions && state.salary;
+        submitBtn.disabled = !ok;
+        submitBtn.style.opacity = ok ? '1' : '0.5';
+        formStatus.textContent = ok ? '' : 'Remplissez les champs obligatoires';
+    }
+
+    // Title: min 3 chars
+    title.addEventListener('input', function() {
+        if (this.value.trim().length === 0) {
+            setField(this, false); setMsg(msgs.title, 'Le titre est requis', 'error'); state.title = false;
+        } else if (this.value.trim().length < 3) {
+            setField(this, false); setMsg(msgs.title, 'Au moins 3 caractères', 'error'); state.title = false;
+        } else {
+            setField(this, true); setMsg(msgs.title, 'Titre valide', 'success'); state.title = true;
+        }
+        checkForm();
+    });
+
+    // Description: min 10 chars
+    desc.addEventListener('input', function() {
+        if (this.value.trim().length === 0) {
+            setField(this, false); setMsg(msgs.desc, 'La description est requise', 'error'); state.desc = false;
+        } else if (this.value.trim().length < 10) {
+            setField(this, false); setMsg(msgs.desc, 'Au moins 10 caractères (' + this.value.trim().length + '/10)', 'error'); state.desc = false;
+        } else {
+            setField(this, true); setMsg(msgs.desc, 'Description valide (' + this.value.trim().length + ' car.)', 'success'); state.desc = true;
+        }
+        checkForm();
+    });
+
+    // Location: required
+    location.addEventListener('input', function() {
+        if (this.value.trim().length === 0) {
+            setField(this, false); setMsg(msgs.location, 'La localisation est requise', 'error'); state.location = false;
+        } else {
+            setField(this, true); setMsg(msgs.location, 'Localisation valide', 'success'); state.location = true;
+        }
+        checkForm();
+    });
+
+    // Positions: >= 1
+    positions.addEventListener('input', function() {
+        var v = parseInt(this.value);
+        if (isNaN(v) || v < 1) {
+            setField(this, false); setMsg(msgs.positions, 'Au moins 1 poste', 'error'); state.positions = false;
+        } else {
+            setField(this, true); clearMsg(msgs.positions); state.positions = true;
+        }
+        checkForm();
+    });
+
+    // Salary: max >= min if both filled
+    function validateSalary() {
+        var min = parseFloat(salMin.value), max = parseFloat(salMax.value);
+        if (salMin.value && min < 0) {
+            setMsg(msgs.salary, 'Le salaire ne peut pas être négatif', 'error'); state.salary = false;
+            setField(salMin, false);
+        } else if (salMax.value && max < 0) {
+            setMsg(msgs.salary, 'Le salaire ne peut pas être négatif', 'error'); state.salary = false;
+            setField(salMax, false);
+        } else if (salMin.value && salMax.value && max < min) {
+            setMsg(msgs.salary, 'Le max doit être ≥ au min', 'error'); state.salary = false;
+            setField(salMin, false); setField(salMax, false);
+        } else {
+            clearMsg(msgs.salary); state.salary = true;
+            if (salMin.value) setField(salMin, true); else { salMin.classList.remove('field-valid','field-invalid'); }
+            if (salMax.value) setField(salMax, true); else { salMax.classList.remove('field-valid','field-invalid'); }
+        }
+        checkForm();
+    }
+    salMin.addEventListener('input', validateSalary);
+    salMax.addEventListener('input', validateSalary);
+
+    // On page load (edit mode), trigger validation for pre-filled fields
+    if (title.value) title.dispatchEvent(new Event('input'));
+    if (desc.value) desc.dispatchEvent(new Event('input'));
+    if (location.value) location.dispatchEvent(new Event('input'));
+    positions.dispatchEvent(new Event('input'));
+
+    checkForm();
+})();
+</script>
+{% endblock %}
