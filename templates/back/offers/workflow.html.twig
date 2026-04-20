@@ -100,6 +100,7 @@
 <div class="wrapper">
     <div class="col-left">
         <h6 style="font-size:0.8rem;text-transform:uppercase;color:var(--bo-text-secondary)">Déclencheurs</h6>
+        <div class="drag-drawflow mb-2" draggable="true" ondragstart="drag(event)" data-node="trigger-application-created"><i class="bi bi-file-earmark-plus me-2 text-primary"></i>Candidature Reçue</div>
         <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="trigger-meet-graded"><i class="bi bi-play-circle me-2 text-success"></i>Meet Évalué (Noté)</div>
         
         <h6 style="font-size:0.8rem;text-transform:uppercase;color:var(--bo-text-secondary);margin-top:10px">Conditions</h6>
@@ -168,6 +169,13 @@
       pos_y = pos_y * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)) - (editor.precanvas.getBoundingClientRect().y * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)));
 
       switch (name) {
+        case 'trigger-application-created':
+          editor.addNode('trigger-application-created', 0, 1, pos_x, pos_y, 'trigger', {}, `
+            <div class="title-box"><i class="bi bi-file-earmark-plus text-primary me-1"></i> Candidature Reçue</div>
+            <div class="box text-muted">Exécuté à la soumission d'une candidature</div>
+          `);
+          break;
+
         case 'trigger-meet-graded':
           editor.addNode('trigger-meet-graded', 0, 1, pos_x, pos_y, 'trigger', {}, `
             <div class="title-box"><i class="bi bi-play-circle text-success me-1"></i> Meet Évalué</div>
