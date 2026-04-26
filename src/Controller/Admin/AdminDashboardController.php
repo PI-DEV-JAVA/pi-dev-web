@@ -805,92 +805,124 @@ class AdminDashboardController extends AbstractController
         if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
+
         $quiz   = $em->getRepository(Quiz::class)->find($qid);
         $seance = $quiz?->getSeance();
 
-        $formationTitle = $formation?->getTitre() ?? 'Formation';
-        $seanceTitle    = $seance?->getTitre() ?? '';
-        $seanceDesc     = $seance?->getDescription() ?? '';
-        $quizTitle      = $quiz?->getTitre() ?? 'Quiz';
-        $quizDesc       = $quiz?->getDescription() ?? '';
+        $formationTitle = $formation?->getTitre()      ?? 'Formation';
+        $seanceTitle    = $seance?->getTitre()          ?? '';
+        $seanceDesc     = $seance?->getDescription()    ?? '';
+        $quizTitle      = $quiz?->getTitre()            ?? 'Quiz';
+        $quizDesc       = $quiz?->getDescription()      ?? '';
 
-        // Use the most specific description available
         $mainSubject = trim($quizDesc ?: $seanceDesc);
         $sessionCtx  = trim($seanceTitle ?: $quizTitle);
         $fullCtx     = trim($formationTitle . ($sessionCtx ? ' — ' . $sessionCtx : ''));
 
-        $apiKey = $_ENV['GROQ_API_KEY'] ?? '';
-        if ($apiKey) {
-            try {
-                // Build an ultra-specific prompt that forces real subject-matter questions
-                $subjectLine = $mainSubject
-                    ? "Le sujet exact à évaluer est : \"$mainSubject\"."
-                    : "Le sujet à évaluer est : \"$fullCtx\"."
-                ;
+        $subjectLine = $mainSubject
+            ? "Le sujet exact à évaluer est : \"$mainSubject\"."
+            : "Le sujet à évaluer est : \"$fullCtx\".";
 
-                $systemPrompt = <<<EOT
+        $systemPrompt = <<<EOT
 Tu es un expert en création de quiz éducatifs techniques.
-Ton rôle : générer des questions QCM qui testent la compréhension TECHNIQUE et PRATIQUE du sujet donné.
-Tu ne parles JAMAIS de "l'objectif de la formation", de "bonnes pratiques pédagogiques" ou de "comment valider ses acquis".
+Tu génères des questions QCM qui testent la compréhension TECHNIQUE et PRATIQUE du sujet.
+Tu ne parles JAMAIS de "l'objectif de la formation" ou de "bonnes pratiques pédagogiques".
 Tu génères UNIQUEMENT du JSON valide, sans markdown, sans explication, sans texte autour.
 EOT;
 
-                $userPrompt = <<<EOT
+        $userPrompt = <<<EOT
 $subjectLine
 Contexte global : $fullCtx
 
-Génère exactement 5 questions QCM en français qui testent des CONNAISSANCES TECHNIQUES précises sur ce sujet.
+Génère exactement 5 questions QCM en français sur des CONNAISSANCES TECHNIQUES précises.
 
-Règles ABSOLUES :
-1. Chaque question doit porter sur un concept, une syntaxe, une propriété ou un comportement CONCRET du sujet.
-2. INTERDIT : questions sur "l'objectif", "comment apprendre", "bonnes pratiques pédagogiques", "valider ses acquis".
-3. Les 4 choix doivent être techniquement plausibles, avec UN SEUL correct.
-4. Variété obligatoire : définition, comparaison, syntaxe/code, application pratique, cas d'usage.
-5. Niveau : intermédiaire/avancé, pas trivial.
+Règles :
+1. Chaque question porte sur un concept, une syntaxe ou un comportement CONCRET du sujet.
+2. 4 choix techniquement plausibles, UN SEUL correct.
+3. Niveau intermédiaire/avancé.
 
-Exemple de bonne question pour "structures de données en Python" :
-{"enonce":"Quelle structure Python est immuable et ordonnée ?","choix":[{"texte":"tuple","correct":true},{"texte":"list","correct":false},{"texte":"dict","correct":false},{"texte":"set","correct":false}]}
-
-Retourne UNIQUEMENT ce tableau JSON (sans aucun texte avant ou après) :
-[{"enonce":"...","choix":[{"texte":"...","correct":true},{"texte":"...","correct":false},{"texte":"...","correct":false},{"texte":"...","correct":false}]}, ...]
+Retourne UNIQUEMENT ce tableau JSON (sans aucun texte autour) :
+[{"enonce":"...","choix":[{"texte":"...","correct":true},{"texte":"...","correct":false},{"texte":"...","correct":false},{"texte":"...","correct":false}]},...]
 EOT;
 
-                $resp = $this->httpClient->request('POST', 'https://api.groq.com/openai/v1/chat/completions', [
+        // ── Provider list: try each in order until one succeeds ──
+        $providers = [
+            [
+                'name'    => 'groq',
+                'key'     => trim($_ENV['GROQ_API_KEY'] ?? $_SERVER['GROQ_API_KEY'] ?? getenv('GROQ_API_KEY') ?? ''),
+                'url'     => 'https://api.groq.com/openai/v1/chat/completions',
+                'model'   => 'llama-3.3-70b-versatile',
+                'system'  => true,
+            ],
+            [
+                'name'    => 'xai',
+                'key'     => trim($_ENV['XAI_API_KEY'] ?? $_SERVER['XAI_API_KEY'] ?? getenv('XAI_API_KEY') ?? ''),
+                'url'     => 'https://api.x.ai/v1/chat/completions',
+                'model'   => 'grok-3-latest',
+                'system'  => true,
+            ],
+        ];
+
+        foreach ($providers as $provider) {
+            $apiKey = $provider['key'];
+            if (!$apiKey || $apiKey === 'your_groq_api_key_here') {
+                continue;
+            }
+
+            try {
+                $messages = [];
+                if ($provider['system']) {
+                    $messages[] = ['role' => 'system', 'content' => $systemPrompt];
+                }
+                $messages[] = ['role' => 'user', 'content' => $userPrompt];
+
+                $resp = $this->httpClient->request('POST', $provider['url'], [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $apiKey,
                         'Content-Type'  => 'application/json',
                     ],
                     'json' => [
-                        'model'    => 'llama3-70b-8192',
-                        'messages' => [
-                            ['role' => 'system', 'content' => $systemPrompt],
-                            ['role' => 'user',   'content' => $userPrompt],
-                        ],
+                        'model'       => $provider['model'],
+                        'messages'    => $messages,
                         'temperature' => 0.3,
-                        'max_tokens'  => 3000,
+                        'max_tokens'  => 2000,
                     ],
                     'timeout' => 25,
                 ]);
 
+                // If HTTP error (e.g. 403 no credits), skip to next provider
+                $statusCode = $resp->getStatusCode();
+                if ($statusCode !== 200) {
+                    continue;
+                }
+
                 $data    = $resp->toArray();
                 $content = $data['choices'][0]['message']['content'] ?? '';
-                // Strip markdown fences if any
+
+                // Strip markdown fences
                 $content = preg_replace('/^```(?:json)?\s*/m', '', $content);
-                $content = preg_replace('/```\s*$/m', '', $content);
-                // Extract first JSON array from the response
+                $content = preg_replace('/```\s*$/m',          '', $content);
+
+                // Extract first JSON array
                 if (preg_match('/\[.*\]/s', $content, $matches)) {
                     $content = $matches[0];
                 }
+
                 $questions = json_decode(trim($content), true);
                 if (is_array($questions) && count($questions) > 0) {
-                    return new JsonResponse(['questions' => $questions, 'source' => 'ai']);
+                    return new JsonResponse([
+                        'questions' => $questions,
+                        'source'    => 'ai',
+                        'provider'  => $provider['name'],
+                    ]);
                 }
             } catch (\Throwable $e) {
-                // fallback
+                // Try next provider
+                continue;
             }
         }
 
-        // Smart fallback: parse the description into topic-specific questions
+        // Smart fallback (no AI available)
         $questions = $this->generateSmartFallback($formationTitle, $sessionCtx, $mainSubject);
         return new JsonResponse(['questions' => $questions, 'source' => 'template']);
     }
@@ -904,7 +936,7 @@ EOT;
         // Try to detect the domain from keywords for better questions
         $lower = strtolower($subject . ' ' . $ctx);
 
-        // Python
+        // Python 
         if (str_contains($lower, 'python')) {
             if (str_contains($lower, 'structure') || str_contains($lower, 'donné')) {
                 return [
