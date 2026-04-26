@@ -101,7 +101,7 @@
     <div class="section-header">
         <div class="section-title"><i class="bi bi-book" style="color:var(--accent)"></i> {{ formation ? 'Informations de la formation' : 'Nouvelle formation' }}</div>
     </div>
-    <form method="post" id="courseForm" novalidate>
+    <form method="post" id="courseForm" enctype="multipart/form-data" novalidate>
         <div class="row g-3">
             <div class="col-12">
                 <label>Titre <span class="req">*</span></label>
@@ -130,7 +130,66 @@
                 <label>Date de début</label>
                 <input type="date" name="dateDebut" class="form-control" value="{{ formation and formation.dateDebut ? formation.dateDebut|date('Y-m-d') : '' }}">
             </div>
+
+            {# ── Image de couverture ── #}
+            <div class="col-12">
+                <label><i class="bi bi-image me-1"></i>Image de couverture</label>
+                {% if formation and formation.image %}
+                <div style="margin-bottom:10px;border-radius:10px;overflow:hidden;border:1px solid var(--bo-border)">
+                    <img src="{{ asset('uploads/formations/' ~ formation.image) }}"
+                         alt="Couverture actuelle"
+                         style="width:100%;height:140px;object-fit:cover">
+                    <div style="padding:6px 10px;font-size:0.75rem;color:var(--bo-text-secondary);background:var(--bo-bg-input)">
+                        <i class="bi bi-check-circle me-1" style="color:#10b981"></i>Image actuelle — téléversez une nouvelle pour la remplacer
+                    </div>
+                </div>
+                {% endif %}
+                <input type="file" name="image" accept="image/*" class="form-control"
+                       style="background:var(--bo-bg-input);border:1px dashed var(--bo-border);border-radius:10px;padding:10px">
+                <div style="font-size:0.75rem;color:var(--bo-text-secondary);margin-top:4px">
+                    <i class="bi bi-info-circle me-1"></i>Formats acceptés : JPG, PNG, WEBP — Max 5 Mo
+                </div>
+            </div>
+
+            {# ── Type : Gratuit / Payant ── #}
+            <div class="col-12">
+                <label><i class="bi bi-currency-exchange me-1"></i>Accès à la formation <span class="req">*</span></label>
+                <div class="d-flex gap-3 mt-2">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--bo-bg-input);
+                                  border:1.5px solid {{ (not formation or not formation.isPaid) ? 'var(--primary-light)' : 'var(--bo-border)' }};
+                                  border-radius:10px;padding:10px 16px;flex:1;transition:all 0.2s" id="lblFree">
+                        <input type="radio" name="is_paid" value="0" id="rFree"
+                               {{ (not formation or not formation.isPaid) ? 'checked' : '' }}
+                               onchange="togglePaidField()">
+                        <div>
+                            <div style="font-weight:700;color:var(--bo-text)"><i class="bi bi-gift me-1" style="color:#10b981"></i>Gratuit</div>
+                            <div style="font-size:0.75rem;color:var(--bo-text-secondary)">Accessible à tous les candidats</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--bo-bg-input);
+                                  border:1.5px solid {{ (formation and formation.isPaid) ? '#f59e0b' : 'var(--bo-border)' }};
+                                  border-radius:10px;padding:10px 16px;flex:1;transition:all 0.2s" id="lblPaid">
+                        <input type="radio" name="is_paid" value="1" id="rPaid"
+                               {{ (formation and formation.isPaid) ? 'checked' : '' }}
+                               onchange="togglePaidField()">
+                        <div>
+                            <div style="font-weight:700;color:var(--bo-text)"><i class="bi bi-coin me-1" style="color:#f59e0b"></i>Payante</div>
+                            <div style="font-size:0.75rem;color:var(--bo-text-secondary)">Requiert des points pour s'inscrire</div>
+                        </div>
+                    </label>
+                </div>
+                <div id="pricePointsGroup" style="margin-top:12px;display:{{ (formation and formation.isPaid) ? 'block' : 'none' }}">
+                    <label>Coût en points <span class="req">*</span></label>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <input type="number" name="price_points" id="fPricePoints" class="form-control"
+                               value="{{ formation and formation.pricePoints ? formation.pricePoints : 100 }}"
+                               min="1" placeholder="Ex: 150" style="max-width:180px">
+                        <span style="color:var(--bo-text-secondary);font-size:0.85rem">points requis pour s'inscrire</span>
+                    </div>
+                </div>
+            </div>
         </div>
+
         <div class="mt-4 d-flex align-items-center gap-3">
             <button type="submit" class="bo-btn bo-btn-primary" id="submitBtn" disabled style="opacity:0.5;transition:opacity 0.3s">
                 <i class="bi bi-check-lg me-1"></i> {{ formation ? 'Enregistrer' : 'Créer la formation' }}
@@ -141,6 +200,15 @@
         </div>
     </form>
 </div>
+
+<script>
+function togglePaidField() {
+    var isPaid = document.getElementById('rPaid').checked;
+    document.getElementById('pricePointsGroup').style.display = isPaid ? 'block' : 'none';
+    document.getElementById('lblFree').style.borderColor = isPaid ? 'var(--bo-border)' : 'var(--primary-light)';
+    document.getElementById('lblPaid').style.borderColor = isPaid ? '#f59e0b' : 'var(--bo-border)';
+}
+</script>
 </div>
 
 {% if formation %}

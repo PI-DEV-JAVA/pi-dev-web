@@ -1,0 +1,101 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}Acheter des points — Talentos{% endblock %}
+
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <a href="{{ path('app_courses') }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500">
+            <i class="bi bi-arrow-left me-1"></i> Retour aux formations
+        </a>
+        <h1 class="mt-2">💰 Acheter des points</h1>
+        <p>Utilisez vos points pour accéder aux formations payantes</p>
+    </div>
+</div>
+
+<section class="fo-section" style="padding-top:40px">
+    <div class="container" style="max-width:520px">
+
+        {% for msg in app.flashes('success') %}
+            <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:12px;
+                        padding:12px 18px;margin-bottom:20px;color:#047857;font-size:0.88rem">
+                <i class="bi bi-check-circle-fill me-2"></i>{{ msg }}
+            </div>
+        {% endfor %}
+        {% for msg in app.flashes('danger') %}
+            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:12px;
+                        padding:12px 18px;margin-bottom:20px;color:#dc2626;font-size:0.88rem">
+                <i class="bi bi-exclamation-circle-fill me-2"></i>{{ msg }}
+            </div>
+        {% endfor %}
+
+        <div class="fo-card" style="text-align:center">
+
+            {# Balance display #}
+            <div style="width:110px;height:110px;border-radius:50%;margin:0 auto 20px;
+                        background:linear-gradient(135deg,#f59e0b,#d97706);
+                        display:flex;align-items:center;justify-content:center;
+                        box-shadow:0 10px 30px rgba(245,158,11,0.35)">
+                <i class="bi bi-coin" style="font-size:2.8rem;color:#fff"></i>
+            </div>
+
+            <h3 style="font-weight:800;margin-bottom:4px">Mon solde actuel</h3>
+            <div style="font-size:3.2rem;font-weight:900;color:#f59e0b;line-height:1;margin-bottom:4px">
+                {{ app.user.pointsBalance }}
+            </div>
+            <div style="color:var(--fo-text-secondary);font-size:0.9rem;margin-bottom:28px">points disponibles</div>
+
+            {# Info box #}
+            <div style="background:#f8fafc;border:1px solid var(--fo-border);border-radius:12px;padding:16px;
+                        margin-bottom:28px;text-align:left">
+                <div style="font-weight:700;font-size:0.88rem;color:var(--primary);margin-bottom:10px">
+                    <i class="bi bi-lightning-charge-fill me-2"></i>Comment gagner des points ?
+                </div>
+                <div style="font-size:0.82rem;color:var(--fo-text-secondary);line-height:1.8">
+                    <div><i class="bi bi-patch-check me-2" style="color:#10b981"></i>Réussir un quiz avec <strong style="color:var(--fo-text)">plus de 15/20</strong> → score ajouté en points</div>
+                    <div><i class="bi bi-cart me-2" style="color:#f59e0b"></i>Acheter des points ci-dessous pour accéder aux formations payantes</div>
+                </div>
+            </div>
+
+            {# Amount presets #}
+            <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:16px">
+                {% for preset in [50, 100, 200, 500] %}
+                <button type="button"
+                        onclick="document.getElementById('amount').value={{ preset }}"
+                        style="border:1.5px solid var(--fo-border);background:white;color:var(--fo-text);
+                               border-radius:10px;padding:8px 20px;font-size:0.85rem;font-weight:600;
+                               cursor:pointer;transition:all 0.2s"
+                        onmouseover="this.style.borderColor='#f59e0b';this.style.color='#d97706';this.style.background='rgba(245,158,11,0.05)'"
+                        onmouseout="this.style.borderColor='var(--fo-border)';this.style.color='var(--fo-text)';this.style.background='white'">
+                    {{ preset }} pts
+                </button>
+                {% endfor %}
+            </div>
+
+            {# Form #}
+            <form method="POST" action="{{ path('app_points_buy') }}" class="fo-form">
+                <label style="display:block;text-align:left;font-size:0.85rem;font-weight:600;margin-bottom:8px;color:var(--fo-text)">
+                    Montant personnalisé (10 – 1 000 pts)
+                </label>
+                <input type="number" id="amount" name="amount" min="10" max="1000" value="100" required
+                       class="form-control"
+                       style="text-align:center;font-size:1.2rem;font-weight:800;margin-bottom:16px">
+
+                <button type="submit"
+                        style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706);
+                               color:#fff;border:none;border-radius:12px;padding:14px;
+                               font-size:1rem;font-weight:700;cursor:pointer;transition:opacity 0.2s;
+                               box-shadow:0 6px 20px rgba(245,158,11,0.3)"
+                        onmouseover="this.style.opacity='.85'"
+                        onmouseout="this.style.opacity='1'">
+                    <i class="bi bi-cart-check me-2"></i>Confirmer l'achat
+                </button>
+
+                <p style="margin-top:14px;font-size:0.75rem;color:#94a3b8;text-align:center">
+                    <i class="bi bi-shield-check me-1"></i>Simulation de paiement — aucune transaction réelle
+                </p>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

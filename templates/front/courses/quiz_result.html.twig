@@ -49,6 +49,22 @@
                     </div>
                     <h2 style="font-weight:800;margin-bottom:6px">🏆 Excellent !</h2>
                     <p style="color:#64748b">Félicitations, vous maîtrisez très bien ce contenu !</p>
+
+                    {# ── Points Earned Banner ── #}
+                    {% if pointsEarned is defined and pointsEarned > 0 %}
+                    <div style="display:inline-flex;align-items:center;gap:12px;
+                                background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(16,185,129,0.08));
+                                border:1.5px solid rgba(245,158,11,0.35);border-radius:14px;
+                                padding:14px 24px;margin-top:16px;animation:popIn 0.4s ease">
+                        <span style="font-size:2rem">🏅</span>
+                        <div style="text-align:left">
+                            <div style="font-weight:800;font-size:1.05rem;color:#d97706">+{{ pointsEarned }} points gagnés !</div>
+                            <div style="font-size:0.78rem;color:#64748b">Ajoutés automatiquement à votre solde</div>
+                        </div>
+                    </div>
+                    <style>@keyframes popIn{0%{transform:scale(.7);opacity:0}80%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}</style>
+                    {% endif %}
+
                 {% elseif score >= 10 %}
                     <div class="score-ring score-good">
                         <span class="score-num" style="color:#3b82f6">{{ score }}</span>
@@ -56,6 +72,11 @@
                     </div>
                     <h2 style="font-weight:800;margin-bottom:6px">👍 Bien joué !</h2>
                     <p style="color:#64748b">Vous avez une bonne compréhension du sujet.</p>
+                    <div style="display:inline-flex;align-items:center;gap:8px;font-size:0.82rem;color:#94a3b8;
+                                margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:50px;padding:6px 14px">
+                        <i class="bi bi-coin" style="color:#f59e0b"></i>
+                        Obtenez <strong style="color:#d97706">plus de 15/20</strong> pour gagner des points !
+                    </div>
                 {% else %}
                     <div class="score-ring score-poor">
                         <span class="score-num" style="color:#ef4444">{{ score }}</span>

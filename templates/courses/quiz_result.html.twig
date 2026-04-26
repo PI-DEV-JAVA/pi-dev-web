@@ -9,44 +9,111 @@
 <main class="app-main">
     <div class="stat-card" style="max-width:750px;margin:0 auto">
         <div class="text-center mb-4">
-            <div style="width:100px;height:100px;border-radius:50%;margin:0 auto 16px;
-                        background:{{ score >= 70 ? 'rgba(16,185,129,0.15)' : (score >= 50 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)') }};
-                        display:flex;align-items:center;justify-content:center">
-                <span style="font-size:2rem;font-weight:800;color:{{ score >= 70 ? 'var(--success)' : (score >= 50 ? 'var(--warning)' : 'var(--danger)') }}">
-                    {{ score }}%
-                </span>
-            </div>
-            <h3 style="font-weight:700">
-                {% if score >= 70 %}Bravo ! 🎉{% elseif score >= 50 %}Pas mal ! 👍{% else %}Continuez ! 💪{% endif %}
-            </h3>
-            <p style="color:var(--text-secondary)">{{ correct }}/{{ total }} réponses correctes</p>
-        </div>
 
-        <hr style="border-color:var(--border)">
-
-        {% for r in results %}
-            <div class="p-3 mb-2" style="background:var(--bg-input);border-radius:10px;
-                        border-left:3px solid {{ r.isCorrect ? 'var(--success)' : 'var(--danger)' }}">
-                <div class="d-flex align-items-start gap-2">
-                    <i class="bi bi-{{ r.isCorrect ? 'check-circle-fill' : 'x-circle-fill' }}"
-                       style="color:{{ r.isCorrect ? 'var(--success)' : 'var(--danger)' }};margin-top:2px"></i>
-                    <div>
-                        <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px">{{ r.question.texte }}</div>
-                        {% if not r.isCorrect %}
-                            <div style="font-size:0.8rem;color:var(--danger)">Votre réponse : {{ r.userAnswer ? r.userAnswer.texte : 'Non répondu' }}</div>
-                            <div style="font-size:0.8rem;color:var(--success)">Bonne réponse : {{ r.correctAnswer ? r.correctAnswer.texte : '—' }}</div>
-                        {% else %}
-                            <div style="font-size:0.8rem;color:var(--success)">{{ r.correctAnswer.texte }}</div>
-                        {% endif %}
+            {% if cheated %}
+                {# Cheating result #}
+                <div style="width:100px;height:100px;border-radius:50%;margin:0 auto 16px;
+                            background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center">
+                    <i class="bi bi-exclamation-triangle" style="font-size:2.5rem;color:#ef4444"></i>
+                </div>
+                <h3 style="font-weight:700;color:#ef4444">Tentative invalide ❌</h3>
+                <p style="color:var(--text-secondary)">Des comportements suspects ont été détectés. Score attribué : 0/20.</p>
+            {% else %}
+                {# Score circle #}
+                <div style="position:relative;width:120px;height:120px;margin:0 auto 16px">
+                    <svg viewBox="0 0 36 36" style="width:120px;height:120px;transform:rotate(-90deg)">
+                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(79,70,229,0.1)" stroke-width="2.5"/>
+                        <circle cx="18" cy="18" r="15.9" fill="none"
+                                stroke="{{ score >= 15 ? '#10b981' : (score >= 10 ? '#f59e0b' : '#ef4444') }}"
+                                stroke-width="2.5"
+                                stroke-dasharray="{{ ((score / 20) * 100)|round }},100"
+                                stroke-linecap="round"/>
+                    </svg>
+                    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                        <span style="font-size:1.6rem;font-weight:900;
+                                     color:{{ score >= 15 ? '#10b981' : (score >= 10 ? '#f59e0b' : '#ef4444') }}">
+                            {{ score }}
+                        </span>
+                        <span style="font-size:0.65rem;color:var(--text-secondary);margin-top:-2px">/20</span>
                     </div>
                 </div>
-            </div>
-        {% endfor %}
 
-        <div class="text-center mt-4">
-            <a href="{{ path('app_course_detail', {id: quiz.formation.id}) }}" class="btn btn-primary-custom" style="width:auto;padding:12px 32px">
-                <i class="bi bi-arrow-left me-2"></i>Retour à la formation
-            </a>
+                <h3 style="font-weight:700">
+                    {% if score >= 15 %}Excellent ! 🎉
+                    {% elseif score >= 10 %}Pas mal ! 👍
+                    {% else %}Continuez ! 💪{% endif %}
+                </h3>
+
+                {# ── Points Earned Banner ── #}
+                {% if pointsEarned > 0 %}
+                <div style="display:inline-flex;align-items:center;gap:10px;
+                            background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(16,185,129,0.1));
+                            border:1px solid rgba(245,158,11,0.4);border-radius:14px;
+                            padding:12px 24px;margin:14px auto 0;animation:pop 0.4s ease">
+                    <span style="font-size:1.8rem">🏆</span>
+                    <div style="text-align:left">
+                        <div style="font-weight:800;font-size:1.1rem;color:#d97706">+{{ pointsEarned }} points gagnés !</div>
+                        <div style="font-size:0.78rem;color:var(--text-secondary)">Ajoutés à votre solde automatiquement</div>
+                    </div>
+                </div>
+                <style>
+                @keyframes pop {
+                    0% { transform: scale(0.7); opacity:0; }
+                    80% { transform: scale(1.05); }
+                    100% { transform: scale(1); opacity:1; }
+                }
+                </style>
+                {% elseif score > 0 and score <= 15 %}
+                <div style="font-size:0.82rem;color:var(--text-secondary);margin-top:10px">
+                    <i class="bi bi-info-circle me-1"></i>Obtenez plus de 15/20 pour gagner des points !
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        {% if results and not cheated %}
+            <hr style="border-color:var(--border)">
+            <h6 style="font-weight:600;margin-bottom:12px;color:var(--text-secondary)">Détail des réponses</h6>
+
+            {% for r in results %}
+                <div class="p-3 mb-2" style="background:var(--bg-input);border-radius:10px;
+                            border-left:3px solid {{ r.isCorrect ? 'var(--success)' : '#ef4444' }}">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-{{ r.isCorrect ? 'check-circle-fill' : 'x-circle-fill' }}"
+                           style="color:{{ r.isCorrect ? 'var(--success)' : '#ef4444' }};margin-top:2px;flex-shrink:0"></i>
+                        <div>
+                            <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px">{{ r.question.enonce }}</div>
+                            {% if not r.isCorrect %}
+                                <div style="font-size:0.8rem;color:#ef4444">Votre réponse : {{ r.userAnswer ? r.userAnswer.texte : 'Non répondu' }}</div>
+                                <div style="font-size:0.8rem;color:var(--success)">Bonne réponse : {{ r.correctAnswer ? r.correctAnswer.texte : '—' }}</div>
+                            {% else %}
+                                <div style="font-size:0.8rem;color:var(--success)">{{ r.correctAnswer.texte }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="text-center mt-4 d-flex justify-content-center gap-3 flex-wrap">
+            {% if formation %}
+                <a href="{{ path('app_course_detail', {id: formation.id}) }}"
+                   style="display:inline-flex;align-items:center;gap:6px;
+                          background:linear-gradient(135deg,var(--primary),#6366f1);
+                          color:#fff;border-radius:12px;padding:12px 28px;font-weight:700;text-decoration:none;
+                          transition:opacity 0.2s"
+                   onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                    <i class="bi bi-arrow-left"></i>Retour à la formation
+                </a>
+            {% endif %}
+            {% if app.user and app.user.role == 'CANDIDATE' %}
+                <a href="{{ path('app_points_buy') }}"
+                   style="display:inline-flex;align-items:center;gap:6px;
+                          background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);
+                          color:#d97706;border-radius:12px;padding:12px 20px;font-weight:600;text-decoration:none">
+                    <i class="bi bi-coin"></i>Mon solde
+                </a>
+            {% endif %}
         </div>
     </div>
 </main>

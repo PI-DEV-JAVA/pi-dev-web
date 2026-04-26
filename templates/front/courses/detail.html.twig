@@ -47,10 +47,16 @@
             <i class="bi bi-arrow-left me-1"></i> Retour aux formations
         </a>
         <h1 class="mt-2">{{ formation.titre }}</h1>
-        <div class="d-flex gap-3 mt-2 flex-wrap">
+        <div class="d-flex gap-3 mt-2 flex-wrap align-items-center">
             <span class="fo-badge fo-badge-primary"><i class="bi bi-clock me-1"></i>{{ formation.duree }}h</span>
             <span class="fo-badge fo-badge-accent">{{ formation.niveau ?: 'Tous niveaux' }}</span>
             <span class="fo-badge" style="background:rgba(16,185,129,0.1);color:#059669"><i class="bi bi-calendar3 me-1"></i>{{ seances|length }} séance(s)</span>
+            {# Price badge #}
+            {% if formation.isPaid %}
+                <span class="fo-badge fo-badge-warning"><i class="bi bi-coin me-1"></i>{{ formation.pricePoints }} pts</span>
+            {% else %}
+                <span class="fo-badge" style="background:rgba(16,185,129,0.12);color:#059669"><i class="bi bi-gift me-1"></i>Gratuit</span>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -71,14 +77,47 @@
                 {% if user and user.role == 'CANDIDATE' %}
                     {% if not enrollment %}
                         <div class="enroll-card enroll-none" style="margin-bottom:20px">
-                            <i class="bi bi-lock-fill" style="font-size:2rem;color:#6366f1;display:block;margin-bottom:12px"></i>
-                            <h5 style="font-weight:700;margin-bottom:6px">Rejoignez cette formation</h5>
-                            <p style="color:#64748b;margin-bottom:20px">Postulez pour accéder aux séances et aux quiz de cette formation.</p>
-                            <form method="post" action="{{ path('app_course_apply', {id: formation.id}) }}">
-                                <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:12px 32px">
-                                    <i class="bi bi-send me-2"></i>Postuler à cette formation
-                                </button>
-                            </form>
+                            {% if formation.isPaid %}
+                                <i class="bi bi-coin" style="font-size:2rem;color:#d97706;display:block;margin-bottom:12px"></i>
+                                <h5 style="font-weight:700;margin-bottom:6px">Formation payante</h5>
+                                <div style="font-size:1.6rem;font-weight:900;color:#d97706;margin-bottom:6px">
+                                    {{ formation.pricePoints }} <span style="font-size:1rem;font-weight:600;color:#92400e">points requis</span>
+                                </div>
+                                {% if app.user and app.user.role == 'CANDIDATE' %}
+                                    <div style="font-size:0.85rem;color:#92400e;margin-bottom:16px">
+                                        Votre solde : <strong>{{ app.user.pointsBalance }} pts</strong>
+                                        {% if app.user.pointsBalance < (formation.pricePoints ?? 0) %}
+                                            — <a href="{{ path('app_points_buy') }}" style="color:#d97706;font-weight:700">Recharger mes points →</a>
+                                        {% endif %}
+                                    </div>
+                                    <form method="post" action="{{ path('app_course_apply', {id: formation.id}) }}">
+                                        <button type="submit" class="btn btn-primary-custom"
+                                                style="width:auto;padding:12px 32px;background:{% if app.user.pointsBalance < (formation.pricePoints ?? 0) %}#9ca3af{% else %}linear-gradient(135deg,#f59e0b,#d97706){% endif %}"
+                                                {% if app.user.pointsBalance < (formation.pricePoints ?? 0) %}disabled{% endif %}>
+                                            <i class="bi bi-coin me-2"></i>S'inscrire ({{ formation.pricePoints }} pts)
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <a href="{{ path('app_login') }}" class="btn btn-primary-custom" style="width:auto;padding:12px 28px">
+                                        <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter pour s'inscrire
+                                    </a>
+                                {% endif %}
+                            {% else %}
+                                <i class="bi bi-lock-fill" style="font-size:2rem;color:#6366f1;display:block;margin-bottom:12px"></i>
+                                <h5 style="font-weight:700;margin-bottom:6px">Rejoignez cette formation</h5>
+                                <p style="color:#64748b;margin-bottom:20px">Postulez pour accéder aux séances et aux quiz de cette formation.</p>
+                                {% if app.user and app.user.role == 'CANDIDATE' %}
+                                    <form method="post" action="{{ path('app_course_apply', {id: formation.id}) }}">
+                                        <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:12px 32px">
+                                            <i class="bi bi-send me-2"></i>Postuler à cette formation
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <a href="{{ path('app_login') }}" class="btn btn-primary-custom" style="width:auto;padding:12px 28px">
+                                        <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter pour s'inscrire
+                                    </a>
+                                {% endif %}
+                            {% endif %}
                         </div>
                     {% elseif enrollment.pending %}
                         <div class="enroll-card enroll-pending" style="margin-bottom:20px">
@@ -97,14 +136,24 @@
                         <div class="enroll-card enroll-approved" style="margin-bottom:20px">
                             <i class="bi bi-patch-check-fill" style="font-size:2rem;color:#22c55e;display:block;margin-bottom:12px"></i>
                             <h5 style="font-weight:700;margin-bottom:6px;color:#14532d">Inscrit(e) ✓</h5>
-                            <p style="color:#166534;margin-bottom:12px">Vous êtes inscrit à cette formation. Les quiz sont disponibles à la fin de chaque séance (délai de 24h).</p>
+                            <p style="color:#166534;margin-bottom:12px">Vous êtes inscrit à cette formation. Les quiz sont disponibles à la fin de chaque séance.</p>
                             <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
                                 {% if attemptedQuizIds|length > 0 %}
-                                <a href="{{ path('app_certificate', {id: formation.id}) }}"
-                                   target="_blank"
-                                   style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;padding:10px 22px;border-radius:12px;text-decoration:none;font-weight:700;font-size:0.88rem;box-shadow:0 4px 12px rgba(16,185,129,0.3)">
-                                    <i class="bi bi-award-fill"></i> Télécharger mon certificat
-                                </a>
+                                    {% if canGetCertificate is defined and canGetCertificate %}
+                                        <a href="{{ path('app_certificate', {id: formation.id}) }}"
+                                           target="_blank"
+                                           style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;padding:10px 22px;border-radius:12px;text-decoration:none;font-weight:700;font-size:0.88rem;box-shadow:0 4px 12px rgba(16,185,129,0.3)">
+                                            <i class="bi bi-award-fill"></i> Télécharger mon certificat
+                                        </a>
+                                    {% else %}
+                                        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(148,163,184,0.1);border:1.5px dashed #cbd5e1;color:#64748b;padding:10px 20px;border-radius:12px;font-size:0.85rem;font-weight:600">
+                                            <i class="bi bi-lock"></i>
+                                            Certificat disponible à 70%
+                                            {% if avgScore is defined and avgScore %}
+                                                (votre moy. : {{ avgScore }}/20)
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
                                 {% endif %}
                                 <a href="{{ path('app_analytics') }}"
                                    style="display:inline-flex;align-items:center;gap:8px;background:rgba(79,70,229,0.1);color:#4f46e5;padding:10px 22px;border-radius:12px;text-decoration:none;font-weight:700;font-size:0.88rem;border:1.5px solid rgba(79,70,229,0.2)">

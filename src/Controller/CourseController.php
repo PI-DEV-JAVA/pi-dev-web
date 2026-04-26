@@ -19,31 +19,73 @@ use Symfony\Component\Routing\Annotation\Route;
 class CourseController extends AbstractController
 {
     // ─────────────────────────────────────────────
-    //  LIST formations (public)
+    //  LIST formations (public) — with sorting
     // ─────────────────────────────────────────────
     #[Route('/courses', name: 'app_courses')]
-    public function list(EntityManagerInterface $em): Response
+    public function list(Request $request, EntityManagerInterface $em): Response
     {
-        $formations = $em->getRepository(Formation::class)->findBy([], ['dateDebut' => 'DESC']);
+        $sort = $request->query->get('sort', 'date'); // date | name | enrollments | price
+        $type = $request->query->get('type', '');     // '' | free | paid
 
-        // For each formation, get current user enrollment status
+        // Base query
+        $qb = $em->getRepository(Formation::class)->createQueryBuilder('f')
+            ->leftJoin('f.enrollments', 'e');
+
+        // Filter by type
+        if ($type === 'free') {
+            $qb->where('f.isPaid = false');
+        } elseif ($type === 'paid') {
+            $qb->where('f.isPaid = true');
+        }
+
+        // Sorting
+        switch ($sort) {
+            case 'name':
+                $qb->orderBy('f.titre', 'ASC');
+                break;
+            case 'enrollments':
+                $qb->groupBy('f.id')->orderBy('COUNT(e.id)', 'DESC');
+                break;
+            case 'price':
+                $qb->orderBy('f.isPaid', 'ASC')->addOrderBy('f.pricePoints', 'ASC');
+                break;
+            default: // date
+                $qb->orderBy('f.dateDebut', 'DESC');
+        }
+
+        $formations = $qb->getQuery()->getResult();
+
+        // For each formation, count total enrollments
+        $enrollmentCounts = [];
+        foreach ($formations as $f) {
+            $enrollmentCounts[$f->getId()] = $em->getRepository(FormationEnrollment::class)
+                ->count(['formation' => $f, 'status' => FormationEnrollment::STATUS_APPROVED]);
+        }
+
+        // For current user enrollment status
         $enrollments = [];
         $user = $this->getUser();
+        $pointsBalance = 0;
         if ($user && $user->getRole() === 'CANDIDATE') {
             $myEnrollments = $em->getRepository(FormationEnrollment::class)->findBy(['user' => $user]);
             foreach ($myEnrollments as $e) {
                 $enrollments[$e->getFormation()->getId()] = $e->getStatus();
             }
+            $pointsBalance = $user->getPointsBalance();
         }
 
         return $this->render('front/courses/list.html.twig', [
-            'formations'  => $formations,
-            'enrollments' => $enrollments,
+            'formations'       => $formations,
+            'enrollments'      => $enrollments,
+            'enrollmentCounts' => $enrollmentCounts,
+            'sort'             => $sort,
+            'type'             => $type,
+            'pointsBalance'    => $pointsBalance,
         ]);
     }
 
     // ─────────────────────────────────────────────
-    //  MY FORMATIONS (candidate: enrolled formations filtered by status)
+    //  MY FORMATIONS (candidate)
     // ─────────────────────────────────────────────
     #[Route('/my-formations', name: 'app_my_formations')]
     public function myFormations(Request $request, EntityManagerInterface $em): Response
@@ -53,7 +95,7 @@ class CourseController extends AbstractController
             return $this->redirectToRoute('app_courses');
         }
 
-        $statusFilter = $request->query->get('status', ''); // APPROVED | PENDING | REJECTED | ''
+        $statusFilter = $request->query->get('status', '');
 
         $criteria = ['user' => $user];
         if (in_array($statusFilter, ['APPROVED', 'PENDING', 'REJECTED'])) {
@@ -72,7 +114,7 @@ class CourseController extends AbstractController
     }
 
     // ─────────────────────────────────────────────
-    //  DETAIL (public, but seances/quizzes locked for non-enrolled)
+    //  DETAIL
     // ─────────────────────────────────────────────
     #[Route('/courses/{id}', name: 'app_course_detail', requirements: ['id' => '\d+'])]
     public function detail(Formation $formation, EntityManagerInterface $em): Response
@@ -91,7 +133,7 @@ class CourseController extends AbstractController
             ]);
         }
 
-        // Check if user already attempted each quiz (to show result)
+        // Check if user already attempted each quiz
         $attemptedQuizIds = [];
         if ($user) {
             foreach ($seances as $s) {
@@ -107,11 +149,40 @@ class CourseController extends AbstractController
             }
         }
 
+        // Compute average score for certificate eligibility
+        $avgScore = null;
+        $canGetCertificate = false;
+        if ($user && $enrollment && $enrollment->isApproved()) {
+            $totalScore = 0;
+            $attemptCount = 0;
+            $totalQuizzes = 0;
+            foreach ($seances as $seance) {
+                if ($seance->getQuiz()) {
+                    $totalQuizzes++;
+                    $attempt = $em->getRepository(QuizAttempt::class)->findOneBy([
+                        'user' => $user,
+                        'quiz' => $seance->getQuiz(),
+                    ]);
+                    if ($attempt) {
+                        $totalScore += $attempt->getScore();
+                        $attemptCount++;
+                    }
+                }
+            }
+            if ($attemptCount > 0) {
+                $avgScore = round($totalScore / $attemptCount, 1);
+                // 70% of 20 = 14
+                $canGetCertificate = ($avgScore / 20 * 100) >= 70;
+            }
+        }
+
         return $this->render('front/courses/detail.html.twig', [
-            'formation'       => $formation,
-            'seances'         => $seances,
-            'enrollment'      => $enrollment,
-            'attemptedQuizIds'=> $attemptedQuizIds,
+            'formation'         => $formation,
+            'seances'           => $seances,
+            'enrollment'        => $enrollment,
+            'attemptedQuizIds'  => $attemptedQuizIds,
+            'avgScore'          => $avgScore,
+            'canGetCertificate' => $canGetCertificate,
         ]);
     }
 
@@ -131,29 +202,83 @@ class CourseController extends AbstractController
             'formation' => $formation,
         ]);
 
-        if (!$existing) {
-            $enrollment = new FormationEnrollment();
-            $enrollment->setUser($user);
-            $enrollment->setFormation($formation);
-            $em->persist($enrollment);
-            $em->flush();
-            $this->addFlash('success', 'Votre demande d\'inscription a été envoyée à l\'administrateur.');
-        } else {
+        if ($existing) {
             $this->addFlash('info', 'Vous avez déjà une demande en cours pour cette formation.');
+            return $this->redirectToRoute('app_course_detail', ['id' => $formation->getId()]);
         }
+
+        // If paid formation — check points balance
+        if ($formation->isPaid()) {
+            $cost = $formation->getPricePoints() ?? 0;
+            if ($user->getPointsBalance() < $cost) {
+                $this->addFlash('danger', sprintf(
+                    'Solde insuffisant ! Cette formation coûte %d pts. Votre solde : %d pts.',
+                    $cost,
+                    $user->getPointsBalance()
+                ));
+                return $this->redirectToRoute('app_course_detail', ['id' => $formation->getId()]);
+            }
+            // Deduct points
+            $user->deductPoints($cost);
+        }
+
+        $enrollment = new FormationEnrollment();
+        $enrollment->setUser($user);
+        $enrollment->setFormation($formation);
+        // Paid formations: auto-approve after payment; free: wait for admin
+        if ($formation->isPaid()) {
+            $enrollment->setStatus(FormationEnrollment::STATUS_APPROVED);
+            $enrollment->setRespondedAt(new \DateTime());
+            $this->addFlash('success', sprintf(
+                'Inscription confirmée ! %d pts ont été déduits de votre solde.',
+                $formation->getPricePoints() ?? 0
+            ));
+        } else {
+            $this->addFlash('success', 'Votre demande d\'inscription a été envoyée à l\'administrateur.');
+        }
+
+        $em->persist($enrollment);
+        $em->flush();
 
         return $this->redirectToRoute('app_course_detail', ['id' => $formation->getId()]);
     }
 
     // ─────────────────────────────────────────────
-    //  QUIZ — display (enrolled & approved + seance ended + within 24h)
+    //  BUY POINTS (candidate)
+    // ─────────────────────────────────────────────
+    #[Route('/points/buy', name: 'app_points_buy', methods: ['GET', 'POST'])]
+    public function buyPoints(Request $request, EntityManagerInterface $em): Response
+    {
+        $user = $this->getUser();
+        if (!$user || $user->getRole() !== 'CANDIDATE') {
+            return $this->redirectToRoute('app_login');
+        }
+
+        if ($request->isMethod('POST')) {
+            $amount = (int)$request->request->get('amount', 0);
+            if ($amount < 10 || $amount > 1000) {
+                $this->addFlash('danger', 'Le montant doit être entre 10 et 1000 points.');
+            } else {
+                $user->addPoints($amount);
+                $em->flush();
+                $this->addFlash('success', sprintf('%d points ont été ajoutés à votre solde ! Nouveau solde : %d pts.', $amount, $user->getPointsBalance()));
+                return $this->redirectToRoute('app_courses');
+            }
+        }
+
+        return $this->render('front/courses/buy_points.html.twig', [
+            'user' => $user,
+        ]);
+    }
+
+    // ─────────────────────────────────────────────
+    //  QUIZ — display
     // ─────────────────────────────────────────────
     #[Route('/quiz/{id}', name: 'app_quiz', requirements: ['id' => '\d+'])]
     public function quiz(Quiz $quiz, EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
 
-        // Must be logged in as candidate
         if (!$user || $user->getRole() !== 'CANDIDATE') {
             $this->addFlash('danger', 'Vous devez être connecté en tant que candidat pour passer ce quiz.');
             return $this->redirectToRoute('app_login');
@@ -162,7 +287,6 @@ class CourseController extends AbstractController
         $seance = $quiz->getSeance();
         $formation = $seance ? $seance->getFormation() : $quiz->getFormation();
 
-        // Check enrollment
         if ($formation) {
             $enrollment = $em->getRepository(FormationEnrollment::class)->findOneBy([
                 'user'      => $user,
@@ -174,7 +298,6 @@ class CourseController extends AbstractController
             }
         }
 
-        // Check quiz window (seance must be finished, within 24h)
         if ($seance) {
             if (!$seance->isTerminee()) {
                 $this->addFlash('warning', 'Le quiz sera disponible à la fin de la séance "' . $seance->getTitre() . '".');
@@ -186,7 +309,6 @@ class CourseController extends AbstractController
             }
         }
 
-        // Check if already attempted
         $existing = $em->getRepository(QuizAttempt::class)->findOneBy([
             'user' => $user,
             'quiz' => $quiz,
@@ -205,7 +327,7 @@ class CourseController extends AbstractController
     }
 
     // ─────────────────────────────────────────────
-    //  QUIZ — result page for already-attempted
+    //  QUIZ — result page
     // ─────────────────────────────────────────────
     #[Route('/quiz/{id}/result', name: 'app_quiz_result', requirements: ['id' => '\d+'])]
     public function quizResult(Quiz $quiz, EntityManagerInterface $em): Response
@@ -226,12 +348,13 @@ class CourseController extends AbstractController
         $formation = $seance ? $seance->getFormation() : $quiz->getFormation();
 
         return $this->render('front/courses/quiz_result.html.twig', [
-            'quiz'      => $quiz,
-            'attempt'   => $attempt,
-            'formation' => $formation,
-            'results'   => null,
-            'score'     => $attempt->getScore(),
-            'cheated'   => $attempt->isCheated(),
+            'quiz'        => $quiz,
+            'attempt'     => $attempt,
+            'formation'   => $formation,
+            'results'     => null,
+            'score'       => $attempt->getScore(),
+            'cheated'     => $attempt->isCheated(),
+            'pointsEarned'=> 0,
         ]);
     }
 
@@ -255,8 +378,8 @@ class CourseController extends AbstractController
             return $this->redirectToRoute('app_quiz_result', ['id' => $quiz->getId()]);
         }
 
-        $cheated       = (bool)$request->request->get('cheated', 0);
-        $tabSwitches   = (int)$request->request->get('tab_switches', 0);
+        $cheated     = (bool)$request->request->get('cheated', 0);
+        $tabSwitches = (int)$request->request->get('tab_switches', 0);
 
         $attempt = new QuizAttempt();
         $attempt->setUser($user);
@@ -264,21 +387,22 @@ class CourseController extends AbstractController
         $attempt->setCheated($cheated);
         $attempt->setTabSwitchCount($tabSwitches);
 
+        $seance    = $quiz->getSeance();
+        $formation = $seance ? $seance->getFormation() : $quiz->getFormation();
+
         if ($cheated) {
             $attempt->setScore(0);
             $em->persist($attempt);
             $em->flush();
 
-            $seance = $quiz->getSeance();
-            $formation = $seance ? $seance->getFormation() : $quiz->getFormation();
-
             return $this->render('front/courses/quiz_result.html.twig', [
-                'quiz'      => $quiz,
-                'attempt'   => $attempt,
-                'formation' => $formation,
-                'results'   => null,
-                'score'     => 0,
-                'cheated'   => true,
+                'quiz'         => $quiz,
+                'attempt'      => $attempt,
+                'formation'    => $formation,
+                'results'      => null,
+                'score'        => 0,
+                'cheated'      => true,
+                'pointsEarned' => 0,
             ]);
         }
 
@@ -294,8 +418,8 @@ class CourseController extends AbstractController
             $correctAnswer = null;
             $userAnswer    = null;
             foreach ($choix as $c) {
-                if ($c->isCorrect())           $correctAnswer = $c;
-                if ($c->getId() == $answer)    $userAnswer    = $c;
+                if ($c->isCorrect())          $correctAnswer = $c;
+                if ($c->getId() == $answer)   $userAnswer    = $c;
             }
 
             $isCorrect = $userAnswer && $correctAnswer && $userAnswer->getId() === $correctAnswer->getId();
@@ -314,18 +438,24 @@ class CourseController extends AbstractController
 
         $attempt->setScore($scoreOn20);
         $em->persist($attempt);
+
+        // ── Points reward: score > 15/20 → add score as points ──
+        $pointsEarned = 0;
+        if ($scoreOn20 > 15) {
+            $pointsEarned = (int)round($scoreOn20);
+            $user->addPoints($pointsEarned);
+        }
+
         $em->flush();
 
-        $seance    = $quiz->getSeance();
-        $formation = $seance ? $seance->getFormation() : $quiz->getFormation();
-
         return $this->render('front/courses/quiz_result.html.twig', [
-            'quiz'      => $quiz,
-            'attempt'   => $attempt,
-            'formation' => $formation,
-            'results'   => $results,
-            'score'     => $scoreOn20,
-            'cheated'   => false,
+            'quiz'         => $quiz,
+            'attempt'      => $attempt,
+            'formation'    => $formation,
+            'results'      => $results,
+            'score'        => $scoreOn20,
+            'cheated'      => false,
+            'pointsEarned' => $pointsEarned,
         ]);
     }
 }

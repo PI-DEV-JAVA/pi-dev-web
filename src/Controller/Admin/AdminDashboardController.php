@@ -396,6 +396,22 @@ class AdminDashboardController extends AbstractController
             $dateStr = $request->request->get('dateDebut');
             if ($dateStr) $f->setDateDebut(new \DateTime($dateStr));
 
+            // Paid/Free
+            $isPaid = $request->request->get('is_paid') === '1';
+            $f->setIsPaid($isPaid);
+            if ($isPaid) {
+                $pts = $request->request->get('price_points');
+                $f->setPricePoints($pts ? (int)$pts : null);
+            }
+
+            // Image upload
+            $imageFile = $request->files->get('image');
+            if ($imageFile) {
+                $filename = uniqid() . '.' . $imageFile->guessExtension();
+                $imageFile->move($this->getParameter('kernel.project_dir') . '/public/uploads/formations', $filename);
+                $f->setImage($filename);
+            }
+
             $em->persist($f);
             $em->flush();
             $this->addFlash('success', 'Formation créée.');
@@ -430,6 +446,31 @@ class AdminDashboardController extends AbstractController
             $formation->setNiveau($request->request->get('niveau'));
             $dateStr = $request->request->get('dateDebut');
             if ($dateStr) $formation->setDateDebut(new \DateTime($dateStr));
+
+            // Paid/Free
+            $isPaid = $request->request->get('is_paid') === '1';
+            $formation->setIsPaid($isPaid);
+            if ($isPaid) {
+                $pts = $request->request->get('price_points');
+                $formation->setPricePoints($pts ? (int)$pts : null);
+            } else {
+                $formation->setPricePoints(null);
+            }
+
+            // Image upload
+            $imageFile = $request->files->get('image');
+            if ($imageFile) {
+                // Delete old image if exists
+                $old = $formation->getImage();
+                if ($old) {
+                    $oldPath = $this->getParameter('kernel.project_dir') . '/public/uploads/formations/' . $old;
+                    if (file_exists($oldPath)) @unlink($oldPath);
+                }
+                $filename = uniqid() . '.' . $imageFile->guessExtension();
+                $imageFile->move($this->getParameter('kernel.project_dir') . '/public/uploads/formations', $filename);
+                $formation->setImage($filename);
+            }
+
             $em->flush();
             $this->addFlash('success', 'Formation modifiée.');
             return $this->redirectToRoute('admin_course_edit', ['id' => $formation->getId()]);
@@ -440,8 +481,8 @@ class AdminDashboardController extends AbstractController
 
         return $this->render('back/courses/form.html.twig', [
             'formation' => $formation,
-            'seances' => $seances,
-            'quizzes' => $quizzes,
+            'seances'   => $seances,
+            'quizzes'   => $quizzes,
         ]);
     }
 

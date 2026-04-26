@@ -27,6 +27,15 @@ class Formation
     #[ORM\Column(nullable: true)]
     private ?int $duree = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $image = null;
+
+    #[ORM\Column(name: 'is_paid', type: 'boolean', options: ['default' => false])]
+    private bool $isPaid = false;
+
+    #[ORM\Column(name: 'price_points', type: 'integer', nullable: true)]
+    private ?int $pricePoints = null;
+
     #[ORM\Column(name: 'date_debut', type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $dateDebut = null;
 
@@ -119,6 +128,15 @@ class Formation
         $this->recruiterId = $id;
         return $this;
     }
+
+    public function getImage(): ?string { return $this->image; }
+    public function setImage(?string $image): static { $this->image = $image; return $this; }
+
+    public function isPaid(): bool { return $this->isPaid; }
+    public function setIsPaid(bool $isPaid): static { $this->isPaid = $isPaid; return $this; }
+
+    public function getPricePoints(): ?int { return $this->pricePoints; }
+    public function setPricePoints(?int $p): static { $this->pricePoints = $p; return $this; }
     /** @return Collection<int, Seance> */
     public function getSeances(): Collection
     {

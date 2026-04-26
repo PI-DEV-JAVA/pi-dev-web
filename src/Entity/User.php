@@ -57,6 +57,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'verification_token', length: 100, nullable: true)]
     private ?string $verificationToken = null;
 
+    #[ORM\Column(name: 'points_balance', type: 'integer', options: ['default' => 0])]
+    private int $pointsBalance = 0;
+
     #[ORM\OneToOne(mappedBy: 'user', targetEntity: Profile::class, cascade: ['persist', 'remove'])]
     private ?Profile $profile = null;
 
@@ -102,6 +105,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getVerificationToken(): ?string { return $this->verificationToken; }
     public function setVerificationToken(?string $token): static { $this->verificationToken = $token; return $this; }
+
+    public function getPointsBalance(): int { return $this->pointsBalance; }
+    public function setPointsBalance(int $p): static { $this->pointsBalance = $p; return $this; }
+    public function addPoints(int $p): static { $this->pointsBalance += $p; return $this; }
+    public function deductPoints(int $p): static { $this->pointsBalance = max(0, $this->pointsBalance - $p); return $this; }
 
     public function getProfile(): ?Profile { return $this->profile; }
     public function setProfile(?Profile $profile): static
