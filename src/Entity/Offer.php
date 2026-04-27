@@ -56,8 +56,9 @@ class Offer
     #[ORM\Column(name: 'applications_received', options: ['default' => 0])]
     private int $applicationsReceived = 0;
 
-    #[ORM\Column(name: 'recruiter_id')]
-    private ?int $recruiterId = null;
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'recruiter_id', nullable: true)]
+    private ?User $recruiter = null;
 
     #[ORM\OneToMany(mappedBy: 'offer', targetEntity: Application::class)]
     private Collection $applications;
@@ -202,14 +203,20 @@ class Offer
         return $this;
     }
 
+    public function getRecruiter(): ?User
+    {
+        return $this->recruiter;
+    }
+    public function setRecruiter(?User $user): static
+    {
+        $this->recruiter = $user;
+        return $this;
+    }
+
+    // BACKWARD COMPATIBILITY getter for templates/controllers that haven't been migrated yet
     public function getRecruiterId(): ?int
     {
-        return $this->recruiterId;
-    }
-    public function setRecruiterId(?int $recruiterId): static
-    {
-        $this->recruiterId = $recruiterId;
-        return $this;
+        return $this->recruiter?->getId();
     }
 
     /** @return Collection<int, Application> */

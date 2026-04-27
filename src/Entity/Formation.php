@@ -33,8 +33,9 @@ class Formation
     #[ORM\Column(name: 'date_fin', type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $dateFin = null;
 
-    #[ORM\Column(name: 'recruiter_id', nullable: true)]
-    private ?int $recruiterId = null;
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'recruiter_id', nullable: true)]
+    private ?User $recruiter = null;
 
     #[ORM\OneToMany(mappedBy: 'formation', targetEntity: Seance::class, cascade: ['remove'])]
     private Collection $seances;
@@ -106,14 +107,19 @@ class Formation
         $this->dateFin = $d;
         return $this;
     }
+    public function getRecruiter(): ?User
+    {
+        return $this->recruiter;
+    }
+    public function setRecruiter(?User $user): static
+    {
+        $this->recruiter = $user;
+        return $this;
+    }
+
     public function getRecruiterId(): ?int
     {
-        return $this->recruiterId;
-    }
-    public function setRecruiterId(?int $id): static
-    {
-        $this->recruiterId = $id;
-        return $this;
+        return $this->recruiter?->getId();
     }
     /** @return Collection<int, Seance> */
     public function getSeances(): Collection

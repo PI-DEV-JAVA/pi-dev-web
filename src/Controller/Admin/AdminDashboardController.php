@@ -6,6 +6,8 @@ use App\Entity\Activity;
 use App\Entity\Application;
 use App\Entity\Choix;
 use App\Entity\Event;
+use App\Entity\EventFeedback;
+use App\Entity\EventParticipation;
 use App\Entity\Formation;
 use App\Entity\Interview;
 use App\Entity\Notification;
@@ -23,6 +25,7 @@ use App\Entity\User;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -61,8 +64,8 @@ class AdminDashboardController extends AbstractController
             $recentApplications = $em->getRepository(Application::class)->findBy([], ['applicationDate' => 'DESC'], 5);
         } else {
             // HR sees only their own stats
-            $myOffers = $em->getRepository(Offer::class)->findBy(['recruiterId' => $user->getId()]);
-            $myProjects = $em->getRepository(Project::class)->findBy(['projectManagerId' => $user->getId()]);
+            $myOffers = $em->getRepository(Offer::class)->findBy(['recruiter' => $user]);
+            $myProjects = $em->getRepository(Project::class)->findBy(['projectManager' => $user]);
 
             // Count applications on own offers
             $myAppCount = 0;
@@ -79,11 +82,11 @@ class AdminDashboardController extends AbstractController
                 'applications' => $myAppCount,
             ];
             $recentOffers = $em->getRepository(Offer::class)->findBy(
-                ['recruiterId' => $user->getId()], ['publishDate' => 'DESC'], 5
+                ['recruiter' => $user], ['publishDate' => 'DESC'], 5
             );
             $recentApplications = $em->getRepository(Application::class)->createQueryBuilder('a')
                 ->join('a.offer', 'o')
-                ->where('o.recruiterId = :uid')->setParameter('uid', $user->getId())
+                ->where('o.recruiter = :uid')->setParameter('uid', $user)
                 ->orderBy('a.applicationDate', 'DESC')
                 ->setMaxResults(5)
                 ->getQuery()->getResult();
@@ -106,7 +109,7 @@ class AdminDashboardController extends AbstractController
             $offers = $em->getRepository(Offer::class)->findBy([], ['publishDate' => 'DESC']);
         } else {
             $offers = $em->getRepository(Offer::class)->findBy(
-                ['recruiterId' => $this->getUser()->getId()], ['publishDate' => 'DESC']
+                ['recruiter' => $this->getUser()], ['publishDate' => 'DESC']
             );
         }
         return $this->render('back/offers/list.html.twig', ['offers' => $offers]);
@@ -157,9 +160,9 @@ class AdminDashboardController extends AbstractController
             if ($salaryMax) $offer->setSalaryMax((float)$salaryMax);
             $offer->setStatus('Active');
             $offer->setPublishDate(new \DateTime());
-            $offer->setApplicationsReceived(0);
-            $offer->setRecruiterId($this->getUser()->getId());
-
+            $offer->setStatus('Active');
+            $offer->setRecruiter($this->getUser());
+            
             $em->persist($offer);
             $em->flush();
             $this->addFlash('success', 'Offre créée avec succès.');
@@ -172,7 +175,7 @@ class AdminDashboardController extends AbstractController
     public function offerEdit(Offer $offer, Request $request, EntityManagerInterface $em): Response
     {
         // HR can only edit own offers
-        if (!$this->isAdmin() && $offer->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $offer->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -225,7 +228,7 @@ class AdminDashboardController extends AbstractController
     #[Route('/offers/{id}/delete', name: 'admin_offer_delete', requirements: ['id' => '\d+'])]
     public function offerDelete(Offer $offer, EntityManagerInterface $em): Response
     {
-        if (!$this->isAdmin() && $offer->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $offer->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
         $em->remove($offer);
@@ -238,16 +241,34 @@ class AdminDashboardController extends AbstractController
     //  EVENTS (HR: own only via organizer; ADMIN: all)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     #[Route('/events', name: 'admin_events')]
-    public function events(EntityManagerInterface $em): Response
+    public function events(EntityManagerInterface $em, Request $request): Response
     {
-        if ($this->isAdmin()) {
-            $events = $em->getRepository(Event::class)->findBy([], ['eventDate' => 'DESC']);
-        } else {
-            $events = $em->getRepository(Event::class)->findBy(
-                ['organizer' => $this->getUser()], ['eventDate' => 'DESC']
-            );
+        $qb = $em->getRepository(Event::class)->createQueryBuilder('e');
+        if (!$this->isAdmin()) {
+            $qb->andWhere('e.organizer = :org')->setParameter('org', $this->getUser());
         }
-        return $this->render('back/events/list.html.twig', ['events' => $events]);
+        $type = $request->query->get('type');
+        if ($type) $qb->andWhere('e.eventType = :t')->setParameter('t', $type);
+        $status = $request->query->get('status');
+        if ($status) $qb->andWhere('e.status = :s')->setParameter('s', $status);
+        $qb->orderBy('e.eventDate', 'DESC');
+        $events = $qb->getQuery()->getResult();
+
+        // KPIs
+        $totalParticipants = $em->getRepository(EventParticipation::class)->count([]);
+        $totalAttended = $em->getRepository(EventParticipation::class)->count(['status' => 'ATTENDED']);
+        $presenceRate = $totalParticipants > 0 ? round(($totalAttended / $totalParticipants) * 100) : 0;
+        $avgRating = $em->createQueryBuilder()->select('AVG(f.rating)')->from(EventFeedback::class, 'f')->getQuery()->getSingleScalarResult();
+
+        return $this->render('back/events/list.html.twig', [
+            'events' => $events,
+            'totalEvents' => count($events),
+            'totalParticipants' => $totalParticipants,
+            'presenceRate' => $presenceRate,
+            'avgRating' => $avgRating ? round($avgRating, 1) : 0,
+            'typeFilter' => $type,
+            'statusFilter' => $status,
+        ]);
     }
 
     #[Route('/events/new', name: 'admin_event_new', methods: ['GET', 'POST'])]
@@ -346,6 +367,232 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_events');
     }
 
+    // ── Calendar JSON API ──
+    #[Route('/events/calendar-data', name: 'admin_events_calendar_data')]
+    public function eventsCalendarData(EntityManagerInterface $em): Response
+    {
+        $qb = $em->getRepository(Event::class)->createQueryBuilder('e');
+        if (!$this->isAdmin()) {
+            $qb->andWhere('e.organizer = :org')->setParameter('org', $this->getUser());
+        }
+        $events = $qb->getQuery()->getResult();
+        $data = [];
+        $colors = ['UPCOMING' => '#4f46e5', 'ONGOING' => '#f59e0b', 'COMPLETED' => '#6b7280', 'CANCELLED' => '#ef4444'];
+        foreach ($events as $e) {
+            $data[] = [
+                'id' => $e->getId(),
+                'title' => $e->getTitle(),
+                'start' => $e->getEventDate()->format('Y-m-d\TH:i:s'),
+                'end' => $e->getEndDate() ? $e->getEndDate()->format('Y-m-d\TH:i:s') : null,
+                'color' => $colors[$e->getStatus()] ?? '#4f46e5',
+                'extendedProps' => [
+                    'type' => $e->getEventType(),
+                    'location' => $e->getLocation(),
+                    'status' => $e->getStatus(),
+                    'participants' => $e->getParticipations()->count(),
+                ],
+            ];
+        }
+        return new JsonResponse($data);
+    }
+
+    // ── Participation Management ──
+    #[Route('/events/{id}/participations', name: 'admin_event_participations', requirements: ['id' => '\d+'])]
+    public function eventParticipations(Event $event, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $event->getOrganizer() !== $this->getUser()) {
+            throw $this->createAccessDeniedException();
+        }
+        $participations = $em->getRepository(EventParticipation::class)->findBy(
+            ['event' => $event], ['registeredAt' => 'DESC']
+        );
+        return $this->render('back/events/participations.html.twig', [
+            'event' => $event,
+            'participations' => $participations,
+        ]);
+    }
+
+    #[Route('/events/participation/{id}/status', name: 'admin_participation_status', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function participationStatus(int $id, Request $request, EntityManagerInterface $em): Response
+    {
+        $p = $em->getRepository(EventParticipation::class)->find($id);
+        if (!$p) throw $this->createNotFoundException();
+        $newStatus = $request->request->get('status');
+        if (in_array($newStatus, ['PENDING', 'CONFIRMED', 'CANCELLED', 'ATTENDED'])) {
+            $p->setStatus($newStatus);
+            $em->flush();
+            $this->addFlash('success', 'Statut mis à jour: ' . $newStatus);
+        }
+        return $this->redirectToRoute('admin_event_participations', ['id' => $p->getEvent()->getId()]);
+    }
+
+    // ── Presence Dashboard ──
+    #[Route('/events/presence', name: 'admin_event_presence')]
+    public function eventPresence(EntityManagerInterface $em, Request $request): Response
+    {
+        $qb = $em->getRepository(EventParticipation::class)->createQueryBuilder('p')
+            ->join('p.event', 'e')->join('p.user', 'u')
+            ->addSelect('e', 'u')
+            ->orderBy('p.registeredAt', 'DESC');
+
+        if (!$this->isAdmin()) {
+            $qb->andWhere('e.organizer = :org')->setParameter('org', $this->getUser());
+        }
+        $eventId = $request->query->get('event');
+        if ($eventId) $qb->andWhere('e.id = :eid')->setParameter('eid', $eventId);
+        $statusFilter = $request->query->get('presence');
+        if ($statusFilter === 'present') $qb->andWhere('p.status = :att')->setParameter('att', 'ATTENDED');
+        elseif ($statusFilter === 'absent') $qb->andWhere('p.status != :att')->setParameter('att', 'ATTENDED');
+
+        $participations = $qb->getQuery()->getResult();
+
+        // Events for filter dropdown
+        $evQb = $em->getRepository(Event::class)->createQueryBuilder('ev');
+        if (!$this->isAdmin()) $evQb->andWhere('ev.organizer = :org')->setParameter('org', $this->getUser());
+        $allEvents = $evQb->orderBy('ev.eventDate', 'DESC')->getQuery()->getResult();
+
+        return $this->render('back/events/presence.html.twig', [
+            'participations' => $participations,
+            'events' => $allEvents,
+            'eventFilter' => $eventId,
+            'presenceFilter' => $statusFilter,
+        ]);
+    }
+
+    #[Route('/events/presence/{id}/toggle', name: 'admin_presence_toggle', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function presenceToggle(int $id, EntityManagerInterface $em): Response
+    {
+        $p = $em->getRepository(EventParticipation::class)->find($id);
+        if (!$p) throw $this->createNotFoundException();
+        $p->setStatus($p->getStatus() === 'ATTENDED' ? 'CONFIRMED' : 'ATTENDED');
+        $em->flush();
+        return $this->redirectToRoute('admin_event_presence');
+    }
+
+    #[Route('/events/presence/{id}/qr', name: 'admin_presence_qr', requirements: ['id' => '\d+'])]
+    public function presenceQr(int $id, EntityManagerInterface $em): Response
+    {
+        $p = $em->getRepository(EventParticipation::class)->find($id);
+        if (!$p) throw $this->createNotFoundException();
+        // Auto-generate QR code if missing
+        if (!$p->getQrCode()) {
+            $code = 'EVT_' . $p->getEvent()->getId() . '_USR_' . $p->getUser()->getId() . '_' . strtoupper(substr(md5(random_bytes(8)), 0, 8));
+            $p->setQrCode($code);
+            $em->flush();
+        }
+        return $this->render('back/events/qr_show.html.twig', ['participation' => $p]);
+    }
+
+    // ── QR Scanner ──
+    #[Route('/events/scan', name: 'admin_event_scan')]
+    public function eventScan(Request $request, EntityManagerInterface $em): Response
+    {
+        if ($request->isMethod('POST')) {
+            $code = trim($request->request->get('code', ''));
+            if (!$code && $request->request->get('qr_data')) {
+                $code = trim($request->request->get('qr_data', ''));
+            }
+            $p = $em->getRepository(EventParticipation::class)->findOneBy(['qrCode' => $code]);
+            if (!$p) {
+                return new JsonResponse(['success' => false, 'message' => 'Code QR non reconnu.']);
+            }
+            if ($p->getStatus() === 'ATTENDED') {
+                return new JsonResponse(['success' => false, 'message' => 'Déjà scanné ! Présence déjà validée.']);
+            }
+            $p->setStatus('ATTENDED');
+            $em->flush();
+            $userName = $p->getUser()->getProfile() && $p->getUser()->getProfile()->getFirstName()
+                ? $p->getUser()->getProfile()->getFirstName() . ' ' . $p->getUser()->getProfile()->getLastName()
+                : $p->getUser()->getEmail();
+            return new JsonResponse([
+                'success' => true,
+                'message' => '✅ Présence validée',
+                'name' => $userName,
+                'event' => $p->getEvent()->getTitle(),
+            ]);
+        }
+        return $this->render('back/events/scan.html.twig');
+    }
+
+    // ── Feedback Admin ──
+    #[Route('/events/feedback', name: 'admin_event_feedback')]
+    public function eventFeedback(EntityManagerInterface $em, Request $request): Response
+    {
+        $qb = $em->createQueryBuilder()
+            ->select('f', 'p', 'e', 'u')
+            ->from(EventFeedback::class, 'f')
+            ->join('f.participation', 'p')
+            ->join('p.event', 'e')
+            ->join('p.user', 'u')
+            ->orderBy('f.createdAt', 'DESC');
+
+        if (!$this->isAdmin()) {
+            $qb->andWhere('e.organizer = :org')->setParameter('org', $this->getUser());
+        }
+        $eventId = $request->query->get('event');
+        if ($eventId) $qb->andWhere('e.id = :eid')->setParameter('eid', $eventId);
+        $ratingFilter = $request->query->get('rating');
+        if ($ratingFilter) $qb->andWhere('f.rating = :r')->setParameter('r', $ratingFilter);
+
+        $feedbacks = $qb->getQuery()->getResult();
+
+        $evQb = $em->getRepository(Event::class)->createQueryBuilder('ev');
+        if (!$this->isAdmin()) $evQb->andWhere('ev.organizer = :org')->setParameter('org', $this->getUser());
+        $allEvents = $evQb->orderBy('ev.eventDate', 'DESC')->getQuery()->getResult();
+
+        return $this->render('back/events/feedback.html.twig', [
+            'feedbacks' => $feedbacks,
+            'events' => $allEvents,
+            'eventFilter' => $eventId,
+            'ratingFilter' => $ratingFilter,
+        ]);
+    }
+
+    #[Route('/events/feedback/{id}/delete', name: 'admin_feedback_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function feedbackDelete(int $id, EntityManagerInterface $em): Response
+    {
+        $f = $em->getRepository(EventFeedback::class)->find($id);
+        if ($f) { $em->remove($f); $em->flush(); $this->addFlash('success', 'Feedback supprimé.'); }
+        return $this->redirectToRoute('admin_event_feedback');
+    }
+
+    // ── Statistics ──
+    #[Route('/events/stats', name: 'admin_event_stats')]
+    public function eventStats(EntityManagerInterface $em): Response
+    {
+        // Per-event stats
+        $qb = $em->createQueryBuilder()
+            ->select('e.id', 'e.title', 'e.eventType',
+                'COUNT(f.id) as feedbackCount',
+                'AVG(f.rating) as avgRating',
+                'SUM(CASE WHEN f.wouldRecommend = true THEN 1 ELSE 0 END) as recommends',
+                'COUNT(DISTINCT p.id) as participantCount')
+            ->from(Event::class, 'e')
+            ->leftJoin('e.participations', 'p')
+            ->leftJoin(EventFeedback::class, 'f', 'WITH', 'f.participation = p')
+            ->groupBy('e.id')
+            ->orderBy('e.eventDate', 'DESC');
+        if (!$this->isAdmin()) {
+            $qb->andWhere('e.organizer = :org')->setParameter('org', $this->getUser());
+        }
+        $stats = $qb->getQuery()->getResult();
+
+        // Event type distribution
+        $tqb = $em->createQueryBuilder()
+            ->select('e.eventType as type', 'COUNT(e.id) as cnt')
+            ->from(Event::class, 'e')
+            ->groupBy('e.eventType');
+        if (!$this->isAdmin()) {
+            $tqb->andWhere('e.organizer = :org')->setParameter('org', $this->getUser());
+        }
+        $typeDistrib = $tqb->getQuery()->getResult();
+
+        return $this->render('back/events/stats.html.twig', [
+            'stats' => $stats,
+            'typeDistrib' => $typeDistrib,
+        ]);
+    }
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  COURSES (HR: own; ADMIN: all)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -356,7 +603,7 @@ class AdminDashboardController extends AbstractController
             $formations = $em->getRepository(Formation::class)->findBy([], ['dateDebut' => 'DESC']);
         } else {
             $formations = $em->getRepository(Formation::class)->findBy(
-                ['recruiterId' => $this->getUser()->getId()], ['dateDebut' => 'DESC']
+                ['recruiter' => $this->getUser()], ['dateDebut' => 'DESC']
             );
         }
         return $this->render('back/courses/list.html.twig', ['formations' => $formations]);
@@ -384,7 +631,7 @@ class AdminDashboardController extends AbstractController
             $f->setDescription($description);
             $f->setDuree($duree);
             $f->setNiveau($request->request->get('niveau'));
-            $f->setRecruiterId($this->getUser()->getId());
+            $f->setRecruiter($this->getUser());
             $dateStr = $request->request->get('dateDebut');
             if ($dateStr) $f->setDateDebut(new \DateTime($dateStr));
 
@@ -399,7 +646,7 @@ class AdminDashboardController extends AbstractController
     #[Route('/courses/{id}/edit', name: 'admin_course_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     public function courseEdit(Formation $formation, Request $request, EntityManagerInterface $em): Response
     {
-        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -440,7 +687,7 @@ class AdminDashboardController extends AbstractController
     #[Route('/courses/{id}/delete', name: 'admin_course_delete', requirements: ['id' => '\d+'])]
     public function courseDelete(Formation $formation, EntityManagerInterface $em): Response
     {
-        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
         $em->remove($formation);
@@ -453,7 +700,7 @@ class AdminDashboardController extends AbstractController
     #[Route('/courses/{id}/seance/new', name: 'admin_course_seance_new', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function courseSeanceNew(Formation $formation, Request $request, EntityManagerInterface $em): Response
     {
-        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -492,7 +739,7 @@ class AdminDashboardController extends AbstractController
     public function courseSeanceDelete(int $id, int $sid, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
         $seance = $em->getRepository(Seance::class)->find($sid);
@@ -504,7 +751,7 @@ class AdminDashboardController extends AbstractController
     #[Route('/courses/{id}/quiz/new', name: 'admin_course_quiz_new', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function courseQuizNew(Formation $formation, Request $request, EntityManagerInterface $em): Response
     {
-        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -530,7 +777,7 @@ class AdminDashboardController extends AbstractController
     public function courseQuizDelete(int $id, int $qid, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
         $quiz = $em->getRepository(Quiz::class)->find($qid);
@@ -542,7 +789,7 @@ class AdminDashboardController extends AbstractController
     public function courseQuizManage(int $id, int $qid, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
         $quiz = $em->getRepository(Quiz::class)->find($qid);
@@ -560,7 +807,7 @@ class AdminDashboardController extends AbstractController
     public function courseQuestionNew(int $id, int $qid, Request $request, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -602,7 +849,7 @@ class AdminDashboardController extends AbstractController
     public function courseQuestionDelete(int $id, int $qid, int $questionId, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
         $question = $em->getRepository(Question::class)->find($questionId);
@@ -620,7 +867,7 @@ class AdminDashboardController extends AbstractController
             $projects = $em->getRepository(Project::class)->findBy([], ['createdAt' => 'DESC']);
         } else {
             $projects = $em->getRepository(Project::class)->findBy(
-                ['projectManagerId' => $this->getUser()->getId()], ['createdAt' => 'DESC']
+                ['projectManager' => $this->getUser()], ['createdAt' => 'DESC']
             );
         }
         return $this->render('back/projects/list.html.twig', ['projects' => $projects]);
@@ -654,8 +901,8 @@ class AdminDashboardController extends AbstractController
             $p->setStatus($request->request->get('status', 'PLANNED'));
             if ($startDate) $p->setStartDate(new \DateTime($startDate));
             if ($endDate) $p->setEndDate(new \DateTime($endDate));
-            if ($budget) $p->setBudget($budget);
-            $p->setProjectManagerId($this->getUser()->getId());
+            $p->setBudget($budget);
+            $p->setProjectManager($this->getUser());
 
             $em->persist($p);
             $em->flush();
@@ -760,7 +1007,7 @@ class AdminDashboardController extends AbstractController
             // HR: activities assigned by this HR to their candidates
             $activities = $em->getRepository(Activity::class)->createQueryBuilder('a')
                 ->join('a.project', 'p')
-                ->where('p.projectManagerId = :uid')->setParameter('uid', $user->getId())
+                ->where('p.projectManager = :uid')->setParameter('uid', $user)
                 ->orderBy('a.activityDate', 'DESC')
                 ->getQuery()->getResult();
 
@@ -770,7 +1017,7 @@ class AdminDashboardController extends AbstractController
                 ->from(User::class, 'u')
                 ->join(Application::class, 'app', 'WITH', 'app.user = u')
                 ->join('app.offer', 'o')
-                ->where('o.recruiterId = :uid')->setParameter('uid', $user->getId())
+                ->where('o.recruiter = :uid')->setParameter('uid', $user)
                 ->getQuery()->getResult();
         }
 
@@ -778,7 +1025,7 @@ class AdminDashboardController extends AbstractController
         if ($this->isAdmin()) {
             $projects = $em->getRepository(Project::class)->findBy([], ['createdAt' => 'DESC']);
         } else {
-            $projects = $em->getRepository(Project::class)->findBy(['projectManagerId' => $user->getId()]);
+            $projects = $em->getRepository(Project::class)->findBy(['projectManager' => $user]);
         }
 
         return $this->render('back/activities/list.html.twig', [
@@ -1172,9 +1419,9 @@ class AdminDashboardController extends AbstractController
                 ->select('COUNT(a.id)')
                 ->from(Application::class, 'a')
                 ->join('a.offer', 'o')
-                ->where('a.user = :candidate AND o.recruiterId = :hrId')
+                ->where('a.user = :candidate AND o.recruiter = :hrId')
                 ->setParameter('candidate', $candidate)
-                ->setParameter('hrId', $hr->getId())
+                ->setParameter('hrId', $hr)
                 ->getQuery()->getSingleScalarResult();
             if ($hasAccess == 0) {
                 throw $this->createAccessDeniedException('Ce candidat n\'a pas postulé à vos offres.');
@@ -1239,8 +1486,8 @@ class AdminDashboardController extends AbstractController
                 ->select('DISTINCT IDENTITY(a.user)')
                 ->from(Application::class, 'a')
                 ->join('a.offer', 'o')
-                ->where('o.recruiterId = :hrId')
-                ->setParameter('hrId', $hr->getId())
+                ->where('o.recruiter = :hrId')
+                ->setParameter('hrId', $hr)
                 ->getQuery()->getSingleColumnResult();
         }
 

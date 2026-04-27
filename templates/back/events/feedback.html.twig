@@ -1,0 +1,104 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Gestion des avis{% endblock %}
+{% block content %}
+<style>
+    .star { color: #fbbf24; }
+    .star-empty { color: var(--bo-text-secondary); opacity: 0.3; }
+    .rating-badge { padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; }
+    .rating-high { background: rgba(16,185,129,0.15); color: #34d399; }
+    .rating-mid { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    .rating-low { background: rgba(239,68,68,0.15); color: #f87171; }
+    .comment-cell { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+
+<div class="d-flex align-items-center justify-content-between mb-4" style="flex-wrap:wrap;gap:12px">
+    <h5 style="font-weight:700;margin:0"><i class="bi bi-chat-square-heart me-2"></i>Avis & Feedback ({{ feedbacks|length }})</h5>
+</div>
+
+{% for message in app.flashes('success') %}
+    <div class="alert" style="background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+{% endfor %}
+
+{# Filters #}
+<div class="d-flex gap-3 mb-4" style="flex-wrap:wrap">
+    <select onchange="filterFb('event', this.value)" style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.82rem">
+        <option value="">Tous les événements</option>
+        {% for ev in events %}
+            <option value="{{ ev.id }}" {{ eventFilter == ev.id ? 'selected' : '' }}>{{ ev.title }}</option>
+        {% endfor %}
+    </select>
+    <select onchange="filterFb('rating', this.value)" style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.82rem">
+        <option value="">Toutes les notes</option>
+        {% for i in 1..5 %}
+            <option value="{{ i }}" {{ ratingFilter == i ? 'selected' : '' }}>{{ i }} étoile{{ i > 1 ? 's' : '' }}</option>
+        {% endfor %}
+    </select>
+    {% if eventFilter or ratingFilter %}
+        <a href="{{ path('admin_event_feedback') }}" style="color:var(--primary-light);font-size:0.82rem;text-decoration:none;font-weight:600;display:flex;align-items:center"><i class="bi bi-x-circle me-1"></i>Reset</a>
+    {% endif %}
+</div>
+
+<div class="bo-card" style="overflow-x:auto">
+    <table class="bo-table">
+        <thead>
+            <tr>
+                <th>Participant</th>
+                <th>Événement</th>
+                <th>Note</th>
+                <th>Commentaire</th>
+                <th>Recommande</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in feedbacks %}
+            <tr>
+                <td>
+                    <div style="font-weight:600;font-size:0.85rem">
+                        {% if f.participation.user.profile and f.participation.user.profile.firstName %}
+                            {{ f.participation.user.profile.firstName }} {{ f.participation.user.profile.lastName }}
+                        {% else %}
+                            {{ f.participation.user.email|split('@')[0] }}
+                        {% endif %}
+                    </div>
+                </td>
+                <td style="font-size:0.85rem">{{ f.participation.event.title }}</td>
+                <td>
+                    <span class="rating-badge {{ f.rating >= 4 ? 'rating-high' : (f.rating == 3 ? 'rating-mid' : 'rating-low') }}">
+                        {% for i in 1..5 %}
+                            <i class="bi bi-star-fill {{ i <= f.rating ? 'star' : 'star-empty' }}" style="font-size:0.7rem"></i>
+                        {% endfor %}
+                        {{ f.rating }}/5
+                    </span>
+                </td>
+                <td class="comment-cell" title="{{ f.comment }}">{{ f.comment ?: '—' }}</td>
+                <td>
+                    {% if f.wouldRecommend %}
+                        <i class="bi bi-hand-thumbs-up-fill" style="color:#34d399;font-size:1rem"></i>
+                    {% else %}
+                        <i class="bi bi-hand-thumbs-down-fill" style="color:#f87171;font-size:1rem"></i>
+                    {% endif %}
+                </td>
+                <td style="font-size:0.8rem;color:var(--bo-text-secondary)">{{ f.createdAt|date('d/m/Y H:i') }}</td>
+                <td>
+                    <form method="post" action="{{ path('admin_feedback_delete', {id: f.id}) }}" onsubmit="return confirm('Supprimer ce feedback ?')">
+                        <button type="submit" class="bo-action-btn danger" style="border:none;cursor:pointer" title="Supprimer"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center" style="padding:40px;color:var(--bo-text-secondary)"><i class="bi bi-chat-square-text" style="font-size:2rem;opacity:0.2;display:block;margin-bottom:8px"></i>Aucun feedback.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function filterFb(key, val) {
+    var url = new URL(window.location);
+    if (val) url.searchParams.set(key, val); else url.searchParams.delete(key);
+    window.location = url;
+}
+</script>
+{% endblock %}

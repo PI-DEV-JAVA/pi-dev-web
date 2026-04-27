@@ -100,7 +100,7 @@ class OfferController extends AbstractController
         $em->flush();
 
         // Notify the recruiter
-        $recruiter = $em->getRepository(User::class)->find($offer->getRecruiterId());
+        $recruiter = $offer->getRecruiter();
         if ($recruiter) {
             $ns = new NotificationService($em);
             $ns->notify($recruiter, 'GENERAL', 'Nouvelle candidature', $user->getEmail() . ' a postulé à "' . $offer->getTitle() . '"', '/admin/offers/' . $offer->getId() . '/applications');
@@ -145,6 +145,20 @@ class OfferController extends AbstractController
 
         return $this->render('front/account/applications.html.twig', [
             'applications' => $applications,
+        ]);
+    }
+
+    #[Route('/account/bookmarks', name: 'app_my_bookmarks')]
+    public function myBookmarks(EntityManagerInterface $em): Response
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+        $bookmarks = $em->getRepository(Bookmark::class)->findBy(
+            ['user' => $this->getUser()],
+            ['createdAt' => 'DESC']
+        );
+
+        return $this->render('front/account/bookmarks.html.twig', [
+            'bookmarks' => $bookmarks,
         ]);
     }
 }

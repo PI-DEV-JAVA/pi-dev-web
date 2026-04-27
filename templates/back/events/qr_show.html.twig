@@ -1,0 +1,62 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}QR Code — {{ participation.user.email|split('@')[0] }}{% endblock %}
+{% block content %}
+<style>
+    .qr-card {
+        background: var(--bo-bg-card); border: 1.5px solid var(--bo-border); border-radius: 16px;
+        padding: 32px; max-width: 420px; text-align: center;
+    }
+    .qr-canvas-wrap {
+        background: white; border-radius: 12px; padding: 24px; display: inline-block; margin: 20px 0;
+    }
+    .qr-code-text {
+        background: var(--bo-bg-input); border-radius: 8px; padding: 10px 16px; font-family: monospace;
+        font-size: 0.82rem; word-break: break-all; color: var(--primary-light); border: 1px solid var(--bo-border);
+    }
+    @media print {
+        body * { visibility: hidden; }
+        .qr-card, .qr-card * { visibility: visible; }
+        .qr-card { position: absolute; top: 0; left: 0; border: none; box-shadow: none; }
+        .no-print { display: none !important; }
+    }
+</style>
+
+<div class="mb-3 no-print"><a href="{{ path('admin_event_participations', {id: participation.event.id}) }}" style="color:var(--primary-light);text-decoration:none;font-size:0.85rem"><i class="bi bi-arrow-left me-1"></i>Retour</a></div>
+
+<div class="qr-card">
+    <div style="font-weight:700;font-size:1.1rem;margin-bottom:4px">
+        {% if participation.user.profile and participation.user.profile.firstName %}
+            {{ participation.user.profile.firstName }} {{ participation.user.profile.lastName }}
+        {% else %}
+            {{ participation.user.email|split('@')[0] }}
+        {% endif %}
+    </div>
+    <div style="font-size:0.82rem;color:var(--bo-text-secondary)">
+        {{ participation.event.title }} · {{ participation.event.eventDate|date('d/m/Y') }}
+    </div>
+
+    <div class="qr-canvas-wrap">
+        <div id="qrCode"></div>
+    </div>
+
+    <div class="qr-code-text">{{ participation.qrCode }}</div>
+
+    <div class="d-flex gap-2 justify-content-center mt-3 no-print">
+        <button onclick="window.print()" class="bo-btn" style="background:rgba(79,70,229,0.12);color:var(--primary-light);font-size:0.82rem">
+            <i class="bi bi-printer me-1"></i>Imprimer
+        </button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+new QRCode(document.getElementById("qrCode"), {
+    text: "{{ participation.qrCode }}",
+    width: 200,
+    height: 200,
+    colorDark: "#1e293b",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H
+});
+</script>
+{% endblock %}
