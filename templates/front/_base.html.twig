@@ -477,6 +477,91 @@
     @keyframes aiMsgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .ai-chat-limit { text-align: center; font-size: 0.72rem; color: #94a3b8; margin-top: 6px; }
     @media (max-width: 480px) { .ai-chat { width: calc(100vw - 16px); left: 8px; right: auto; bottom: 92px; height: 60vh; } .ai-fab { bottom: 24px; left: 16px; right: auto; } }
+
+    /* ═══ Driver.js Onboarding Tour — Custom Theme ═══ */
+    .driver-popover {
+        background: rgba(255,255,255,0.97) !important;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        border: 1px solid rgba(79,70,229,0.15) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.5) inset !important;
+        padding: 24px 24px 18px !important;
+        max-width: 380px !important;
+    }
+    .driver-popover .driver-popover-title {
+        font-size: 1.15rem !important;
+        font-weight: 800 !important;
+        color: #1e293b !important;
+        letter-spacing: -0.3px !important;
+        margin-bottom: 8px !important;
+    }
+    .driver-popover .driver-popover-description {
+        font-size: 0.88rem !important;
+        color: #64748b !important;
+        line-height: 1.65 !important;
+    }
+    .driver-popover .driver-popover-progress-text {
+        font-size: 0.72rem !important;
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+    }
+    .driver-popover .driver-popover-navigation-btns {
+        gap: 8px !important;
+    }
+    .driver-popover .driver-popover-next-btn {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 10px !important;
+        padding: 8px 20px !important;
+        font-weight: 700 !important;
+        font-size: 0.82rem !important;
+        text-shadow: none !important;
+        box-shadow: 0 4px 12px rgba(79,70,229,0.3) !important;
+        transition: all 0.2s ease !important;
+    }
+    .driver-popover .driver-popover-next-btn:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 16px rgba(79,70,229,0.4) !important;
+    }
+    .driver-popover .driver-popover-prev-btn {
+        background: transparent !important;
+        color: #64748b !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 10px !important;
+        padding: 8px 16px !important;
+        font-weight: 600 !important;
+        font-size: 0.82rem !important;
+        text-shadow: none !important;
+    }
+    .driver-popover .driver-popover-prev-btn:hover {
+        border-color: #4f46e5 !important;
+        color: #4f46e5 !important;
+    }
+    .driver-popover .driver-popover-close-btn {
+        color: #94a3b8 !important;
+        font-size: 1.2rem !important;
+        width: 28px !important; height: 28px !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        border-radius: 8px !important;
+        transition: all 0.2s !important;
+    }
+    .driver-popover .driver-popover-close-btn:hover {
+        background: rgba(239,68,68,0.1) !important;
+        color: #ef4444 !important;
+    }
+    .driver-popover-arrow-side-top .driver-popover-arrow,
+    .driver-popover-arrow-side-bottom .driver-popover-arrow,
+    .driver-popover-arrow-side-left .driver-popover-arrow,
+    .driver-popover-arrow-side-right .driver-popover-arrow {
+        border-color: rgba(255,255,255,0.97) !important;
+    }
+    /* Highlight ring around the active element */
+    .driver-active-element {
+        box-shadow: 0 0 0 4px rgba(79,70,229,0.3), 0 0 20px rgba(79,70,229,0.15) !important;
+        border-radius: 12px !important;
+    }
 </style>
 {% endblock %}
 
@@ -555,6 +640,7 @@
                                 <li><a class="dropdown-item" href="{{ path('admin_dashboard') }}" style="border-radius:8px;padding:10px 16px;color:var(--primary)"><i class="bi bi-gear me-2"></i>{{ 'nav.administration'|trans }}</a></li>
                             {% endif %}
                             <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.preventDefault();localStorage.removeItem('talentos_tour_done');location.reload();" style="border-radius:8px;padding:10px 16px;color:#64748b"><i class="bi bi-signpost-2 me-2"></i>Relancer le guide</a></li>
                             <li><a class="dropdown-item text-danger" href="{{ path('app_logout') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-box-arrow-right me-2"></i>{{ 'nav.logout'|trans }}</a></li>
                         </ul>
                     </div>
@@ -669,6 +755,10 @@
 
 {# ── Navbar Scroll Effect ── #}
 {% block javascripts %}
+<!-- Driver.js for User Onboarding Tour -->
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+
 <script>
     const nav = document.getElementById('foNavbar');
     window.addEventListener('scroll', () => {
@@ -1009,6 +1099,90 @@ function showAiTooltip() {
 }
 setTimeout(showAiTooltip, 8000);
 setInterval(showAiTooltip, 60000);
+
+// ═══════ INTERACTIVE USER GUIDE (ONBOARDING TOUR) ═══════
+{% if app.user %}
+document.addEventListener("DOMContentLoaded", function() {
+    // Check if the user has already seen the tour
+    if (!localStorage.getItem('talentos_tour_done')) {
+        // Wait 1.5s for the page and animations to settle
+        setTimeout(function() {
+            const driver = window.driver.js.driver;
+            const driverObj = driver({
+                showProgress: true,
+                allowClose: true,
+                animate: true,
+                overlayColor: 'rgba(15, 23, 42, 0.75)', // Dark blue-ish overlay matching the theme
+                doneBtnText: 'Terminer',
+                closeBtnText: 'Passer',
+                nextBtnText: 'Suivant &rarr;',
+                prevBtnText: '&larr; Précédent',
+                onDestroyed: () => {
+                    // Mark as seen so it doesn't show up again
+                    localStorage.setItem('talentos_tour_done', 'true');
+                },
+                steps: [
+                    {
+                        popover: {
+                            title: 'Bienvenue sur Talentos ! 👋',
+                            description: 'Nous sommes ravis de vous compter parmi nous. Faisons un tour rapide pour découvrir les fonctionnalités clés de la plateforme.',
+                            side: "bottom",
+                            align: 'center'
+                        }
+                    },
+                    {
+                        element: '.nav-link[href*="offers"]',
+                        popover: {
+                            title: 'Trouvez votre voie',
+                            description: 'Explorez toutes nos offres d\'emploi. Utilisez nos filtres avancés pour dénicher le poste idéal.',
+                            side: "bottom",
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#notifBellBtn',
+                        popover: {
+                            title: 'Restez informé',
+                            description: 'C\'est ici que vous recevrez vos notifications (réponses des RH, invitations aux entretiens...).',
+                            side: "bottom",
+                            align: 'end'
+                        }
+                    },
+                    {
+                        element: '#aiFab',
+                        popover: {
+                            title: 'Intelligence Artificielle 🤖',
+                            description: 'Bloqué(e) ? Cliquez ici pour parler avec Sara, notre assistante IA. Elle peut vous aider à rédiger votre CV ou préparer vos entretiens !',
+                            side: "top",
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#chatFab',
+                        popover: {
+                            title: 'Messagerie Instantanée',
+                            description: 'Discutez en direct avec les recruteurs ou les autres talents de votre réseau une fois connectés.',
+                            side: "top",
+                            align: 'end'
+                        }
+                    },
+                    {
+                        element: '.user-menu-btn',
+                        popover: {
+                            title: 'Votre Espace',
+                            description: 'Accédez à votre tableau de bord, complétez votre profil, et suivez vos candidatures à tout moment. Bon recrutement !',
+                            side: "bottom",
+                            align: 'end'
+                        }
+                    }
+                ]
+            });
+            
+            driverObj.drive();
+        }, 1500);
+    }
+});
+{% endif %}
 </script>
 
 {% endblock %}
