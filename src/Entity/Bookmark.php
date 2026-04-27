@@ -18,7 +18,7 @@ class Bookmark
     private ?User $user = null;
 
     #[ORM\ManyToOne(targetEntity: Offer::class)]
-    #[ORM\JoinColumn(name: 'offer_id', nullable: false)]
+    #[ORM\JoinColumn(name: 'offer_id', nullable: false, onDelete: 'CASCADE')]
     private ?Offer $offer = null;
 
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_MUTABLE, options: ['default' => 'CURRENT_TIMESTAMP'])]

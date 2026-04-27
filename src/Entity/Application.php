@@ -21,7 +21,7 @@ class Application
     private ?User $user = null;
 
     #[ORM\ManyToOne(targetEntity: Offer::class, inversedBy: 'applications')]
-    #[ORM\JoinColumn(name: 'offer_id', nullable: false)]
+    #[ORM\JoinColumn(name: 'offer_id', nullable: false, onDelete: 'CASCADE')]
     private ?Offer $offer = null;
 
     #[ORM\Column(name: 'cv_file_path', length: 500, nullable: true)]
