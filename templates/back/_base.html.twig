@@ -275,6 +275,90 @@
     .lang-btn:hover:not(.active) { color:var(--bo-text); background:rgba(255,255,255,0.06); }
     .lang-flag { font-size:0.9rem; }
     .lang-label { letter-spacing:0.5px; }
+
+    /* ═══ Driver.js Onboarding Tour — Dark Theme ═══ */
+    .driver-popover {
+        background: rgba(30,41,59,0.97) !important;
+        backdrop-filter: blur(24px) !important;
+        -webkit-backdrop-filter: blur(24px) !important;
+        border: 1px solid rgba(79,70,229,0.25) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(79,70,229,0.1) inset !important;
+        padding: 24px 24px 18px !important;
+        max-width: 380px !important;
+    }
+    .driver-popover .driver-popover-title {
+        font-size: 1.12rem !important;
+        font-weight: 800 !important;
+        color: #f1f5f9 !important;
+        letter-spacing: -0.3px !important;
+        margin-bottom: 8px !important;
+    }
+    .driver-popover .driver-popover-description {
+        font-size: 0.86rem !important;
+        color: #94a3b8 !important;
+        line-height: 1.65 !important;
+    }
+    .driver-popover .driver-popover-progress-text {
+        font-size: 0.7rem !important;
+        color: #64748b !important;
+        font-weight: 600 !important;
+    }
+    .driver-popover .driver-popover-navigation-btns {
+        gap: 8px !important;
+    }
+    .driver-popover .driver-popover-next-btn {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 10px !important;
+        padding: 8px 20px !important;
+        font-weight: 700 !important;
+        font-size: 0.82rem !important;
+        text-shadow: none !important;
+        box-shadow: 0 4px 14px rgba(79,70,229,0.4) !important;
+        transition: all 0.2s ease !important;
+    }
+    .driver-popover .driver-popover-next-btn:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 18px rgba(79,70,229,0.5) !important;
+    }
+    .driver-popover .driver-popover-prev-btn {
+        background: transparent !important;
+        color: #94a3b8 !important;
+        border: 1.5px solid rgba(71,85,105,0.5) !important;
+        border-radius: 10px !important;
+        padding: 8px 16px !important;
+        font-weight: 600 !important;
+        font-size: 0.82rem !important;
+        text-shadow: none !important;
+    }
+    .driver-popover .driver-popover-prev-btn:hover {
+        border-color: #6366f1 !important;
+        color: #a5b4fc !important;
+    }
+    .driver-popover .driver-popover-close-btn {
+        color: #64748b !important;
+        font-size: 1.2rem !important;
+        width: 28px !important; height: 28px !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        border-radius: 8px !important;
+        transition: all 0.2s !important;
+    }
+    .driver-popover .driver-popover-close-btn:hover {
+        background: rgba(239,68,68,0.15) !important;
+        color: #f87171 !important;
+    }
+    .driver-popover-arrow-side-top .driver-popover-arrow,
+    .driver-popover-arrow-side-bottom .driver-popover-arrow,
+    .driver-popover-arrow-side-left .driver-popover-arrow,
+    .driver-popover-arrow-side-right .driver-popover-arrow {
+        border-color: rgba(30,41,59,0.97) !important;
+    }
+    .driver-active-element {
+        box-shadow: 0 0 0 4px rgba(99,102,241,0.35), 0 0 24px rgba(99,102,241,0.2) !important;
+        border-radius: 12px !important;
+    }
 </style>
 {% endblock %}
 
@@ -345,6 +429,9 @@
         <hr style="border-color:var(--bo-border);margin:8px 0">
         <a href="{{ path('app_home') }}" class="bo-nav-link">
             <i class="bi bi-box-arrow-up-right"></i> {{ 'nav.view_site'|trans }}
+        </a>
+        <a href="#" class="bo-nav-link" id="boReplayTour" onclick="event.preventDefault();localStorage.removeItem('talentos_bo_tour_done');location.reload();" style="color:#64748b">
+            <i class="bi bi-signpost-2"></i> Relancer le guide
         </a>
     </nav>
 
@@ -432,4 +519,98 @@ document.addEventListener('click', function(e) {
     {% endfor %}
     {% block content %}{% endblock %}
 </main>
+
+<!-- Driver.js for RH Onboarding Tour -->
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (!localStorage.getItem('talentos_bo_tour_done')) {
+        setTimeout(function() {
+            const driver = window.driver.js.driver;
+            const driverObj = driver({
+                showProgress: true,
+                allowClose: true,
+                animate: true,
+                overlayColor: 'rgba(0, 0, 0, 0.8)',
+                doneBtnText: 'C\'est parti ! 🚀',
+                closeBtnText: 'Passer',
+                nextBtnText: 'Suivant &rarr;',
+                prevBtnText: '&larr; Précédent',
+                onDestroyed: () => {
+                    localStorage.setItem('talentos_bo_tour_done', 'true');
+                },
+                steps: [
+                    {
+                        popover: {
+                            title: 'Bienvenue dans votre Espace RH ! 🏢',
+                            description: 'C\'est ici que vous gérez l\'ensemble du processus de recrutement. Nous allons vous montrer les fonctionnalités clés en quelques secondes.',
+                            side: "bottom",
+                            align: 'center'
+                        }
+                    },
+                    {
+                        element: '.bo-sidebar',
+                        popover: {
+                            title: 'Votre panneau de navigation',
+                            description: 'La barre latérale regroupe tous les modules : offres, événements, projets, formations, et plus encore. Tout est accessible en un clic.',
+                            side: "right",
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '.bo-nav-link[href*="offers"]',
+                        popover: {
+                            title: 'Gestion des Offres d\'Emploi 💼',
+                            description: 'Créez, modifiez et publiez vos offres d\'emploi. Vous pouvez également consulter les candidatures reçues et changer leur statut (acceptée / refusée).',
+                            side: "right",
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '.bo-nav-link[href*="events"]',
+                        popover: {
+                            title: 'Organisation d\'Événements 📅',
+                            description: 'Planifiez des job fairs, des workshops ou des webinaires. Gérez les participations, les présences et consultez les feedbacks des participants.',
+                            side: "right",
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '.bo-nav-link[href*="messages"]',
+                        popover: {
+                            title: 'Messagerie Candidats 💬',
+                            description: 'Échangez directement avec les candidats qui ont postulé à vos offres. La communication directe améliore l\'expérience candidat.',
+                            side: "right",
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#notifToggle',
+                        popover: {
+                            title: 'Centre de Notifications 🔔',
+                            description: 'Recevez des alertes en temps réel : nouvelle candidature, message d\'un candidat, événement à venir... Ne manquez rien !',
+                            side: "bottom",
+                            align: 'end'
+                        }
+                    },
+                    {
+                        element: '.bo-sidebar-user',
+                        popover: {
+                            title: 'Votre Profil',
+                            description: 'Cliquez ici pour modifier vos informations personnelles ou vous déconnecter. Bon recrutement ! 🌟',
+                            side: "top",
+                            align: 'start'
+                        }
+                    }
+                ]
+            });
+
+            driverObj.drive();
+        }, 1200);
+    }
+});
+</script>
+
 {% endblock %}
