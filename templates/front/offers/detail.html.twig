@@ -63,8 +63,26 @@
             </div>
 
             <div class="col-lg-4">
+                <div style="position:sticky;top:100px;display:flex;flex-direction:column;gap:20px">
+                
+                {# AI Match Analyzer (Only Auth) #}
+                {% if app.user %}
+                    <div class="fo-card ai-widget" style="border:1px solid #c7d2fe;background:linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 style="font-weight:700;color:#3730a3;margin:0"><i class="bi bi-magic me-2"></i>Compatibilité Profil</h6>
+                            <span class="badge bg-primary" style="opacity:0.8;font-size:0.7rem">BETA</span>
+                        </div>
+                        <div id="aiMatchContent">
+                            <p style="font-size:0.85rem;color:var(--fo-text-secondary);margin-bottom:12px">L'IA analyse votre CV et la fiche de poste pour déterminer votre Fit Score.</p>
+                            <button class="btn btn-sm w-100" id="btnRunMatch" style="background:#4f46e5;color:white;font-weight:600;border-radius:8px" onclick="fetchAiMatch({{ offer.id }})">
+                                Lancer l'analyse
+                            </button>
+                        </div>
+                    </div>
+                {% endif %}
+
                 {# Apply Card #}
-                <div class="fo-card" style="position:sticky;top:100px">
+                <div class="fo-card">
                     {% if app.user %}
                         {% if alreadyApplied %}
                             <div class="text-center" style="padding:20px 0">
@@ -105,8 +123,107 @@
                         </div>
                     {% endif %}
                 </div>
+                
+                {# AI Salary + Interview Prep #}
+                <div class="fo-card ai-widget">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 style="font-weight:700;margin:0"><i class="bi bi-lightbulb text-warning me-2"></i>Insights Poste</h6>
+                        <span style="font-size:0.65rem;color:var(--fo-text-secondary)">⚡ OpenRouter AI</span>
+                    </div>
+                    <div id="aiInsightsContent">
+                        <div class="placeholder-glow">
+                            <span class="placeholder col-12" style="border-radius:4px;margin-bottom:6px"></span>
+                            <span class="placeholder col-8" style="border-radius:4px;margin-bottom:6px"></span>
+                            <span class="placeholder col-10" style="border-radius:4px;margin-bottom:16px"></span>
+                            <span class="placeholder col-12" style="border-radius:4px;margin-bottom:6px"></span>
+                            <span class="placeholder col-9" style="border-radius:4px"></span>
+                        </div>
+                    </div>
+                </div>
+
+                </div> {# End Sticky Container #}
             </div>
         </div>
     </div>
 </section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        fetchAiInsights({{ offer.id }});
+    });
+
+    function fetchAiMatch(offerId) {
+        const contentBox = document.getElementById('aiMatchContent');
+        contentBox.innerHTML = '<div class="text-center py-2"><div class="spinner-border text-primary spinner-border-sm" role="status"></div><div class="mt-2 text-muted" style="font-size:0.8rem">Analyse en cours (10-15s)...</div></div>';
+        
+        fetch('/api/offers/' + offerId + '/match')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    contentBox.innerHTML = `<div class="alert alert-warning mb-0" style="font-size:0.85rem"><i class="bi bi-info-circle me-1"></i>${data.error}</div>`;
+                    return;
+                }
+                
+                let score = parseInt(data.score) || 0;
+                let scoreColor = score >= 75 ? '#10b981' : (score >= 50 ? '#f59e0b' : '#ef4444');
+                let strengths = Array.isArray(data.strengths) ? data.strengths : ['Analyse non disponible'];
+                let weaknesses = Array.isArray(data.weaknesses) ? data.weaknesses : ['Complétez votre profil'];
+                
+                contentBox.innerHTML = `
+                    <div class="text-center mb-3">
+                        <div style="width:70px;height:70px;border-radius:50%;background:conic-gradient(${scoreColor} ${score}%, #e2e8f0 ${score}%);display:inline-flex;align-items:center;justify-content:center;position:relative">
+                            <div style="position:absolute;inset:6px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:${scoreColor};font-size:1.1rem">${score}%</div>
+                        </div>
+                    </div>
+                    <div style="font-size:0.85rem">
+                        <strong style="color:#10b981"><i class="bi bi-check2-circle me-1"></i>Vos atouts:</strong>
+                        <ul class="text-muted ps-3 mb-2" style="font-size:0.8rem">
+                            ${strengths.map(s => '<li>' + s + '</li>').join('')}
+                        </ul>
+                        <strong style="color:#ef4444"><i class="bi bi-exclamation-circle me-1"></i>À améliorer:</strong>
+                        <ul class="text-muted ps-3 mb-0" style="font-size:0.8rem">
+                            ${weaknesses.map(w => '<li>' + w + '</li>').join('')}
+                        </ul>
+                    </div>
+                `;
+            })
+            .catch(() => {
+                contentBox.innerHTML = '<div class="text-muted" style="font-size:0.85rem"><i class="bi bi-wifi-off me-1"></i>Service temporairement indisponible.</div>';
+            });
+    }
+
+    function fetchAiInsights(offerId) {
+        fetch('/api/offers/' + offerId + '/insights')
+            .then(r => r.json())
+            .then(data => {
+                const box = document.getElementById('aiInsightsContent');
+                
+                let salary = data.salary_estimation || 'Selon profil et expérience';
+                let questions = Array.isArray(data.interview_questions) ? data.interview_questions : [
+                    'Décrivez votre expérience la plus pertinente.',
+                    'Comment gérez-vous les deadlines serrées ?',
+                    'Où vous voyez-vous dans 3 ans ?'
+                ];
+
+                box.innerHTML = `
+                    <div style="margin-bottom:16px">
+                        <div style="font-size:0.75rem;text-transform:uppercase;color:var(--fo-text-secondary);font-weight:600;letter-spacing:0.5px">💰 Estimation Salaire</div>
+                        <div style="font-weight:700;color:#10b981;font-size:1.05rem;margin-top:4px"><i class="bi bi-cash-stack me-1"></i>${salary}</div>
+                    </div>
+                    
+                    <div style="border-top:1px solid var(--fo-border);padding-top:12px">
+                        <div style="font-size:0.75rem;text-transform:uppercase;color:var(--fo-text-secondary);font-weight:600;letter-spacing:0.5px;margin-bottom:8px">🎯 Préparez votre Entretien</div>
+                        <p style="font-size:0.78rem;color:var(--fo-text-secondary);margin-bottom:8px">Questions probables pour ce poste :</p>
+                        <ol class="mb-0 ps-3" style="font-size:0.83rem;color:#374151">
+                            ${questions.map(q => '<li style="margin-bottom:6px">' + q + '</li>').join('')}
+                        </ol>
+                    </div>
+                `;
+            })
+            .catch(() => {
+                document.getElementById('aiInsightsContent').innerHTML = '<div class="text-muted" style="font-size:0.85rem"><i class="bi bi-wifi-off me-1"></i>Insights indisponibles.</div>';
+            });
+    }
+</script>
 {% endblock %}
+

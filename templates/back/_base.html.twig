@@ -306,8 +306,17 @@
         <a href="{{ path('admin_offers') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_offer' ? 'active' : '' }}">
             <i class="bi bi-megaphone"></i> {{ 'nav.offers'|trans }}
         </a>
-        <a href="{{ path('admin_events') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_event' ? 'active' : '' }}">
+        <a href="{{ path('admin_events') }}" class="bo-nav-link {{ app.request.attributes.get('_route') in ['admin_events','admin_event_new','admin_event_edit','admin_event_delete','admin_events_calendar_data','admin_event_participations','admin_participation_status'] ? 'active' : '' }}">
             <i class="bi bi-calendar-event"></i> {{ 'nav.events'|trans }}
+        </a>
+        <a href="{{ path('admin_event_presence') }}" class="bo-nav-link {{ app.request.attributes.get('_route') in ['admin_event_presence','admin_presence_toggle'] ? 'active' : '' }}" style="padding-left:42px;font-size:0.82rem">
+            <i class="bi bi-clipboard-check"></i> Présences
+        </a>
+        <a href="{{ path('admin_event_feedback') }}" class="bo-nav-link {{ app.request.attributes.get('_route') in ['admin_event_feedback','admin_feedback_delete'] ? 'active' : '' }}" style="padding-left:42px;font-size:0.82rem">
+            <i class="bi bi-chat-square-heart"></i> Avis
+        </a>
+        <a href="{{ path('admin_event_stats') }}" class="bo-nav-link {{ app.request.attributes.get('_route') == 'admin_event_stats' ? 'active' : '' }}" style="padding-left:42px;font-size:0.82rem">
+            <i class="bi bi-graph-up"></i> Statistiques
         </a>
         <a href="{{ path('admin_projects') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_project' ? 'active' : '' }}">
             <i class="bi bi-kanban"></i> {{ 'nav.projects'|trans }}

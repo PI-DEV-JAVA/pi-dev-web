@@ -2,17 +2,67 @@
 {% block page_title %}Gestion des évènements{% endblock %}
 {% block title %}Évènements — Admin{% endblock %}
 {% block content %}
-{# Header + Search + New button #}
-<div class="d-flex align-items-center justify-content-between" style="margin-bottom:20px;flex-wrap:wrap;gap:12px">
-    <h5 style="font-weight:700;margin:0">Évènements (<span id="evtCount">{{ events|length }}</span>)</h5>
+<style>
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+    .kpi-card {
+        background: var(--bo-bg-card); border: 1.5px solid var(--bo-border); border-radius: 14px;
+        padding: 18px; text-align: center; transition: all 0.3s;
+    }
+    .kpi-card:hover { border-color: rgba(79,70,229,0.3); transform: translateY(-2px); }
+    .kpi-val { font-size: 1.8rem; font-weight: 800; }
+    .kpi-label { font-size: 0.72rem; color: var(--bo-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-top: 4px; }
+    .view-toggle { display: flex; gap: 4px; background: var(--bo-bg-input); border-radius: 10px; padding: 3px; }
+    .view-toggle-btn {
+        padding: 7px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
+        border: none; cursor: pointer; color: var(--bo-text-secondary); background: transparent; transition: all 0.2s;
+    }
+    .view-toggle-btn.active { background: var(--primary-light); color: white; }
+    .filter-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .filter-select {
+        padding: 8px 14px; border-radius: 8px; border: 1.5px solid var(--bo-border);
+        background: var(--bo-bg-input); color: var(--bo-text); font-size: 0.82rem;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .status-UPCOMING { background: #4f46e5; }
+    .status-ONGOING { background: #f59e0b; }
+    .status-COMPLETED { background: #6b7280; }
+    .status-CANCELLED { background: #ef4444; }
+    #calendarView { display: none; }
+    #calendarView.active { display: block; }
+    #listView.hidden { display: none; }
+</style>
+
+{# ── KPI Cards ── #}
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-val" style="color:var(--primary-light)">{{ totalEvents }}</div>
+        <div class="kpi-label"><i class="bi bi-calendar-event me-1"></i>Événements</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-val" style="color:#06b6d4">{{ totalParticipants }}</div>
+        <div class="kpi-label"><i class="bi bi-people me-1"></i>Participants</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-val" style="color:#10b981">{{ presenceRate }}%</div>
+        <div class="kpi-label"><i class="bi bi-check-circle me-1"></i>Taux de présence</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-val" style="color:#f59e0b">{{ avgRating }}/5</div>
+        <div class="kpi-label"><i class="bi bi-star me-1"></i>Note moyenne</div>
+    </div>
+</div>
+
+{# ── Header ── #}
+<div class="d-flex align-items-center justify-content-between" style="margin-bottom:16px;flex-wrap:wrap;gap:12px">
     <div class="d-flex align-items-center gap-3">
-        <div style="position:relative;width:300px">
-            <i class="bi bi-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--bo-text-secondary);font-size:0.85rem"></i>
-            <input type="text" id="searchInput" placeholder="Rechercher par titre, lieu, type..."
-                   style="width:100%;padding:10px 14px 10px 38px;border-radius:10px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.85rem;transition:border-color 0.2s"
-                   onfocus="this.style.borderColor='var(--primary-light)'" onblur="this.style.borderColor='var(--bo-border)'">
+        <h5 style="font-weight:700;margin:0">Événements (<span id="evtCount">{{ events|length }}</span>)</h5>
+        <div class="view-toggle">
+            <button class="view-toggle-btn active" id="btnList" onclick="showView('list')"><i class="bi bi-list-ul me-1"></i>Liste</button>
+            <button class="view-toggle-btn" id="btnCal" onclick="showView('calendar')"><i class="bi bi-calendar3 me-1"></i>Calendrier</button>
         </div>
-        <a href="{{ path('admin_event_new') }}" class="bo-btn bo-btn-primary" style="white-space:nowrap"><i class="bi bi-plus-lg me-1"></i> Nouvel évènement</a>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ path('admin_event_new') }}" class="bo-btn bo-btn-primary" style="white-space:nowrap"><i class="bi bi-plus-lg me-1"></i>Nouvel événement</a>
     </div>
 </div>
 
@@ -22,6 +72,35 @@
     </div>
 {% endfor %}
 
+{# ── Filters ── #}
+<div class="filter-bar">
+    <div style="position:relative;width:260px">
+        <i class="bi bi-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--bo-text-secondary);font-size:0.8rem"></i>
+        <input type="text" id="searchInput" placeholder="Rechercher..."
+               style="width:100%;padding:9px 14px 9px 36px;border-radius:8px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.82rem"
+               onfocus="this.style.borderColor='var(--primary-light)'" onblur="this.style.borderColor='var(--bo-border)'">
+    </div>
+    <select class="filter-select" onchange="filterByType(this.value)">
+        <option value="">Tous les types</option>
+        <option value="MEETUP" {{ typeFilter == 'MEETUP' ? 'selected' : '' }}>Meetup</option>
+        <option value="CONFERENCE" {{ typeFilter == 'CONFERENCE' ? 'selected' : '' }}>Conférence</option>
+        <option value="WORKSHOP" {{ typeFilter == 'WORKSHOP' ? 'selected' : '' }}>Workshop</option>
+        <option value="WEBINAR" {{ typeFilter == 'WEBINAR' ? 'selected' : '' }}>Webinar</option>
+    </select>
+    <select class="filter-select" onchange="filterByStatus(this.value)">
+        <option value="">Tous les statuts</option>
+        <option value="UPCOMING" {{ statusFilter == 'UPCOMING' ? 'selected' : '' }}>Planifié</option>
+        <option value="ONGOING" {{ statusFilter == 'ONGOING' ? 'selected' : '' }}>En cours</option>
+        <option value="COMPLETED" {{ statusFilter == 'COMPLETED' ? 'selected' : '' }}>Terminé</option>
+        <option value="CANCELLED" {{ statusFilter == 'CANCELLED' ? 'selected' : '' }}>Annulé</option>
+    </select>
+    {% if typeFilter or statusFilter %}
+        <a href="{{ path('admin_events') }}" style="color:var(--primary-light);font-size:0.82rem;text-decoration:none;font-weight:600"><i class="bi bi-x-circle me-1"></i>Reset</a>
+    {% endif %}
+</div>
+
+{# ── List View ── #}
+<div id="listView">
 <div class="bo-card" style="overflow-x:auto">
     <table class="bo-table" id="evtTable">
         <thead>
@@ -29,18 +108,13 @@
                 <th style="cursor:pointer;user-select:none" onclick="sortTable(0)">
                     <span class="d-flex align-items-center gap-1">Titre <i class="bi bi-arrow-up sort-icon" id="sort-0" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
                 </th>
-                <th style="cursor:pointer;user-select:none" onclick="sortTable(1)">
-                    <span class="d-flex align-items-center gap-1">Type <i class="bi bi-arrow-up sort-icon" id="sort-1" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
-                </th>
+                <th>Type</th>
                 <th style="cursor:pointer;user-select:none" onclick="sortTable(2)">
                     <span class="d-flex align-items-center gap-1">Date <i class="bi bi-arrow-up sort-icon" id="sort-2" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
                 </th>
-                <th style="cursor:pointer;user-select:none" onclick="sortTable(3)">
-                    <span class="d-flex align-items-center gap-1">Lieu <i class="bi bi-arrow-up sort-icon" id="sort-3" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
-                </th>
-                <th style="cursor:pointer;user-select:none" onclick="sortTable(4)">
-                    <span class="d-flex align-items-center gap-1">Statut <i class="bi bi-arrow-up sort-icon" id="sort-4" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
-                </th>
+                <th>Lieu</th>
+                <th>Statut</th>
+                <th>Participants</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -49,24 +123,56 @@
                 <tr>
                     <td style="font-weight:600">{{ event.title }}</td>
                     <td><span class="bo-badge bo-badge-primary">{{ event.eventType }}</span></td>
-                    <td style="color:var(--bo-text-secondary)" data-date="{{ event.eventDate ? event.eventDate|date('Y-m-d') : '' }}">{{ event.eventDate ? event.eventDate|date('d/m/Y') : '—' }}</td>
+                    <td style="color:var(--bo-text-secondary)" data-date="{{ event.eventDate ? event.eventDate|date('Y-m-d') : '' }}">{{ event.eventDate ? event.eventDate|date('d/m/Y H:i') : '—' }}</td>
                     <td style="color:var(--bo-text-secondary)">{{ event.location ?: '—' }}</td>
-                    <td><span class="bo-badge bo-badge-success">{{ event.status }}</span></td>
+                    <td>
+                        <span class="bo-badge" style="background:{{ event.status == 'UPCOMING' ? 'rgba(79,70,229,0.15);color:#818cf8' : (event.status == 'ONGOING' ? 'rgba(245,158,11,0.15);color:#fbbf24' : (event.status == 'COMPLETED' ? 'rgba(107,114,128,0.15);color:#9ca3af' : 'rgba(239,68,68,0.15);color:#f87171')) }}">
+                            <span class="status-dot status-{{ event.status }}"></span>{{ event.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ path('admin_event_participations', {id: event.id}) }}" style="color:var(--primary-light);text-decoration:none;font-weight:600;font-size:0.85rem">
+                            {{ event.participations|length }} <i class="bi bi-people-fill ms-1"></i>
+                        </a>
+                    </td>
                     <td>
                         <div class="d-flex gap-1">
                             <a href="{{ path('admin_event_edit', {id: event.id}) }}" class="bo-action-btn" title="Modifier"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ path('admin_event_participations', {id: event.id}) }}" class="bo-action-btn" title="Participations"><i class="bi bi-people"></i></a>
                             <button type="button" class="bo-action-btn danger" title="Supprimer" onclick="confirmDelete({{ event.id }}, '{{ event.title|e('js') }}')" style="border:none;cursor:pointer"><i class="bi bi-trash"></i></button>
                         </div>
                     </td>
                 </tr>
             {% else %}
-                <tr id="emptyRow"><td colspan="6" class="text-center" style="padding:30px;color:var(--bo-text-secondary)">Aucun évènement.</td></tr>
+                <tr id="emptyRow"><td colspan="7" class="text-center" style="padding:30px;color:var(--bo-text-secondary)">Aucun événement.</td></tr>
             {% endfor %}
         </tbody>
     </table>
     <div id="noResults" style="display:none;text-align:center;padding:40px 20px;color:var(--bo-text-secondary)">
-        <i class="bi bi-search" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:8px"></i>
-        Aucun évènement trouvé
+        <i class="bi bi-search" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:8px"></i>Aucun événement trouvé
+    </div>
+</div>
+</div>
+
+{# ── Calendar View ── #}
+<div id="calendarView">
+    <div class="bo-card" style="padding:20px">
+        <div id="fullCalendar" style="min-height:500px"></div>
+    </div>
+</div>
+
+{# ── Event Detail Modal (for calendar clicks) ── #}
+<div id="eventModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div style="background:var(--bo-bg-card);border-radius:16px;padding:28px;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);border:1px solid var(--bo-border)">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 id="modalTitle" style="font-weight:700;margin:0"></h5>
+            <button onclick="closeEventModal()" style="background:none;border:none;color:var(--bo-text-secondary);font-size:1.2rem;cursor:pointer"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div id="modalBody" style="font-size:0.88rem;color:var(--bo-text-secondary);line-height:1.7"></div>
+        <div class="d-flex gap-2 mt-3">
+            <a id="modalEditLink" href="#" class="bo-btn bo-btn-primary" style="font-size:0.82rem"><i class="bi bi-pencil me-1"></i>Modifier</a>
+            <a id="modalParticipantsLink" href="#" class="bo-btn" style="font-size:0.82rem;background:rgba(79,70,229,0.12);color:var(--primary-light)"><i class="bi bi-people me-1"></i>Participants</a>
+        </div>
     </div>
 </div>
 
@@ -76,20 +182,64 @@
         <div style="width:56px;height:56px;border-radius:14px;background:rgba(239,68,68,0.1);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
             <i class="bi bi-exclamation-triangle-fill" style="font-size:1.5rem;color:#ef4444"></i>
         </div>
-        <h5 style="font-weight:700;margin-bottom:8px">Supprimer cet évènement ?</h5>
+        <h5 style="font-weight:700;margin-bottom:8px">Supprimer cet événement ?</h5>
         <p style="color:var(--bo-text-secondary);font-size:0.9rem;margin-bottom:24px">
             <strong id="deleteTitle" style="color:var(--bo-text)"></strong> sera supprimé définitivement.
         </p>
         <div class="d-flex gap-2 justify-content-center">
             <button onclick="closeDeleteModal()" class="btn" style="padding:10px 24px;border-radius:10px;font-weight:600;font-size:0.85rem;border:1.5px solid var(--bo-border);color:var(--bo-text);background:transparent">Annuler</button>
             <a id="deleteLink" href="#" class="btn" style="padding:10px 24px;border-radius:10px;font-weight:600;font-size:0.85rem;background:#ef4444;color:white;border:none;text-decoration:none">
-                <i class="bi bi-trash3 me-1"></i> Supprimer
+                <i class="bi bi-trash3 me-1"></i>Supprimer
             </a>
         </div>
     </div>
 </div>
 
+{# FullCalendar + QRCode CDNs #}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
 <script>
+// View Toggle
+function showView(view) {
+    document.getElementById('listView').classList.toggle('hidden', view !== 'list');
+    document.getElementById('calendarView').classList.toggle('active', view === 'calendar');
+    document.getElementById('btnList').classList.toggle('active', view === 'list');
+    document.getElementById('btnCal').classList.toggle('active', view === 'calendar');
+    if (view === 'calendar' && !window._calInit) initCalendar();
+}
+
+// Calendar
+function initCalendar() {
+    window._calInit = true;
+    var cal = new FullCalendar.Calendar(document.getElementById('fullCalendar'), {
+        initialView: 'dayGridMonth',
+        locale: 'fr',
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+        events: '{{ path("admin_events_calendar_data") }}',
+        eventClick: function(info) {
+            var e = info.event;
+            var p = e.extendedProps;
+            document.getElementById('modalTitle').textContent = e.title;
+            document.getElementById('modalBody').innerHTML =
+                '<div><i class="bi bi-tag me-2"></i><strong>Type:</strong> ' + (p.type||'—') + '</div>' +
+                '<div><i class="bi bi-calendar3 me-2"></i><strong>Date:</strong> ' + e.start.toLocaleDateString('fr-FR') + '</div>' +
+                '<div><i class="bi bi-geo-alt me-2"></i><strong>Lieu:</strong> ' + (p.location||'—') + '</div>' +
+                '<div><i class="bi bi-flag me-2"></i><strong>Statut:</strong> ' + (p.status||'—') + '</div>' +
+                '<div><i class="bi bi-people me-2"></i><strong>Participants:</strong> ' + (p.participants||0) + '</div>';
+            document.getElementById('modalEditLink').href = '/admin/events/' + e.id + '/edit';
+            document.getElementById('modalParticipantsLink').href = '/admin/events/' + e.id + '/participations';
+            document.getElementById('eventModal').style.display = 'flex';
+        },
+        height: 'auto',
+        eventDisplay: 'block',
+    });
+    cal.render();
+}
+function closeEventModal() { document.getElementById('eventModal').style.display = 'none'; }
+document.getElementById('eventModal').addEventListener('click', function(e) { if (e.target === this) closeEventModal(); });
+
+// Delete
 function confirmDelete(id, title) {
     document.getElementById('deleteTitle').textContent = title;
     document.getElementById('deleteLink').href = '/admin/events/' + id + '/delete';
@@ -98,42 +248,47 @@ function confirmDelete(id, title) {
 function closeDeleteModal() { document.getElementById('deleteModal').style.display = 'none'; }
 document.getElementById('deleteModal').addEventListener('click', function(e) { if (e.target === this) closeDeleteModal(); });
 
+// Filters
+function filterByType(v) {
+    var url = new URL(window.location);
+    if (v) url.searchParams.set('type', v); else url.searchParams.delete('type');
+    window.location = url;
+}
+function filterByStatus(v) {
+    var url = new URL(window.location);
+    if (v) url.searchParams.set('status', v); else url.searchParams.delete('status');
+    window.location = url;
+}
+
 // Search
-var searchInput = document.getElementById('searchInput');
-var tbody = document.getElementById('evtBody');
-var evtCount = document.getElementById('evtCount');
-var noResults = document.getElementById('noResults');
-searchInput.addEventListener('input', function() {
+document.getElementById('searchInput').addEventListener('input', function() {
     var q = this.value.toLowerCase().trim();
-    var rows = tbody.querySelectorAll('tr:not(#emptyRow)');
+    var rows = document.querySelectorAll('#evtBody tr:not(#emptyRow)');
     var visible = 0;
     rows.forEach(function(row) {
         var match = q === '' || row.textContent.toLowerCase().includes(q);
         row.style.display = match ? '' : 'none';
         if (match) visible++;
     });
-    evtCount.textContent = visible;
-    noResults.style.display = (visible === 0 && rows.length > 0) ? 'block' : 'none';
+    document.getElementById('evtCount').textContent = visible;
+    document.getElementById('noResults').style.display = (visible === 0 && rows.length > 0) ? 'block' : 'none';
 });
 
 // Sort
 var currentSort = { col: -1, asc: true };
 function sortTable(colIndex) {
+    var tbody = document.getElementById('evtBody');
     var rows = Array.from(tbody.querySelectorAll('tr:not(#emptyRow)'));
     if (!rows.length) return;
     currentSort.asc = currentSort.col === colIndex ? !currentSort.asc : true;
     currentSort.col = colIndex;
     document.querySelectorAll('.sort-icon').forEach(function(i) { i.className = 'bi bi-arrow-up sort-icon'; i.style.opacity = '0.4'; });
     var icon = document.getElementById('sort-' + colIndex);
-    icon.className = currentSort.asc ? 'bi bi-arrow-up sort-icon' : 'bi bi-arrow-down sort-icon';
-    icon.style.opacity = '1';
+    if (icon) { icon.className = currentSort.asc ? 'bi bi-arrow-up sort-icon' : 'bi bi-arrow-down sort-icon'; icon.style.opacity = '1'; }
     rows.sort(function(a, b) {
         var aT = a.cells[colIndex].textContent.trim().toLowerCase();
         var bT = b.cells[colIndex].textContent.trim().toLowerCase();
-        if (colIndex === 2) { // date
-            aT = a.cells[2].getAttribute('data-date') || '';
-            bT = b.cells[2].getAttribute('data-date') || '';
-        }
+        if (colIndex === 2) { aT = a.cells[2].getAttribute('data-date') || ''; bT = b.cells[2].getAttribute('data-date') || ''; }
         return currentSort.asc ? (aT < bT ? -1 : aT > bT ? 1 : 0) : (aT > bT ? -1 : aT < bT ? 1 : 0);
     });
     rows.forEach(function(r) { tbody.appendChild(r); });

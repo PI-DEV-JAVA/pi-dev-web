@@ -31,8 +31,9 @@ class Project
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
     private ?string $budget = null;
 
-    #[ORM\Column(name: 'project_manager_id', nullable: true)]
-    private ?int $projectManagerId = null;
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'project_manager_id', nullable: true)]
+    private ?User $projectManager = null;
 
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_MUTABLE, options: ['default' => 'CURRENT_TIMESTAMP'])]
     private ?\DateTimeInterface $createdAt = null;
@@ -100,14 +101,19 @@ class Project
         $this->budget = $b;
         return $this;
     }
+    public function getProjectManager(): ?User
+    {
+        return $this->projectManager;
+    }
+    public function setProjectManager(?User $user): static
+    {
+        $this->projectManager = $user;
+        return $this;
+    }
+
     public function getProjectManagerId(): ?int
     {
-        return $this->projectManagerId;
-    }
-    public function setProjectManagerId(?int $id): static
-    {
-        $this->projectManagerId = $id;
-        return $this;
+        return $this->projectManager?->getId();
     }
     public function getCreatedAt(): ?\DateTimeInterface
     {

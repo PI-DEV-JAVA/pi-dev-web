@@ -1,0 +1,85 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Gestion des présences{% endblock %}
+{% block content %}
+<style>
+    .pres-badge { padding: 5px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+    .pres-present { background: rgba(16,185,129,0.15); color: #34d399; }
+    .pres-absent { background: rgba(239,68,68,0.15); color: #f87171; }
+    .toggle-btn { padding: 6px 14px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; }
+    .toggle-btn:hover { transform: translateY(-1px); }
+</style>
+
+<div class="d-flex align-items-center justify-content-between mb-4" style="flex-wrap:wrap;gap:12px">
+    <h5 style="font-weight:700;margin:0"><i class="bi bi-clipboard-check me-2"></i>Présences ({{ participations|length }})</h5>
+</div>
+
+{# Filters #}
+<div class="d-flex gap-3 mb-4" style="flex-wrap:wrap">
+    <select onchange="filterPresence('event', this.value)" style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.82rem">
+        <option value="">Tous les événements</option>
+        {% for ev in events %}
+            <option value="{{ ev.id }}" {{ eventFilter == ev.id ? 'selected' : '' }}>{{ ev.title }}</option>
+        {% endfor %}
+    </select>
+    <select onchange="filterPresence('presence', this.value)" style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.82rem">
+        <option value="">Tous les statuts</option>
+        <option value="present" {{ presenceFilter == 'present' ? 'selected' : '' }}>✅ Présents</option>
+        <option value="absent" {{ presenceFilter == 'absent' ? 'selected' : '' }}>❌ Absents</option>
+    </select>
+    {% if eventFilter or presenceFilter %}
+        <a href="{{ path('admin_event_presence') }}" style="color:var(--primary-light);font-size:0.82rem;text-decoration:none;font-weight:600;display:flex;align-items:center"><i class="bi bi-x-circle me-1"></i>Reset</a>
+    {% endif %}
+</div>
+
+<div class="bo-card" style="overflow-x:auto">
+    <table class="bo-table">
+        <thead>
+            <tr>
+                <th>Participant</th>
+                <th>Événement</th>
+                <th>Statut</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in participations %}
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:0.75rem;flex-shrink:0">{{ p.user.email|first|upper }}</div>
+                        <div>
+                            <div style="font-weight:600;font-size:0.85rem">{% if p.user.profile and p.user.profile.firstName %}{{ p.user.profile.firstName }} {{ p.user.profile.lastName }}{% else %}{{ p.user.email|split('@')[0] }}{% endif %}</div>
+                            <div style="font-size:0.72rem;color:var(--bo-text-secondary)">{{ p.user.email }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="font-weight:600;font-size:0.85rem">{{ p.event.title }}</td>
+                <td>
+                    <span class="pres-badge {{ p.status == 'ATTENDED' ? 'pres-present' : 'pres-absent' }}">
+                        {{ p.status == 'ATTENDED' ? '✅ Présent' : '❌ Absent' }}
+                    </span>
+                </td>
+                <td>
+                    <form method="post" action="{{ path('admin_presence_toggle', {id: p.id}) }}" style="display:inline">
+                        <button type="submit" class="toggle-btn" style="background:{{ p.status == 'ATTENDED' ? 'rgba(239,68,68,0.12);color:#f87171' : 'rgba(16,185,129,0.12);color:#34d399' }}">
+                            <i class="bi bi-{{ p.status == 'ATTENDED' ? 'x-circle' : 'check-circle' }} me-1"></i>
+                            {{ p.status == 'ATTENDED' ? 'Marquer absent' : 'Marquer présent' }}
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center" style="padding:40px;color:var(--bo-text-secondary)">Aucune participation trouvée.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function filterPresence(key, val) {
+    var url = new URL(window.location);
+    if (val) url.searchParams.set(key, val); else url.searchParams.delete(key);
+    window.location = url;
+}
+</script>
+{% endblock %}

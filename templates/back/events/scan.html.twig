@@ -1,0 +1,115 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Scanner QR Code{% endblock %}
+{% block content %}
+<style>
+    .scan-tabs { display: flex; gap: 4px; background: var(--bo-bg-input); border-radius: 10px; padding: 3px; margin-bottom: 20px; width: fit-content; }
+    .scan-tab { padding: 8px 20px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; color: var(--bo-text-secondary); background: transparent; transition: all 0.2s; }
+    .scan-tab.active { background: var(--primary-light); color: white; }
+    .scan-panel { display: none; }
+    .scan-panel.active { display: block; }
+    .scan-result { margin-top: 20px; padding: 20px; border-radius: 12px; text-align: center; font-weight: 600; display: none; }
+    .scan-result.success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: #34d399; }
+    .scan-result.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #f87171; }
+    #reader { width: 100%; max-width: 500px; margin: 0 auto; border-radius: 12px; overflow: hidden; }
+    #reader video { border-radius: 12px; }
+</style>
+
+<div class="mb-3"><a href="{{ path('admin_event_presence') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.85rem"><i class="bi bi-arrow-left me-1"></i>Retour aux présences</a></div>
+
+<div class="bo-card" style="padding:24px;max-width:600px">
+    <div class="scan-tabs">
+        <button class="scan-tab active" onclick="switchTab('webcam')"><i class="bi bi-camera-video me-1"></i>Webcam</button>
+        <button class="scan-tab" onclick="switchTab('manual')"><i class="bi bi-keyboard me-1"></i>Saisie manuelle</button>
+    </div>
+
+    {# Webcam #}
+    <div id="panelWebcam" class="scan-panel active">
+        <div id="reader"></div>
+        <p style="text-align:center;font-size:0.8rem;color:var(--bo-text-secondary);margin-top:12px">
+            <i class="bi bi-info-circle me-1"></i>Pointez la caméra vers le QR Code du participant
+        </p>
+    </div>
+
+    {# Manual #}
+    <div id="panelManual" class="scan-panel">
+        <div style="margin-top:8px">
+            <label style="font-size:0.8rem;font-weight:600;color:var(--bo-text-secondary);margin-bottom:6px;display:block">Code QR (ex: EVT_1_USR_5_A8Z3B9P1)</label>
+            <div class="d-flex gap-2">
+                <input type="text" id="manualCode" placeholder="Saisir le code..." style="flex:1;padding:10px 16px;border-radius:10px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.88rem" onfocus="this.style.borderColor='var(--primary-light)'" onblur="this.style.borderColor='var(--bo-border)'">
+                <button onclick="submitCode(document.getElementById('manualCode').value)" class="bo-btn bo-btn-primary"><i class="bi bi-check-lg"></i></button>
+            </div>
+        </div>
+    </div>
+
+    {# Result #}
+    <div id="scanResult" class="scan-result">
+        <div id="resultIcon" style="font-size:2rem;margin-bottom:8px"></div>
+        <div id="resultMsg"></div>
+        <div id="resultDetails" style="font-size:0.82rem;margin-top:8px;color:var(--bo-text-secondary)"></div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+var currentTab = 'webcam';
+var scanner = null;
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.scan-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.scan-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('.scan-tab:nth-child(' + (tab === 'webcam' ? '1' : '2') + ')').classList.add('active');
+    document.getElementById('panel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+    if (tab === 'webcam') startScanner(); else stopScanner();
+}
+
+function startScanner() {
+    if (scanner) return;
+    scanner = new Html5Qrcode("reader");
+    scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        function(decoded) {
+            stopScanner();
+            submitCode(decoded);
+        }
+    ).catch(function(err) {
+        console.warn("Camera error:", err);
+    });
+}
+
+function stopScanner() {
+    if (scanner) {
+        scanner.stop().catch(() => {});
+        scanner.clear().catch(() => {});
+        scanner = null;
+    }
+}
+
+function submitCode(code) {
+    if (!code || !code.trim()) return;
+    var result = document.getElementById('scanResult');
+    result.style.display = 'none';
+
+    fetch('{{ path("admin_event_scan") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+        body: 'code=' + encodeURIComponent(code.trim())
+    })
+    .then(r => r.json())
+    .then(data => {
+        result.style.display = 'block';
+        result.className = 'scan-result ' + (data.success ? 'success' : 'error');
+        document.getElementById('resultIcon').innerHTML = data.success ? '✅' : '❌';
+        document.getElementById('resultMsg').textContent = data.message;
+        document.getElementById('resultDetails').textContent = data.success ? (data.name + ' — ' + data.event) : '';
+        if (data.success) {
+            setTimeout(() => { result.style.display = 'none'; if (currentTab === 'webcam') startScanner(); }, 3000);
+        }
+    });
+}
+
+// Auto-start webcam
+setTimeout(startScanner, 500);
+</script>
+{% endblock %}
