@@ -23,7 +23,7 @@ class Interview
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Application::class)]
-    #[ORM\JoinColumn(name: 'application_id', nullable: false)]
+    #[ORM\JoinColumn(name: 'application_id', nullable: false, onDelete: 'CASCADE')]
     #[Groups(['interview:read', 'interview:write'])]
     private ?Application $application = null;
 
