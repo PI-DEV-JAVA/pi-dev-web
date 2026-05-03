@@ -16,6 +16,11 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
 
     public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
     {
+        // PHPStan: PasswordAuthenticatedUserInterface doesn't declare setPassword()
+        // but our User entity does — assert the concrete type before calling it
+        if (!$user instanceof User) {
+            return;
+        }
         $user->setPassword($newHashedPassword);
         $this->getEntityManager()->persist($user);
         $this->getEntityManager()->flush();

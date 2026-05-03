@@ -5,6 +5,7 @@ namespace App\EventSubscriber;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Session\FlashBagAwareSessionInterface;
 use Symfony\Component\Security\Http\Event\LoginFailureEvent;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 
@@ -42,17 +43,22 @@ class LoginSubscriber implements EventSubscriberInterface
         $user->setFailedAttempts($attempts);
 
         $remaining = 5 - $attempts;
+        $session = $request->getSession();
 
         // Lock account after 5 failed attempts
         if ($attempts >= 5) {
             $user->setActive(false);
-            $request->getSession()->getFlashBag()->add('danger',
-                'Compte verrouillé après 5 tentatives échouées. Utilisez "Mot de passe oublié" pour le déverrouiller.'
-            );
+            if ($session instanceof FlashBagAwareSessionInterface) {
+                $session->getFlashBag()->add('danger',
+                    'Compte verrouillé après 5 tentatives échouées. Utilisez "Mot de passe oublié" pour le déverrouiller.'
+                );
+            }
         } else {
-            $request->getSession()->getFlashBag()->add('warning',
-                'Mot de passe incorrect. Il vous reste ' . $remaining . ' tentative' . ($remaining > 1 ? 's' : '') . ' avant le verrouillage.'
-            );
+            if ($session instanceof FlashBagAwareSessionInterface) {
+                $session->getFlashBag()->add('warning',
+                    'Mot de passe incorrect. Il vous reste ' . $remaining . ' tentative' . ($remaining > 1 ? 's' : '') . ' avant le verrouillage.'
+                );
+            }
         }
 
         $this->em->flush();

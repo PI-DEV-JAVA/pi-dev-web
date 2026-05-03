@@ -5,156 +5,299 @@
 <style>
   @page { margin: 0; size: A4 landscape; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
     font-family: 'DejaVu Sans', Arial, sans-serif;
-    background: #fff;
+    background: #ffffff;
     width: 297mm;
     height: 210mm;
     overflow: hidden;
+  }
+
+  /* ── Main two-column table ── */
+  .cert-table {
+    width: 100%;
+    height: 210mm;
+    border-collapse: collapse;
+  }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    width: 65%;
+    vertical-align: top;
+    padding: 36px 50px 28px 52px;
+    border-right: 3px solid #1a3a6e;
     position: relative;
   }
 
-  .bg-top-left  { position:absolute; top:-60px; left:-60px; width:220px; height:220px; border-radius:50%; background:linear-gradient(135deg,#4f46e5,#6366f1); opacity:0.08; }
-  .bg-bot-right { position:absolute; bottom:-80px; right:-80px; width:280px; height:280px; border-radius:50%; background:linear-gradient(135deg,#06b6d4,#0ea5e9); opacity:0.07; }
-  .bg-top-right { position:absolute; top:-40px; right:100px; width:150px; height:150px; border-radius:50%; background:#f59e0b; opacity:0.05; }
+  /* thin red accent line at top left */
+  .red-bar {
+    display: block;
+    width: 44px;
+    height: 5px;
+    background: #c8102e;
+    margin-bottom: 10px;
+  }
 
-  .frame-outer { position:absolute; inset:14px; border:3px solid #4f46e5; border-radius:12px; pointer-events:none; }
-  .frame-inner { position:absolute; inset:20px; border:1px solid rgba(79,70,229,0.25); border-radius:8px; pointer-events:none; }
+  .logo-row { margin-bottom: 4px; }
+  .logo-name {
+    font-size: 22px;
+    font-weight: 900;
+    color: #1a3a6e;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .logo-name span { color: #c8102e; }
+  .logo-sub {
+    font-size: 9px;
+    color: #1a3a6e;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 1px;
+    display: block;
+  }
 
-  .corner { position:absolute; width:32px; height:32px; }
-  .corner-tl { top:12px; left:12px; border-top:4px solid #4f46e5; border-left:4px solid #4f46e5; border-radius:4px 0 0 0; }
-  .corner-tr { top:12px; right:12px; border-top:4px solid #4f46e5; border-right:4px solid #4f46e5; border-radius:0 4px 0 0; }
-  .corner-bl { bottom:12px; left:12px; border-bottom:4px solid #4f46e5; border-left:4px solid #4f46e5; border-radius:0 0 0 4px; }
-  .corner-br { bottom:12px; right:12px; border-bottom:4px solid #4f46e5; border-right:4px solid #4f46e5; border-radius:0 0 4px 0; }
+  .cert-date {
+    font-size: 9px;
+    color: #64748b;
+    margin-top: 18px;
+    margin-bottom: 12px;
+  }
 
-  .content {
+  .recipient {
+    font-size: 30px;
+    font-weight: 700;
+    color: #1a3a6e;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    margin-bottom: 10px;
+    font-style: italic;
+  }
+
+  .completed-text {
+    font-size: 11px;
+    color: #475569;
+    margin-bottom: 6px;
+  }
+
+  .course-name {
+    font-size: 19px;
+    font-weight: 900;
+    color: #0f172a;
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .course-desc {
+    font-size: 10px;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 18px;
+    max-width: 340px;
+  }
+
+  /* Stats using table for Dompdf */
+  .stats-table { border-collapse: collapse; margin-bottom: 20px; }
+  .stats-table td { padding: 0 14px 0 0; vertical-align: top; }
+  .stat-num { font-size: 20px; font-weight: 900; color: #1a3a6e; line-height: 1; }
+  .stat-num.green { color: #10b981; }
+  .stat-num.red   { color: #c8102e; }
+  .stat-label { font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+  .stat-sep { width: 1px; background: #e2e8f0; height: 32px; margin-right: 14px; vertical-align: middle; }
+
+  /* ── Footer row using table ── */
+  .footer-table { width: 100%; border-collapse: collapse; border-top: 1.5px solid #e2e8f0; padding-top: 14px; }
+  .footer-table td { vertical-align: bottom; padding-top: 10px; }
+
+  .sig-block { text-align: left; min-width: 130px; }
+  .sig-line { width: 110px; height: 1px; background: #cbd5e1; margin-bottom: 4px; }
+  .sig-name { font-size: 11px; font-weight: 700; color: #0f172a; font-style: italic; }
+  .sig-title { font-size: 8px; color: #64748b; margin-top: 2px; }
+
+  .qr-cell { text-align: right; }
+  .qr-label { font-size: 7px; color: #94a3b8; margin-top: 3px; letter-spacing: 0.5px; text-align: center; }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    width: 35%;
+    vertical-align: middle;
+    text-align: center;
+    background: #f8fafc;
+    padding: 36px 30px;
     position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: 36px 60px;
+  }
+
+  /* Ribbon banner */
+  .ribbon-wrap { position: relative; display: inline-block; margin-bottom: 24px; }
+  .ribbon-title { font-size: 9px; letter-spacing: 4px; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
+  .ribbon-main { font-size: 22px; font-weight: 900; color: #1a3a6e; letter-spacing: 2px; text-transform: uppercase; line-height: 1.2; }
+  .ribbon-main span { color: #c8102e; display: block; }
+
+  .divider-short { width: 50px; height: 2px; background: #1a3a6e; margin: 10px auto; }
+
+  /* Circular seal */
+  .seal-outer {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    border: 5px solid #1a3a6e;
+    margin: 0 auto 8px;
+    position: relative;
+    background: #fff;
+  }
+  .seal-inner {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 2px solid #c8102e;
+    margin: 5px auto 0;
+    display: table;
+  }
+  .seal-inner-td { display: table-cell; vertical-align: middle; text-align: center; }
+  .seal-icon { font-size: 32px; display: block; }
+  .seal-text { font-size: 7px; font-weight: 900; letter-spacing: 2px; color: #1a3a6e; text-transform: uppercase; display: block; margin-top: 2px; }
+
+  .platform-name { font-size: 16px; font-weight: 900; color: #1a3a6e; letter-spacing: 3px; margin-bottom: 4px; }
+  .platform-tagline { font-size: 8px; color: #94a3b8; letter-spacing: 1px; }
+
+  .verify-note { font-size: 8px; color: #64748b; line-height: 1.5; margin-top: 14px; }
+  .verify-url { font-size: 7px; color: #1a3a6e; font-weight: 700; word-break: break-all; margin-top: 2px; }
+
+  /* Bottom legal strip */
+  .legal-strip {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: #1a3a6e;
+    color: rgba(255,255,255,0.7);
+    font-size: 6px;
+    padding: 5px 52px;
+    letter-spacing: 0.5px;
     text-align: center;
   }
-
-  .logo { font-size:18px; font-weight:900; color:#4f46e5; letter-spacing:3px; text-transform:uppercase; margin-bottom:6px; }
-  .divider-top { width:80px; height:3px; background:linear-gradient(90deg,#4f46e5,#06b6d4); border-radius:2px; margin:8px auto 14px; }
-  .cert-label { font-size:11px; color:#94a3b8; letter-spacing:4px; text-transform:uppercase; margin-bottom:8px; }
-  .cert-title { font-size:34px; font-weight:900; color:#0f172a; letter-spacing:-1px; margin-bottom:4px; }
-  .cert-subtitle { font-size:11px; color:#64748b; margin-bottom:16px; font-style:italic; }
-  .presents-to { font-size:12px; color:#64748b; margin-bottom:4px; letter-spacing:1px; text-transform:uppercase; }
-  .recipient { font-size:30px; font-weight:800; color:#4f46e5; margin-bottom:10px; font-style:italic; }
-  .completed-text { font-size:12px; color:#475569; margin-bottom:6px; max-width:440px; line-height:1.5; }
-  .course-name {
-    font-size:18px; font-weight:800; color:#0f172a;
-    background:linear-gradient(135deg,#eef2ff,#f0f9ff);
-    padding:8px 24px; border-radius:50px; border:1.5px solid #c7d2fe;
-    margin:4px auto 14px; display:inline-block;
-  }
-  .score-wrap { display:flex; align-items:center; justify-content:center; gap:28px; margin:4px 0 16px; }
-  .score-box { text-align:center; }
-  .score-num { font-size:26px; font-weight:900; color:#10b981; line-height:1; }
-  .score-label { font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-top:3px; }
-  .score-divider { width:1px; height:36px; background:#e2e8f0; }
-
-  .footer-row {
-    display:flex; align-items:flex-end; justify-content:space-between;
-    width:100%; margin-top:10px; padding-top:12px;
-    border-top:1px solid #e2e8f0; font-size:10px; color:#94a3b8;
-  }
-  .sig-block { text-align:center; flex:1; }
-  .sig-line { width:100px; height:1px; background:#cbd5e1; margin:0 auto 4px; }
-  .date-block { text-align:center; flex:1; }
-  .seal-block { flex:1; text-align:center; }
-  .seal { width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg,#4f46e5,#06b6d4); display:inline-flex; align-items:center; justify-content:center; color:white; font-size:18px; margin-bottom:4px; }
-
-  .qr-block { text-align:center; }
-  .qr-block img { width:72px; height:72px; }
-  .qr-block div { font-size:7px; color:#94a3b8; margin-top:2px; letter-spacing:0.5px; }
 </style>
 </head>
 <body>
 
-<div class="bg-top-left"></div>
-<div class="bg-bot-right"></div>
-<div class="bg-top-right"></div>
+<table class="cert-table">
+  <tr>
 
-<div class="frame-outer"></div>
-<div class="frame-inner"></div>
-<div class="corner corner-tl"></div>
-<div class="corner corner-tr"></div>
-<div class="corner corner-bl"></div>
-<div class="corner corner-br"></div>
+    {# ═══════════════ LEFT PANEL ═══════════════ #}
+    <td class="left-panel">
 
-<div class="content">
-  <div class="logo">⚡ Talentos</div>
-  <div class="divider-top"></div>
-  <div class="cert-label">Certificat de réussite</div>
-  <div class="cert-title">Certificate of Completion</div>
-  <div class="cert-subtitle">Plateforme de formation professionnelle Talentos</div>
+      <span class="red-bar"></span>
 
-  <div class="presents-to">Décerné à</div>
-  <div class="recipient">
-    {% if user.profile is defined and user.profile and user.profile.firstName is defined and user.profile.firstName %}
-      {{ user.profile.firstName }} {{ user.profile.lastName ?? '' }}
-    {% else %}
-      {{ user.email }}
-    {% endif %}
-  </div>
+      {# Logo #}
+      <div class="logo-row">
+        <span class="logo-name">⚡ <span>Talentos</span></span>
+        <span class="logo-sub">Plateforme de Formation Professionnelle</span>
+      </div>
 
-  <div class="completed-text">pour avoir complété avec succès la formation</div>
-  <div class="course-name">{{ formation.titre }}</div>
+      {# Date #}
+      <div class="cert-date">{{ date|date('d/m/Y') }}</div>
 
-  <div class="score-wrap">
-    <div class="score-box">
-      <div class="score-num">{{ avgScore }}/20</div>
-      <div class="score-label">Score moyen</div>
-    </div>
-    <div class="score-divider"></div>
-    <div class="score-box">
-      <div class="score-num" style="color:{{ avgPercent >= 70 ? '#10b981' : '#f59e0b' }}">{{ avgPercent }}%</div>
-      <div class="score-label">Réussite</div>
-    </div>
-    <div class="score-divider"></div>
-    <div class="score-box">
-      <div class="score-num">{{ attempts|length }}</div>
-      <div class="score-label">Quiz complétés</div>
-    </div>
-    {% if formation.duree %}
-    <div class="score-divider"></div>
-    <div class="score-box">
-      <div class="score-num">{{ formation.duree }}h</div>
-      <div class="score-label">Durée totale</div>
-    </div>
-    {% endif %}
-  </div>
+      {# Recipient #}
+      <div class="recipient">
+        {% if user.profile is defined and user.profile and user.profile.firstName is defined and user.profile.firstName %}
+          {{ user.profile.firstName }} {{ user.profile.lastName ?? '' }}
+        {% else %}
+          {{ user.email }}
+        {% endif %}
+      </div>
 
-  <div class="footer-row">
-    <div class="sig-block">
-      <div class="sig-line"></div>
-      <div>Directeur Pédagogique</div>
-      <div style="color:#0f172a;font-weight:700;margin-top:2px">Talentos Platform</div>
-    </div>
+      <div class="completed-text">a complété avec succès la formation certifiante :</div>
 
-    <div class="seal-block">
-      <div class="seal">🏅</div>
-      <div style="color:#4f46e5;font-weight:700;font-size:9px;letter-spacing:1px">CERTIFIÉ</div>
-    </div>
+      <div class="course-name">{{ formation.titre }}</div>
 
-    <div class="date-block">
-      <div class="sig-line"></div>
-      <div>Date de délivrance</div>
-      <div style="color:#0f172a;font-weight:700;margin-top:2px">{{ date|date('d/m/Y') }}</div>
-    </div>
+      <div class="course-desc">
+        Formation validée par la plateforme Talentos.
+        {% if formation.duree %}Durée : {{ formation.duree }} heures.{% endif %}
+        {% if formation.niveau %}Niveau : {{ formation.niveau }}.{% endif %}
+      </div>
 
-    {% if qrBase64 is defined and qrBase64 %}
-    <div class="qr-block">
-      <img src="data:{{ qrMime }};base64,{{ qrBase64 }}" alt="QR Code vérification">
-      <div>Scanner pour vérifier</div>
-    </div>
-    {% endif %}
-  </div>
+      {# Stats as table #}
+      <table class="stats-table">
+        <tr>
+          <td>
+            <div class="stat-num green">{{ avgScore }}<span style="font-size:12px;color:#64748b">/20</span></div>
+            <div class="stat-label">Note moyenne</div>
+          </td>
+          <td><div class="stat-sep"></div></td>
+          <td>
+            <div class="stat-num red">{{ avgPercent }}<span style="font-size:12px">%</span></div>
+            <div class="stat-label">Réussite</div>
+          </td>
+          <td><div class="stat-sep"></div></td>
+          <td>
+            <div class="stat-num">{{ attempts|length }}</div>
+            <div class="stat-label">Quiz validés</div>
+          </td>
+          {% if formation.duree %}
+          <td><div class="stat-sep"></div></td>
+          <td>
+            <div class="stat-num" style="color:#f59e0b">{{ formation.duree }}<span style="font-size:12px">h</span></div>
+            <div class="stat-label">Durée</div>
+          </td>
+          {% endif %}
+        </tr>
+      </table>
+
+      {# Footer: signature + QR #}
+      <table class="footer-table">
+        <tr>
+          <td class="sig-block">
+            <div class="sig-line"></div>
+            <div class="sig-name">Equipe Talentos</div>
+            <div class="sig-title">Responsable Pédagogique — Talentos Platform</div>
+          </td>
+          {% if qrSvg is defined and qrSvg %}
+          <td class="qr-cell">
+            {{ qrSvg|raw }}
+            <div class="qr-label">Scanner pour vérifier</div>
+          </td>
+          {% endif %}
+        </tr>
+      </table>
+
+    </td>
+
+    {# ═══════════════ RIGHT PANEL ═══════════════ #}
+    <td class="right-panel">
+
+      <div class="ribbon-title">Attestation officielle</div>
+      <div class="ribbon-main">
+        CERTIFICAT
+        <span>DE RÉUSSITE</span>
+      </div>
+      <div class="divider-short"></div>
+
+      {# Circular seal #}
+      <div class="seal-outer">
+        <div class="seal-inner">
+          <div class="seal-inner-td">
+            <span class="seal-icon">🏅</span>
+            <span class="seal-text">Certifié</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="platform-name">TALENTOS</div>
+      <div class="platform-tagline">Formation Professionnelle en Ligne</div>
+
+      <div class="verify-note">
+        Vérifiable en ligne via le QR code<br>ou à l'adresse ci-dessous
+      </div>
+      {% if verifyUrl is defined %}
+      <div class="verify-url">{{ verifyUrl }}</div>
+      {% endif %}
+
+    </td>
+
+  </tr>
+</table>
+
+{# Legal strip #}
+<div class="legal-strip">
+  Ce certificat atteste que le titulaire a accompli et validé l'intégralité de la formation indiquée sur la plateforme Talentos — Tous droits réservés © {{ date|date('Y') }} Talentos Platform
 </div>
 
 </body>

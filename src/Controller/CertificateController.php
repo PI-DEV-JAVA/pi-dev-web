@@ -32,7 +32,7 @@ class CertificateController extends AbstractController
     {
         $user = $this->getUser();
 
-        if (!$user || $user->getRole() !== 'CANDIDATE') {
+        if (!$user instanceof User || $user->getRole() !== 'CANDIDATE') {
             return $this->redirectToRoute('app_login');
         }
 
@@ -98,13 +98,18 @@ class CertificateController extends AbstractController
             ->data($verifyUrl)
             ->encoding(new Encoding('UTF-8'))
             ->errorCorrectionLevel(ErrorCorrectionLevel::High)
-            ->size(150)
-            ->margin(4)
+            ->size(90)
+            ->margin(0)
             ->build();
 
-        // Embed SVG as base64 — no GD required
-        $qrBase64 = base64_encode($qrResult->getString());
-        $qrMime   = 'image/svg+xml';
+        // Clean SVG for Dompdf:
+        // 1. Strip the XML declaration (confuses Dompdf inline SVG parser)
+        // 2. Force explicit width/height attributes
+        // 3. Ensure foreground is black (some SVG writers use fill="currentColor")
+        $qrSvg = $qrResult->getString();
+        $qrSvg = preg_replace('/^<\?xml[^?]*\?>\s*/i', '', trim($qrSvg));
+        $qrSvg = preg_replace('/<svg\b/', '<svg width="90" height="90"', $qrSvg, 1);
+        $qrSvg = str_replace('fill="currentColor"', 'fill="#000000"', $qrSvg);
 
         // ── Render certificate HTML ──
         $html = $this->twig->render('certificate/course_certificate.html.twig', [
@@ -115,8 +120,7 @@ class CertificateController extends AbstractController
             'avgScore'   => $avgScore,
             'avgPercent' => $avgPercent,
             'date'       => new \DateTime(),
-            'qrBase64'   => $qrBase64,
-            'qrMime'     => $qrMime,
+            'qrSvg'      => $qrSvg,
             'verifyUrl'  => $verifyUrl,
         ]);
 
@@ -125,6 +129,7 @@ class CertificateController extends AbstractController
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', false);
         $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('isFontSubsettingEnabled', true);
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html);

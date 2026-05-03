@@ -184,8 +184,9 @@ class Seance
     /** Returns true if quiz window is open (seance ended AND within 24h after) */
     public function isQuizUnlocked(): bool
     {
-        if (!$this->isTerminee()) return false;
-        $deadline = clone $this->dateFin;
+        if (!$this->isTerminee() || $this->dateFin === null) return false;
+        // DateTimeInterface doesn't have modify() — create a mutable DateTime copy
+        $deadline = \DateTime::createFromInterface($this->dateFin);
         $deadline->modify('+24 hours');
         return new \DateTime() <= $deadline;
     }

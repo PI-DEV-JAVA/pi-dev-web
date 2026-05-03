@@ -1,0 +1,19 @@
+parameters:
+    level: 5
+
+    # ── Périmètre : uniquement le module Cours & Quiz ──
+    paths:
+        - src/Entity/Formation.php
+        - src/Entity/FormationEnrollment.php
+        - src/Entity/Seance.php
+        - src/Entity/Quiz.php
+        - src/Entity/QuizAttempt.php
+        - src/Entity/Question.php
+        - src/Entity/Choix.php
+        - src/Controller/CourseController.php
+        - src/Controller/CertificateController.php
+
+    ignoreErrors:
+        # Doctrine ORM gère les IDs via réflexion — PHPStan ne peut pas le voir
+        -
+            identifier: property.unusedType

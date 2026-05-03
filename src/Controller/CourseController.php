@@ -9,6 +9,8 @@ use App\Entity\Question;
 use App\Entity\Quiz;
 use App\Entity\QuizAttempt;
 use App\Entity\Seance;
+use App\Entity\User;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -66,7 +68,7 @@ class CourseController extends AbstractController
         $enrollments = [];
         $user = $this->getUser();
         $pointsBalance = 0;
-        if ($user && $user->getRole() === 'CANDIDATE') {
+        if ($user instanceof User && $user->getRole() === 'CANDIDATE') {
             $myEnrollments = $em->getRepository(FormationEnrollment::class)->findBy(['user' => $user]);
             foreach ($myEnrollments as $e) {
                 $enrollments[$e->getFormation()->getId()] = $e->getStatus();
@@ -91,7 +93,7 @@ class CourseController extends AbstractController
     public function myFormations(Request $request, EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
-        if (!$user || $user->getRole() !== 'CANDIDATE') {
+        if (!$user instanceof User || $user->getRole() !== 'CANDIDATE') {
             return $this->redirectToRoute('app_courses');
         }
 
@@ -126,7 +128,7 @@ class CourseController extends AbstractController
 
         $user = $this->getUser();
         $enrollment = null;
-        if ($user && $user->getRole() === 'CANDIDATE') {
+        if ($user instanceof User && $user->getRole() === 'CANDIDATE') {
             $enrollment = $em->getRepository(FormationEnrollment::class)->findOneBy([
                 'user'      => $user,
                 'formation' => $formation,
@@ -193,7 +195,7 @@ class CourseController extends AbstractController
     public function apply(Formation $formation, EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
-        if (!$user || $user->getRole() !== 'CANDIDATE') {
+        if (!$user instanceof User || $user->getRole() !== 'CANDIDATE') {
             return $this->redirectToRoute('app_login');
         }
 
@@ -240,6 +242,32 @@ class CourseController extends AbstractController
         $em->persist($enrollment);
         $em->flush();
 
+        // ── Notify all admins of the new enrollment ──
+        try {
+            $profile = $user->getProfile();
+            $candidateName = ($profile && $profile->getFirstName())
+                ? trim($profile->getFirstName() . ' ' . ($profile->getLastName() ?? ''))
+                : $user->getEmail();
+
+            $enrollStatus = $formation->isPaid()
+                ? 'inscription confirmée (formation payante)'
+                : 'demande en attente d\'approbation';
+
+            $ns     = new NotificationService($em);
+            $admins = $em->getRepository(User::class)->findBy(['role' => 'ADMIN']);
+            foreach ($admins as $admin) {
+                $ns->notify(
+                    $admin,
+                    'ENROLLMENT',
+                    '📚 Nouvelle inscription — ' . $formation->getTitre(),
+                    sprintf('%s a rejoint la formation « %s » (%s).', $candidateName, $formation->getTitre(), $enrollStatus),
+                    '/admin/courses/' . $formation->getId() . '/edit'
+                );
+            }
+        } catch (\Throwable) {
+            // Never block enrollment if notification fails
+        }
+
         return $this->redirectToRoute('app_course_detail', ['id' => $formation->getId()]);
     }
 
@@ -250,7 +278,7 @@ class CourseController extends AbstractController
     public function buyPoints(Request $request, EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
-        if (!$user || $user->getRole() !== 'CANDIDATE') {
+        if (!$user instanceof User || $user->getRole() !== 'CANDIDATE') {
             return $this->redirectToRoute('app_login');
         }
 
@@ -279,7 +307,7 @@ class CourseController extends AbstractController
     {
         $user = $this->getUser();
 
-        if (!$user || $user->getRole() !== 'CANDIDATE') {
+        if (!$user instanceof User || $user->getRole() !== 'CANDIDATE') {
             $this->addFlash('danger', 'Vous devez être connecté en tant que candidat pour passer ce quiz.');
             return $this->redirectToRoute('app_login');
         }
@@ -333,7 +361,7 @@ class CourseController extends AbstractController
     public function quizResult(Quiz $quiz, EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
-        if (!$user) return $this->redirectToRoute('app_login');
+        if (!$user instanceof User) return $this->redirectToRoute('app_login');
 
         $attempt = $em->getRepository(QuizAttempt::class)->findOneBy([
             'user' => $user,
@@ -365,7 +393,7 @@ class CourseController extends AbstractController
     public function submitQuiz(Quiz $quiz, Request $request, EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
-        if (!$user || $user->getRole() !== 'CANDIDATE') {
+        if (!$user instanceof User || $user->getRole() !== 'CANDIDATE') {
             return $this->redirectToRoute('app_login');
         }
 
