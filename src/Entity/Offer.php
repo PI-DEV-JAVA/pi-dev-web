@@ -60,6 +60,9 @@ class Offer
     #[ORM\JoinColumn(name: 'recruiter_id', nullable: true)]
     private ?User $recruiter = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $workflow = null;
+
     #[ORM\OneToMany(mappedBy: 'offer', targetEntity: Application::class)]
     private Collection $applications;
 
@@ -217,6 +220,16 @@ class Offer
     public function getRecruiterId(): ?int
     {
         return $this->recruiter?->getId();
+    }
+
+    public function getWorkflow(): ?array
+    {
+        return $this->workflow;
+    }
+    public function setWorkflow(?array $workflow): static
+    {
+        $this->workflow = $workflow;
+        return $this;
     }
 
     /** @return Collection<int, Application> */

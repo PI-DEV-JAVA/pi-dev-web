@@ -579,7 +579,9 @@
                 <a href="{{ path('app_events') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_event' ? 'active' : '' }}">{{ 'nav.events'|trans }}</a>
                 <a href="{{ path('app_courses') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_course' ? 'active' : '' }}">{{ 'nav.courses'|trans }}</a>
                 {% if app.user %}
-                <a href="{{ path('app_connect') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_connect' or app.request.attributes.get('_route') == 'app_user_profile' ? 'active' : '' }}">{{ 'nav.connect'|trans }}</a>
+                    <a href="{{ path('app_interviews') }}" class="nav-link {{ app.request.attributes.get('_route') == 'app_interviews' ? 'active' : '' }}">Mes Entretiens</a>
+                    <a href="{{ path('app_candidate_calendar') }}" class="nav-link {{ app.request.attributes.get('_route') == 'app_candidate_calendar' ? 'active' : '' }}">Calendrier</a>
+                    <a href="{{ path('app_connect') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_connect' or app.request.attributes.get('_route') == 'app_user_profile' ? 'active' : '' }}">{{ 'nav.connect'|trans }}</a>
                 {% endif %}
             </div>
 
@@ -630,6 +632,8 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" style="border-radius:12px;border:1px solid var(--fo-border);box-shadow:var(--fo-card-shadow-hover);padding:8px;min-width:200px">
                             <li><a class="dropdown-item" href="{{ path('app_account') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-grid me-2"></i>{{ 'nav.dashboard'|trans }}</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_candidate_calendar') }}" style="border-radius:8px;padding:10px 16px;color:var(--primary)"><i class="bi bi-calendar3 me-2"></i>Mon Calendrier</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_interviews') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-camera-video me-2"></i>Mes Entretiens</a></li>
                             <li><a class="dropdown-item" href="{{ path('app_profile') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-person me-2"></i>{{ 'nav.profile'|trans }}</a></li>
                             <li><a class="dropdown-item" href="{{ path('app_my_applications') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-file-text me-2"></i>{{ 'nav.applications'|trans }}</a></li>
                             <li><a class="dropdown-item" href="{{ path('app_my_bookmarks') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-bookmark-star me-2"></i>Mes favoris</a></li>
