@@ -30,7 +30,7 @@ class AdminInterviewController extends AbstractController
 
         // Filter for HR
         if (!$this->isAdmin()) {
-            $qb->andWhere('o.recruiterId = :uid')
+            $qb->andWhere('IDENTITY(o.recruiter) = :uid')
                ->setParameter('uid', $this->getUser()->getId());
         }
 
@@ -71,7 +71,7 @@ class AdminInterviewController extends AbstractController
             ->join('a.offer', 'o');
 
         if (!$this->isAdmin()) {
-            $qb->where('o.recruiterId = :uid')->setParameter('uid', $user->getId());
+            $qb->where('IDENTITY(o.recruiter) = :uid')->setParameter('uid', $user->getId());
         }
         $meets = $qb->getQuery()->getResult();
 
