@@ -169,9 +169,16 @@ class AdminDashboardController extends AbstractController
             if ($salaryMax) $offer->setSalaryMax((float)$salaryMax);
             $offer->setStatus('Active');
             $offer->setPublishDate(new \DateTime());
-            $offer->setStatus('Active');
             $offer->setRecruiter($this->getUser());
-            
+
+            // Cover image upload
+            $imageFile = $request->files->get('cover_image');
+            if ($imageFile) {
+                $newFilename = uniqid() . '.' . $imageFile->guessExtension();
+                $imageFile->move($this->getParameter('kernel.project_dir') . '/public/uploads/offers', $newFilename);
+                $offer->setCoverImage('/uploads/offers/' . $newFilename);
+            }
+
             $em->persist($offer);
             $em->flush();
             $this->addFlash('success', 'Offre créée avec succès.');
@@ -227,6 +234,18 @@ class AdminDashboardController extends AbstractController
             $offer->setPositionsAvailable($positions);
             $offer->setSalaryMin($salaryMin ? (float)$salaryMin : null);
             $offer->setSalaryMax($salaryMax ? (float)$salaryMax : null);
+
+            // Cover image upload
+            $imageFile = $request->files->get('cover_image');
+            if ($imageFile) {
+                if ($offer->getCoverImage()) {
+                    $oldPath = $this->getParameter('kernel.project_dir') . '/public' . $offer->getCoverImage();
+                    if (file_exists($oldPath)) unlink($oldPath);
+                }
+                $newFilename = uniqid() . '.' . $imageFile->guessExtension();
+                $imageFile->move($this->getParameter('kernel.project_dir') . '/public/uploads/offers', $newFilename);
+                $offer->setCoverImage('/uploads/offers/' . $newFilename);
+            }
             $em->flush();
             $this->addFlash('success', 'Offre modifiée.');
             return $this->redirectToRoute('admin_offers');
@@ -317,6 +336,14 @@ class AdminDashboardController extends AbstractController
             $event->setStatus('UPCOMING');
             $event->setOrganizer($this->getUser());
 
+            // Cover image upload
+            $imageFile = $request->files->get('cover_image');
+            if ($imageFile) {
+                $newFilename = uniqid() . '.' . $imageFile->guessExtension();
+                $imageFile->move($this->getParameter('kernel.project_dir') . '/public/uploads/events', $newFilename);
+                $event->setCoverImage('/uploads/events/' . $newFilename);
+            }
+
             $em->persist($event);
             $em->flush();
             $this->addFlash('success', 'Évènement créé.');
@@ -357,6 +384,19 @@ class AdminDashboardController extends AbstractController
             if ($dateStr) $event->setEventDate(new \DateTime($dateStr));
             $mc = $request->request->get('maxCapacity');
             if ($mc) $event->setMaxCapacity((int)$mc);
+
+            // Cover image upload
+            $imageFile = $request->files->get('cover_image');
+            if ($imageFile) {
+                // Delete old image
+                if ($event->getCoverImage()) {
+                    $oldPath = $this->getParameter('kernel.project_dir') . '/public' . $event->getCoverImage();
+                    if (file_exists($oldPath)) unlink($oldPath);
+                }
+                $newFilename = uniqid() . '.' . $imageFile->guessExtension();
+                $imageFile->move($this->getParameter('kernel.project_dir') . '/public/uploads/events', $newFilename);
+                $event->setCoverImage('/uploads/events/' . $newFilename);
+            }
             $em->flush();
             $this->addFlash('success', 'Évènement modifié.');
             return $this->redirectToRoute('admin_events');

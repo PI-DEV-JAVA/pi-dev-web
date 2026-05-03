@@ -63,6 +63,9 @@ class Offer
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $workflow = null;
 
+    #[ORM\Column(name: 'cover_image', length: 500, nullable: true)]
+    private ?string $coverImage = null;
+
     #[ORM\OneToMany(mappedBy: 'offer', targetEntity: Application::class)]
     private Collection $applications;
 
@@ -229,6 +232,16 @@ class Offer
     public function setWorkflow(?array $workflow): static
     {
         $this->workflow = $workflow;
+        return $this;
+    }
+
+    public function getCoverImage(): ?string
+    {
+        return $this->coverImage;
+    }
+    public function setCoverImage(?string $i): static
+    {
+        $this->coverImage = $i;
         return $this;
     }
 
