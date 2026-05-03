@@ -108,8 +108,15 @@
             {% else %}
                 <p style="color:var(--bo-text-secondary);font-size:0.85rem;text-align:center;padding:16px 0">Aucune activité.</p>
             {% endfor %}
+
+            <div class="mt-2">
+                <a href="{{ path('admin_project_logs', {id: project.id}) }}" class="bo-btn bo-btn-outline" style="width:100%;padding:8px;text-align:center;font-size:0.82rem">
+                    <i class="bi bi-clock-history me-1"></i>Voir tous les logs
+                </a>
+            </div>
         </div>
-    </div>
+
+
     {% endif %}
 </div>
 

@@ -1,0 +1,181 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}Activité — Talentos{% endblock %}
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <h1>Détail de l'activité 📋</h1>
+        <p>Informations complètes sur cette activité</p>
+    </div>
+</div>
+<section class="fo-section" style="padding-top:40px">
+    <div class="container" style="max-width:700px">
+        <div class="mb-3"><a href="{{ path('app_activities') }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour aux activités</a></div>
+
+        <div class="fo-card" style="padding:28px">
+            <div class="d-flex align-items-start gap-3 mb-4">
+                <div style="width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+                    {% if activity.project %}background:rgba(79,70,229,0.08);color:var(--primary)
+                    {% else %}background:rgba(6,182,212,0.08);color:var(--accent){% endif %}">
+                    <i class="bi bi-{% if activity.project %}kanban{% else %}clipboard-data{% endif %}" style="font-size:1.3rem"></i>
+                </div>
+                <div style="flex:1">
+                    <h5 style="font-weight:700;margin-bottom:4px">{{ activity.description }}</h5>
+                    <div style="font-size:0.85rem;color:var(--fo-text-secondary)">
+                        <i class="bi bi-calendar3 me-1"></i>{{ activity.activityDate ? activity.activityDate|date('d/m/Y') : '—' }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                {% if activity.hoursWorked %}
+                <div class="col-md-6">
+                    <div style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.15);border-radius:12px;padding:16px;text-align:center">
+                        <div style="font-size:1.8rem;font-weight:800;color:var(--accent)">{{ activity.hoursWorked }}h</div>
+                        <div style="font-size:0.8rem;color:var(--fo-text-secondary)">Heures travaillées</div>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="{{ activity.hoursWorked ? 'col-md-6' : 'col-12' }}">
+                    <div style="background:rgba(79,70,229,0.06);border:1px solid rgba(79,70,229,0.15);border-radius:12px;padding:16px;text-align:center">
+                        <div style="font-size:1.1rem;font-weight:700;color:var(--primary)">
+                            {{ activity.project ? activity.project.name : 'Aucun projet' }}
+                        </div>
+                        <div style="font-size:0.8rem;color:var(--fo-text-secondary)">Projet associé</div>
+                    </div>
+                </div>
+            </div>
+
+            {% if activity.project %}
+            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:20px">
+                <h6 style="font-weight:700;margin-bottom:12px"><i class="bi bi-kanban me-2" style="color:var(--primary)"></i>Informations du projet</h6>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div style="font-size:0.8rem;color:var(--fo-text-secondary)">Statut</div>
+                        <span class="fo-badge fo-badge-{{ activity.project.status == 'DONE' ? 'success' : (activity.project.status == 'IN_PROGRESS' ? 'primary' : 'warning') }}">
+                            {{ activity.project.status }}
+                        </span>
+                    </div>
+                    {% if activity.project.startDate %}
+                    <div class="col-6">
+                        <div style="font-size:0.8rem;color:var(--fo-text-secondary)">Période</div>
+                        <div style="font-weight:600;font-size:0.9rem">
+                            {{ activity.project.startDate|date('d/m/Y') }}
+                            {% if activity.project.endDate %} → {{ activity.project.endDate|date('d/m/Y') }}{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if activity.project.budget %}
+                    <div class="col-6 mt-2">
+                        <div style="font-size:0.8rem;color:var(--fo-text-secondary)">Budget</div>
+                        <div style="font-weight:600;font-size:0.9rem">{{ activity.project.budget }} DT</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {# User Report Section #}
+            <div style="background:rgba(6,182,212,0.02);border:1px solid rgba(6,182,212,0.15);border-radius:12px;padding:20px;margin-top:20px;">
+                <h6 style="font-weight:700;margin-bottom:12px"><i class="bi bi-journal-text me-2" style="color:var(--accent)"></i>Rapport d'activité</h6>
+                
+                {% if activity.isLateSubmission %}
+                    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;padding:12px;border-radius:8px;margin-bottom:16px;font-size:0.85rem">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Attention :</strong> Ce rapport a été soumis en retard de {{ activity.delayInHours }} heure(s).
+                    </div>
+                {% endif %}
+                
+                {% if activity.reportStatus == 'REVISION_REQUESTED' %}
+                    <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);color:#f59e0b;padding:12px;border-radius:8px;margin-bottom:16px;font-size:0.85rem">
+                        <div style="font-weight:700;margin-bottom:4px"><i class="bi bi-arrow-repeat me-1"></i>Révision demandée par l'administrateur</div>
+                        <div>{{ activity.adminFeedback|nl2br }}</div>
+                    </div>
+                {% elseif activity.reportStatus == 'REJECTED' %}
+                    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;padding:12px;border-radius:8px;margin-bottom:16px;font-size:0.85rem">
+                        <div style="font-weight:700;margin-bottom:4px"><i class="bi bi-x-circle-fill me-1"></i>Rapport rejeté</div>
+                        <div>{{ activity.adminFeedback|nl2br }}</div>
+                    </div>
+                {% endif %}
+
+                {% if activity.reportStatus == 'PENDING' or activity.reportStatus == 'REVISION_REQUESTED' %}
+                    <form method="post" action="{{ path('app_activity_submit_report', {id: activity.id}) }}">
+                        <div class="mb-3">
+                            <textarea name="userReport" class="form-control" rows="4" placeholder="Décrivez le travail effectué, les problèmes rencontrés..." required>{{ activity.userReport }}</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" style="background:var(--accent);border-color:var(--accent)">
+                            <i class="bi bi-send-fill me-1"></i>{{ activity.reportStatus == 'REVISION_REQUESTED' ? 'Resoumettre le rapport' : 'Soumettre le rapport' }}
+                        </button>
+                    </form>
+                {% else %}
+                    <div class="mb-3">
+                        <div style="font-size:0.85rem;color:var(--fo-text-secondary);margin-bottom:6px">Statut du rapport:</div>
+                        <span class="fo-badge fo-badge-{{ activity.reportStatus == 'REVIEWED' ? 'success' : (activity.reportStatus == 'REJECTED' ? 'danger' : 'primary') }}">
+                            {% if activity.reportStatus == 'REVIEWED' %}Révisé par l'admin{% elseif activity.reportStatus == 'REJECTED' %}Rejeté{% else %}Soumis (en attente){% endif %}
+                        </span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;font-size:0.9rem">
+                        {{ activity.userReport|nl2br }}
+                    </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<script>
+    var uTimerSeconds = 0;
+    var idleSeconds = 0;
+    var isIdle = false;
+
+    // Reset idle timer on user activity
+    function resetIdle() {
+        idleSeconds = 0;
+        isIdle = false;
+    }
+    window.addEventListener('mousemove', resetIdle);
+    window.addEventListener('keypress', resetIdle);
+    window.addEventListener('click', resetIdle);
+    window.addEventListener('scroll', resetIdle);
+    
+    function saveUserTime() {
+        if (uTimerSeconds < 5) return; // Do not save tiny increments
+        
+        var secsToSave = uTimerSeconds;
+        uTimerSeconds = 0; // Reset early to avoid double saving
+        
+        fetch("{{ path('app_activity_timer_save', {id: activity.id}) }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({seconds: secsToSave}),
+            keepalive: true
+        }).catch(e => console.error("Auto-save failed", e));
+    }
+
+    // Background auto-save timer
+    window.addEventListener('DOMContentLoaded', function() {
+        setInterval(function() {
+            if (!isIdle) {
+                uTimerSeconds++;
+                idleSeconds++;
+                
+                // If idle for 30 mins (1800 seconds), stop counting and save
+                if (idleSeconds >= 1800) {
+                    isIdle = true;
+                    saveUserTime();
+                }
+                
+                // Auto-save every 60 seconds
+                if (uTimerSeconds >= 60) {
+                    saveUserTime();
+                }
+            }
+        }, 1000);
+    });
+
+    // Save remaining time when leaving the page
+    window.addEventListener('beforeunload', function() {
+        saveUserTime();
+    });
+</script>
+
+{% endblock %}
