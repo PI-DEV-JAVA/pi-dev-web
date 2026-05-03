@@ -56,6 +56,7 @@
                     <td>
                         <div class="d-flex gap-1">
                             <a href="{{ path('admin_offer_applications', {id: offer.id}) }}" class="bo-action-btn" title="Candidatures"><i class="bi bi-people"></i></a>
+                            <a href="{{ path('admin_offer_workflow', {id: offer.id}) }}" class="bo-action-btn" title="Automatisation Automator"><i class="bi bi-infinity"></i></a>
                             <a href="{{ path('admin_offer_edit', {id: offer.id}) }}" class="bo-action-btn" title="Modifier"><i class="bi bi-pencil"></i></a>
                             <button type="button" class="bo-action-btn danger" title="Supprimer" onclick="confirmDelete({{ offer.id }}, '{{ offer.title|e('js') }}')" style="border:none;cursor:pointer">
                                 <i class="bi bi-trash"></i>
