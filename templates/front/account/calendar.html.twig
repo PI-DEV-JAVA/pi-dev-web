@@ -6,78 +6,197 @@
 <div class="fo-page-header">
     <div class="container">
         <h1>Mon Calendrier 📅</h1>
-        <p>Vos entretiens et évènements planifiés</p>
+        <p>Tous vos rendez-vous en un coup d'œil</p>
     </div>
 </div>
 
 <section class="fo-section" style="padding-top:40px; padding-bottom:80px">
     <div class="container">
+        <!-- ── Calendar Switcher ── -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+            <div class="cal-fo-switcher">
+                <button class="cal-fo-btn active" onclick="switchFoCal('all', this)">
+                    <i class="bi bi-grid-3x3-gap"></i> Tout
+                </button>
+                <button class="cal-fo-btn" onclick="switchFoCal('interviews', this)">
+                    <span class="cal-fo-dot" style="background:#ec4899"></span> Entretiens
+                </button>
+                <button class="cal-fo-btn" onclick="switchFoCal('events', this)">
+                    <span class="cal-fo-dot" style="background:#f97316"></span> Événements
+                </button>
+                <button class="cal-fo-btn" onclick="switchFoCal('activities', this)">
+                    <span class="cal-fo-dot" style="background:#06b6d4"></span> Activités
+                </button>
+            </div>
+        </div>
+
         <div class="fo-card" style="padding: 24px; min-height: 600px;">
             <div id="calendar"></div>
+        </div>
+
+        <!-- Legend per view -->
+        <div class="cal-fo-legend active" id="foLegendAll">
+            <span><i class="bi bi-circle-fill" style="color:#ec4899;font-size:.5rem"></i> Entretiens / Meets</span>
+            <span><i class="bi bi-circle-fill" style="color:#f97316;font-size:.5rem"></i> Événements</span>
+            <span><i class="bi bi-circle-fill" style="color:#06b6d4;font-size:.5rem"></i> Activités</span>
+        </div>
+        <div class="cal-fo-legend" id="foLegendInterviews">
+            <span><i class="bi bi-circle-fill" style="color:#ec4899;font-size:.5rem"></i> Entretien planifié</span>
+            <span><i class="bi bi-circle-fill" style="color:#8b5cf6;font-size:.5rem"></i> Séance Meet</span>
+        </div>
+        <div class="cal-fo-legend" id="foLegendEvents">
+            <span><i class="bi bi-circle-fill" style="color:#f97316;font-size:.5rem"></i> Événement inscrit</span>
+        </div>
+        <div class="cal-fo-legend" id="foLegendActivities">
+            <span><i class="bi bi-circle-fill" style="color:#06b6d4;font-size:.5rem"></i> Activité assignée</span>
         </div>
     </div>
 </section>
 
-<!-- FullCalendar Integration -->
+<!-- FullCalendar -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const calendarEl = document.getElementById('calendar');
-        let calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'fr',
-            themeSystem: 'standard',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay'
-            },
-            buttonText: {
-                today: "Aujourd'hui",
-                month: 'Mois',
-                week: 'Semaine',
-                day: 'Jour',
-                list: 'Liste'
-            },
-            events: "{{ path('api_meets_candidate') }}",
-            eventClick: function(info) {
-                if (info.event.url) {
-                    window.open(info.event.url, '_blank');
-                    info.jsEvent.preventDefault();
-                }
+var foCal;
+var foAllEvents = [];
+var foFilter = 'all';
+
+document.addEventListener('DOMContentLoaded', function() {
+    foCal = new FullCalendar.Calendar(document.getElementById('calendar'), {
+        initialView: 'dayGridMonth',
+        locale: 'fr',
+        themeSystem: 'standard',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        buttonText: {
+            today: "Aujourd'hui",
+            month: 'Mois',
+            week: 'Semaine',
+            day: 'Jour'
+        },
+        events: [],
+        eventClick: function(info) {
+            if (info.event.url) {
+                window.open(info.event.url, '_blank');
+                info.jsEvent.preventDefault();
             }
-        });
-        calendar.render();
+        },
+        height: 'auto',
+        dayMaxEvents: 3
     });
+    foCal.render();
+    loadFoSources();
+});
+
+function loadFoSources() {
+    foAllEvents = [];
+    var promises = [];
+
+    // 1. Interviews / Meets
+    promises.push(
+        fetch('{{ path("api_meets_candidate") }}')
+            .then(r => r.json())
+            .then(data => { data.forEach(e => { e._source = 'interviews'; }); return data; })
+            .catch(() => [])
+    );
+
+    // 2. Events (participations)
+    {% if app.user %}
+    promises.push(
+        fetch('{{ path("admin_events_calendar_data") }}')
+            .then(r => r.json())
+            .then(data => {
+                data.forEach(e => {
+                    e._source = 'events';
+                    if (!e.color) e.color = '#f97316';
+                });
+                return data;
+            })
+            .catch(() => [])
+    );
+    {% endif %}
+
+    // 3. Activities (own)
+    promises.push(
+        fetch('{{ path("admin_calendar_data") }}')
+            .then(r => r.json())
+            .then(data => {
+                // Filter to only activities (cyan-colored) for candidate view
+                var activities = data.filter(e => e.color === '#06b6d4' || e.backgroundColor === '#06b6d4');
+                activities.forEach(e => { e._source = 'activities'; });
+                return activities;
+            })
+            .catch(() => [])
+    );
+
+    Promise.all(promises).then(function(results) {
+        results.forEach(function(arr) { foAllEvents = foAllEvents.concat(arr); });
+        applyFoFilter(foFilter);
+    });
+}
+
+function applyFoFilter(source) {
+    foCal.removeAllEvents();
+    var filtered = source === 'all' ? foAllEvents : foAllEvents.filter(e => e._source === source);
+    filtered.forEach(function(ev) { foCal.addEvent(ev); });
+}
+
+function switchFoCal(source, btn) {
+    foFilter = source;
+    document.querySelectorAll('.cal-fo-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.cal-fo-legend').forEach(l => l.classList.remove('active'));
+    var id = 'foLegend' + source.charAt(0).toUpperCase() + source.slice(1);
+    var el = document.getElementById(id);
+    if (el) el.classList.add('active');
+    applyFoFilter(source);
+}
 </script>
 
 <style>
-/* ── Optional FullCalendar Tweaks ── */
-.fc-toolbar-title {
-    font-weight: 700 !important;
-    font-size: 1.4rem !important;
-    color: var(--fo-text) !important;
+/* ── Calendar Switcher (Front-Office) ── */
+.cal-fo-switcher {
+    display:flex; gap:6px; background:rgba(255,255,255,0.6);
+    backdrop-filter:blur(12px); border:1px solid rgba(0,0,0,0.08);
+    border-radius:14px; padding:4px;
 }
+.cal-fo-btn {
+    display:flex; align-items:center; gap:6px; padding:8px 18px;
+    border:none; background:transparent; color:#64748b;
+    font-size:.84rem; font-weight:600; cursor:pointer;
+    border-radius:10px; transition:all .25s;
+}
+.cal-fo-btn:hover { color:#1e293b; background:rgba(0,0,0,0.04); }
+.cal-fo-btn.active {
+    background:linear-gradient(135deg, #4f46e5, #7c3aed);
+    color:white; box-shadow:0 4px 12px rgba(79,70,229,0.3);
+}
+.cal-fo-btn i { font-size:1rem; }
+.cal-fo-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.cal-fo-btn.active .cal-fo-dot { box-shadow:0 0 0 2px rgba(255,255,255,0.5); }
+
+.cal-fo-legend {
+    display:none; gap:20px; flex-wrap:wrap; margin-top:16px;
+    font-size:.82rem; color:#64748b; font-weight:500;
+}
+.cal-fo-legend.active { display:flex; }
+.cal-fo-legend span { display:flex; align-items:center; gap:6px; }
+
+/* ── FullCalendar Front-Office Tweaks ── */
+.fc-toolbar-title { font-weight:700!important; font-size:1.4rem!important; color:var(--fo-text)!important; }
 .fc-button-primary {
-    background: var(--primary) !important;
-    border-color: var(--primary) !important;
-    border-radius: 8px !important;
-    transition: all 0.2s !important;
+    background:var(--primary)!important; border-color:var(--primary)!important;
+    border-radius:8px!important; transition:all .2s!important;
 }
-.fc-button-primary:hover {
-    background: var(--primary-dark) !important;
-    transform: translateY(-1px);
-}
-.fc-event {
-    border-radius: 6px;
-    padding: 2px 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-.fc-daygrid-day-number {
-    color: var(--fo-text-secondary);
-    font-weight: 500;
+.fc-button-primary:hover { background:var(--primary-dark)!important; transform:translateY(-1px); }
+.fc-event { border-radius:6px; padding:2px 4px; cursor:pointer; font-size:.8rem; font-weight:500; }
+.fc-daygrid-day-number { color:var(--fo-text-secondary); font-weight:500; }
+
+@media (max-width: 768px) {
+    .cal-fo-switcher { flex-wrap:wrap; }
+    .cal-fo-btn { font-size:.75rem; padding:6px 12px; }
 }
 </style>
 {% endblock %}
