@@ -118,7 +118,7 @@ class InterviewController extends AbstractController
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
         $user = $this->getUser();
         if (!in_array($user->getRole(), ['HR', 'ADMIN'])) {
-            return $this->json(['error' => 'Unauthorized'], 403);
+            return $this->js.on(['error' => 'Unauthorized'], 403);
         }
 
         $data = json_decode($request->getContent(), true);
