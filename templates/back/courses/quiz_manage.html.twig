@@ -1,0 +1,139 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Quiz : {{ quiz.titre }}{% endblock %}
+{% block content %}
+<style>
+    .field-valid { border-color: #10b981 !important; }
+    .field-invalid { border-color: #ef4444 !important; }
+    .field-msg { font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px; min-height: 18px; }
+    .field-msg.error { color: #ef4444; }
+    .field-msg.success { color: #10b981; }
+    .req { color: #ef4444; font-weight: 700; }
+    .q-card { background: var(--bo-bg-input); border-radius: 12px; padding: 18px; margin-bottom: 12px; border: 1px solid var(--bo-border); }
+    .choice-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 0.85rem; }
+    .choice-correct { color: #10b981; font-weight: 600; }
+    .choice-wrong { color: var(--bo-text-secondary); }
+</style>
+
+<div class="mb-3">
+    <a href="{{ path('admin_course_edit', {id: formation.id}) }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour à la formation</a>
+</div>
+
+{% for message in app.flashes('success') %}
+    <div class="alert" style="background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+{% endfor %}
+{% for message in app.flashes('danger') %}
+    <div class="alert" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}</div>
+{% endfor %}
+
+<div class="row g-4">
+    {# Left: Add question form #}
+    <div class="col-lg-5">
+        <div class="bo-card bo-form">
+            <h6 style="font-weight:700;margin-bottom:16px"><i class="bi bi-plus-circle me-2" style="color:var(--accent)"></i>Ajouter une question</h6>
+            <form method="post" action="{{ path('admin_course_question_new', {id: formation.id, qid: quiz.id}) }}" id="questionForm" novalidate>
+                <div class="mb-3">
+                    <label>Énoncé <span class="req">*</span></label>
+                    <textarea name="enonce" id="fEnonce" class="form-control" rows="3" placeholder="Ex: Quelle est la syntaxe correcte ?" required></textarea>
+                    <div class="field-msg" id="msgEnonce"></div>
+                </div>
+
+                <div style="margin-bottom:12px">
+                    <label style="font-weight:600;margin-bottom:8px"><i class="bi bi-list-check me-1"></i> Choix (min 2)</label>
+                    <div id="choicesContainer">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <input type="text" name="choix[]" class="form-control choix-input" placeholder="Choix 1" required style="flex:1">
+                            <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;white-space:nowrap;cursor:pointer">
+                                <input type="radio" name="correct" value="0" checked> <span style="color:#10b981">✓</span>
+                            </label>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <input type="text" name="choix[]" class="form-control choix-input" placeholder="Choix 2" required style="flex:1">
+                            <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;white-space:nowrap;cursor:pointer">
+                                <input type="radio" name="correct" value="1"> <span style="color:#10b981">✓</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addChoice()" class="btn" style="font-size:0.8rem;padding:4px 12px;border:1px dashed var(--bo-border);color:var(--bo-text-secondary);border-radius:8px;margin-top:4px">
+                        <i class="bi bi-plus me-1"></i>Ajouter un choix
+                    </button>
+                </div>
+
+                <button type="submit" class="bo-btn bo-btn-primary w-100" id="qSubmit" disabled style="opacity:0.5;transition:opacity 0.3s"><i class="bi bi-plus me-1"></i>Ajouter la question</button>
+            </form>
+        </div>
+    </div>
+
+    {# Right: Questions list #}
+    <div class="col-lg-7">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 style="font-weight:700;margin:0"><i class="bi bi-question-circle me-2" style="color:var(--primary-light)"></i>{{ quiz.titre }} — {{ questions|length }} question(s)</h6>
+        </div>
+
+        {% for question in questions %}
+            <div class="q-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div style="font-weight:600;font-size:0.9rem;flex:1">
+                        <span style="color:var(--primary-light);margin-right:6px">Q{{ loop.index }}.</span>{{ question.enonce }}
+                    </div>
+                    <a href="{{ path('admin_course_question_delete', {id: formation.id, qid: quiz.id, questionId: question.id}) }}" class="bo-action-btn danger" title="Supprimer" onclick="return confirm('Supprimer cette question ?')" style="flex-shrink:0"><i class="bi bi-trash"></i></a>
+                </div>
+                <div style="margin-top:10px;padding-left:12px;border-left:2px solid var(--bo-border)">
+                    {% for choix in question.choix %}
+                        <div class="choice-row {{ choix.isCorrect ? 'choice-correct' : 'choice-wrong' }}">
+                            <i class="bi {{ choix.isCorrect ? 'bi-check-circle-fill' : 'bi-circle' }}"></i>
+                            {{ choix.texte }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="text-center" style="padding:50px;color:var(--bo-text-secondary)">
+                <i class="bi bi-question-diamond" style="font-size:2.5rem;opacity:0.4;display:block;margin-bottom:12px"></i>
+                Aucune question ajoutée
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+var choiceCount = 2;
+function addChoice() {
+    var container = document.getElementById('choicesContainer');
+    var div = document.createElement('div');
+    div.className = 'd-flex align-items-center gap-2 mb-2';
+    div.innerHTML = '<input type="text" name="choix[]" class="form-control choix-input" placeholder="Choix ' + (choiceCount + 1) + '" required style="flex:1">' +
+        '<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;white-space:nowrap;cursor:pointer"><input type="radio" name="correct" value="' + choiceCount + '"> <span style="color:#10b981">✓</span></label>' +
+        '<button type="button" onclick="this.parentElement.remove();choiceCount--;validateQuestion();" class="bo-action-btn danger" style="border:none;cursor:pointer;flex-shrink:0"><i class="bi bi-x"></i></button>';
+    container.appendChild(div);
+    choiceCount++;
+    div.querySelector('input[type=text]').addEventListener('input', validateQuestion);
+}
+
+function validateQuestion() {
+    var enonce = document.getElementById('fEnonce');
+    var choices = document.querySelectorAll('.choix-input');
+    var submit = document.getElementById('qSubmit');
+    var msgE = document.getElementById('msgEnonce');
+
+    var eOk = enonce.value.trim().length >= 5;
+    enonce.classList.remove('field-valid','field-invalid');
+    if (enonce.value) enonce.classList.add(eOk ? 'field-valid' : 'field-invalid');
+    if (!enonce.value.trim()) { msgE.className='field-msg error'; msgE.innerHTML='<i class="bi bi-x-circle-fill"></i> L\'énoncé est requis'; }
+    else if (!eOk) { msgE.className='field-msg error'; msgE.innerHTML='<i class="bi bi-x-circle-fill"></i> Au moins 5 caractères'; }
+    else { msgE.className='field-msg'; msgE.innerHTML=''; }
+
+    var allFilled = true;
+    choices.forEach(function(c) {
+        if (!c.value.trim()) allFilled = false;
+        c.classList.remove('field-valid','field-invalid');
+        if (c.value) c.classList.add(c.value.trim() ? 'field-valid' : 'field-invalid');
+    });
+
+    var ok = eOk && allFilled && choices.length >= 2;
+    submit.disabled = !ok; submit.style.opacity = ok ? '1' : '0.5';
+}
+
+document.getElementById('fEnonce').addEventListener('input', validateQuestion);
+document.querySelectorAll('.choix-input').forEach(function(c) { c.addEventListener('input', validateQuestion); });
+</script>
+{% endblock %}

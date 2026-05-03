@@ -1,0 +1,106 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}Mon Profil — Talentos{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="page-header d-flex align-items-center justify-content-between">
+        <div>
+            <h2>Mon Profil</h2>
+            <p>Consultez et gérez vos informations</p>
+        </div>
+        <a href="{{ path('app_profile_edit') }}" class="btn btn-primary-custom" style="width:auto;padding:10px 24px">
+            <i class="bi bi-pencil-square me-1"></i> Modifier
+        </a>
+    </div>
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+    {% endfor %}
+
+    <div class="row g-4">
+        {# Profile Card #}
+        <div class="col-md-4">
+            <div class="stat-card text-center" style="padding:32px">
+                {% if profile.profilePicturePath %}
+                    <img src="{{ profile.profilePicturePath }}" alt="Avatar"
+                         style="width:120px;height:120px;border-radius:50%;object-fit:cover;margin-bottom:16px;border:3px solid var(--primary)">
+                {% else %}
+                    <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));
+                                display:flex;align-items:center;justify-content:center;font-size:3rem;font-weight:700;
+                                margin:0 auto 16px;color:white">
+                        {{ profile.firstName|default(user.email)|first|upper }}
+                    </div>
+                {% endif %}
+
+                <h4 style="font-weight:700;margin-bottom:4px">{{ profile.fullName ?: 'Non renseigné' }}</h4>
+                <p style="color:var(--primary-light);font-size:0.9rem;margin-bottom:4px">
+                    {{ profile.professionalTitle ?: '—' }}
+                </p>
+                <p style="color:var(--text-secondary);font-size:0.85rem">
+                    <i class="bi bi-geo-alt me-1"></i>{{ profile.location ?: 'Non renseigné' }}
+                </p>
+
+                {% if profile.cvPath %}
+                    <a href="{{ profile.cvPath }}" target="_blank" class="btn btn-outline-light btn-sm mt-2" style="border-radius:8px">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Télécharger CV
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Info Cards #}
+        <div class="col-md-8">
+            <div class="stat-card" style="margin-bottom:16px">
+                <h5 style="font-weight:600;margin-bottom:16px"><i class="bi bi-person-vcard me-2" style="color:var(--primary-light)"></i>Informations personnelles</h5>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Email</div>
+                        <div style="font-weight:500">{{ user.email }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Téléphone</div>
+                        <div style="font-weight:500">{{ profile.phoneNumber ?: '—' }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Date de naissance</div>
+                        <div style="font-weight:500">{{ profile.birthDate ? profile.birthDate|date('d/m/Y') : '—' }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Rôle</div>
+                        <div>
+                            <span class="badge" style="background:rgba(79,70,229,0.2);color:var(--primary-light);font-weight:500;padding:4px 12px;border-radius:6px">
+                                {{ user.role }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card" style="margin-bottom:16px">
+                <h5 style="font-weight:600;margin-bottom:16px"><i class="bi bi-briefcase me-2" style="color:var(--accent)"></i>Profil professionnel</h5>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Expérience</div>
+                        <div style="font-weight:500">{{ profile.yearsOfExperience is not null ? profile.yearsOfExperience ~ ' ans' : '—' }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="color:var(--text-secondary);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Membre depuis</div>
+                        <div style="font-weight:500">{{ user.createdAt|date('d/m/Y') }}</div>
+                    </div>
+                </div>
+            </div>
+
+            {% if profile.summary %}
+            <div class="stat-card">
+                <h5 style="font-weight:600;margin-bottom:12px"><i class="bi bi-chat-quote me-2" style="color:var(--success)"></i>À propos</h5>
+                <p style="color:var(--text-secondary);line-height:1.7">{{ profile.summary }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</main>
+{% endblock %}

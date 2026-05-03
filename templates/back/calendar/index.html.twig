@@ -1,0 +1,179 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Calendrier{% endblock %}
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.css" rel="stylesheet">
+<style>
+    .fc{background:var(--bo-bg-card);border:1px solid var(--bo-border);border-radius:16px;padding:16px}
+    .fc .fc-toolbar-title{font-size:1.1rem!important;font-weight:700!important;color:var(--bo-text)!important}
+    .fc .fc-button{background:rgba(79,70,229,.15)!important;border:1px solid rgba(79,70,229,.3)!important;color:var(--primary-light)!important;border-radius:8px!important;font-size:.8rem!important;font-weight:600!important;padding:6px 14px!important;transition:all .2s!important}
+    .fc .fc-button:hover{background:rgba(79,70,229,.25)!important}
+    .fc .fc-button-active{background:var(--primary)!important;color:#fff!important}
+    .fc .fc-col-header-cell{background:rgba(255,255,255,.03);color:var(--bo-text-secondary);font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+    .fc .fc-daygrid-day{border-color:var(--bo-border)!important}
+    .fc .fc-daygrid-day-number{color:var(--bo-text-secondary);font-size:.8rem;padding:6px 8px}
+    .fc .fc-day-today{background:rgba(79,70,229,.06)!important}
+    .fc .fc-event{border-radius:6px!important;padding:2px 6px!important;font-size:.75rem!important;font-weight:600!important;border:none!important;cursor:pointer}
+    .fc .fc-event:hover{opacity:.85;transform:translateY(-1px)}
+    .fc th,.fc td,.fc .fc-scrollgrid{border-color:var(--bo-border)!important}
+
+    /* ── Unified Calendar Switcher ── */
+    .cal-switcher {
+        display:flex; gap:6px; background:rgba(255,255,255,.04);
+        border:1px solid var(--bo-border); border-radius:12px; padding:4px;
+    }
+    .cal-switch-btn {
+        display:flex; align-items:center; gap:6px; padding:8px 16px;
+        border:none; background:transparent; color:var(--bo-text-secondary);
+        font-size:.82rem; font-weight:600; cursor:pointer;
+        border-radius:8px; transition:all .25s; position:relative;
+    }
+    .cal-switch-btn:hover { color:var(--bo-text); background:rgba(255,255,255,.06); }
+    .cal-switch-btn.active {
+        background:rgba(79,70,229,.15); color:var(--primary-light);
+        box-shadow:inset 0 0 0 1px rgba(79,70,229,.3);
+    }
+    .cal-switch-btn i { font-size:1rem; }
+    .cal-switch-btn .cal-dot {
+        width:8px; height:8px; border-radius:50%; flex-shrink:0;
+    }
+
+    .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--bo-text-secondary)}
+    .legend-dot{width:12px;height:12px;border-radius:4px}
+
+    .legend-section { display:none; }
+    .legend-section.active { display:flex; gap:16px; flex-wrap:wrap; margin-top:16px; }
+</style>
+
+<div class="d-flex align-items-center justify-content-between" style="margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <h5 style="font-weight:700;margin:0"><i class="bi bi-calendar3 me-2" style="color:var(--accent)"></i>Calendrier Unifié</h5>
+    <div class="cal-switcher">
+        <button class="cal-switch-btn active" data-source="all" onclick="switchCalendar('all', this)">
+            <i class="bi bi-grid-3x3-gap"></i> Tout
+        </button>
+        <button class="cal-switch-btn" data-source="projects" onclick="switchCalendar('projects', this)">
+            <span class="cal-dot" style="background:#4f46e5"></span> Projets & Activités
+        </button>
+        <button class="cal-switch-btn" data-source="events" onclick="switchCalendar('events', this)">
+            <span class="cal-dot" style="background:#f59e0b"></span> Événements
+        </button>
+        <button class="cal-switch-btn" data-source="interviews" onclick="switchCalendar('interviews', this)">
+            <span class="cal-dot" style="background:#ec4899"></span> Entretiens
+        </button>
+    </div>
+</div>
+
+<div id="calendar"></div>
+
+<!-- Legend per category -->
+<div class="legend-section active" id="legendAll">
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Projet planifié</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4f46e5"></div>Projet en cours</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Projet terminé</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Activité</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Événement</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div>Entretien</div>
+</div>
+<div class="legend-section" id="legendProjects">
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Planifié</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4f46e5"></div>En cours</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Terminé</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>En attente</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Activité</div>
+</div>
+<div class="legend-section" id="legendEvents">
+    <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Événement à venir</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div>Événement passé</div>
+</div>
+<div class="legend-section" id="legendInterviews">
+    <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div>Entretien planifié</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Séance Meet</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
+<script>
+var calInstance;
+var allEvents = [];
+var currentFilter = 'all';
+
+// Data source URLs
+var dataSources = {
+    projects:   '{{ path("admin_calendar_data") }}',
+    events:     '{{ path("admin_events_calendar_data") }}',
+    interviews: '{{ path("api_meets_recruiter") }}'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    calInstance = new FullCalendar.Calendar(document.getElementById('calendar'), {
+        initialView: 'dayGridMonth',
+        locale: 'fr',
+        headerToolbar: {left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,listWeek'},
+        buttonText: {today:"Aujourd'hui", month:'Mois', week:'Semaine', list:'Liste'},
+        events: [],
+        eventClick: function(info) {
+            if (info.event.url) { info.jsEvent.preventDefault(); window.location.href = info.event.url; }
+        },
+        height: 'auto',
+        dayMaxEvents: 3
+    });
+    calInstance.render();
+
+    // Load all sources in parallel
+    loadAllSources();
+});
+
+function loadAllSources() {
+    allEvents = [];
+    var promises = [];
+
+    // Projects & Activities
+    promises.push(
+        fetch(dataSources.projects)
+            .then(r => r.json())
+            .then(data => { data.forEach(e => { e._source = 'projects'; }); return data; })
+            .catch(() => [])
+    );
+
+    // Events
+    promises.push(
+        fetch(dataSources.events)
+            .then(r => r.json())
+            .then(data => { data.forEach(e => { e._source = 'events'; }); return data; })
+            .catch(() => [])
+    );
+
+    // Interviews / Meets
+    promises.push(
+        fetch(dataSources.interviews)
+            .then(r => r.json())
+            .then(data => { data.forEach(e => { e._source = 'interviews'; }); return data; })
+            .catch(() => [])
+    );
+
+    Promise.all(promises).then(function(results) {
+        results.forEach(function(arr) { allEvents = allEvents.concat(arr); });
+        applyFilter(currentFilter);
+    });
+}
+
+function applyFilter(source) {
+    calInstance.removeAllEvents();
+    var filtered = source === 'all' ? allEvents : allEvents.filter(e => e._source === source);
+    filtered.forEach(function(ev) { calInstance.addEvent(ev); });
+}
+
+function switchCalendar(source, btn) {
+    currentFilter = source;
+    // Update active button
+    document.querySelectorAll('.cal-switch-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Update legend
+    document.querySelectorAll('.legend-section').forEach(l => l.classList.remove('active'));
+    var legendId = 'legend' + source.charAt(0).toUpperCase() + source.slice(1);
+    var legend = document.getElementById(legendId);
+    if (legend) legend.classList.add('active');
+    // Apply filter
+    applyFilter(source);
+}
+</script>
+{% endblock %}

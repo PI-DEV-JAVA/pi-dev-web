@@ -1,0 +1,23 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Tickets de support{% endblock %}
+{% block content %}
+<h5 style="font-weight:700;margin-bottom:20px">Tickets de support ({{ tickets|length }})</h5>
+<div class="bo-card">
+    <table class="bo-table">
+        <thead><tr><th>Sujet</th><th>Utilisateur</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>
+            {% for ticket in tickets %}
+                <tr>
+                    <td style="font-weight:600">{{ ticket.subject }}</td>
+                    <td style="color:var(--bo-text-secondary)">{{ ticket.user ? ticket.user.email : '—' }}</td>
+                    <td><span class="bo-badge bo-badge-{{ ticket.status == 'OPEN' ? 'warning' : 'success' }}">{{ ticket.status }}</span></td>
+                    <td style="color:var(--bo-text-secondary)">{{ ticket.createdAt ? ticket.createdAt|date('d/m/Y') : '—' }}</td>
+                    <td><a href="{{ path('admin_support_detail', {id: ticket.id}) }}" class="bo-action-btn"><i class="bi bi-eye"></i></a></td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="text-center" style="padding:30px;color:var(--bo-text-secondary)">Aucun ticket.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Activités{% endblock %}
+{% block content %}
+<style>
+    .field-valid { border-color: #10b981 !important; }
+    .field-valid:focus { box-shadow: 0 0 0 3px rgba(16,185,129,0.15) !important; }
+    .field-invalid { border-color: #ef4444 !important; }
+    .field-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.15) !important; }
+    .field-msg { font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px; min-height: 18px; }
+    .field-msg.error { color: #ef4444; }
+    .field-msg.success { color: #10b981; }
+    .req { color: #ef4444; font-weight: 700; }
+</style>
+
+{% for message in app.flashes('success') %}
+    <div class="alert" style="background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+        <i class="bi bi-check-circle-fill me-2"></i>{{ message }}
+    </div>
+{% endfor %}
+{% for message in app.flashes('danger') %}
+    <div class="alert" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+    </div>
+{% endfor %}
+
+<div class="row g-4">
+    {# Left: Assignment form #}
+    <div class="col-lg-5">
+        <div class="bo-card">
+            <h6 style="font-weight:700;margin-bottom:16px"><i class="bi bi-plus-circle me-2" style="color:var(--accent)"></i>Assigner une activité</h6>
+            <form method="post" action="{{ path('admin_activity_new') }}" class="bo-form" id="actForm" novalidate>
+                <div class="mb-3">
+                    <label>Candidat <span class="req">*</span></label>
+                    <select name="candidateId" id="fCandidate" class="form-select" required>
+                        <option value="">— Choisir un candidat —</option>
+                        {% for c in candidates %}
+                            <option value="{{ c.id }}">{{ c.email }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="field-msg" id="msgCandidate"></div>
+                </div>
+                <div class="mb-3">
+                    <label>Projet (optionnel)</label>
+                    <select name="projectId" class="form-select">
+                        <option value="">— Sans projet —</option>
+                        {% for p in projects %}
+                            <option value="{{ p.id }}">{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>Description <span class="req">*</span></label>
+                    <textarea name="description" id="fActDesc" class="form-control" rows="3" required placeholder="Décrire l'activité..."></textarea>
+                    <div class="field-msg" id="msgActDesc"></div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <label>Date <span class="req">*</span></label>
+                        <input type="date" name="activityDate" class="form-control" value="{{ 'now'|date('Y-m-d') }}" required>
+                    </div>
+                    <div class="col-4">
+                        <label>Date Limite (Deadline)</label>
+                        <input type="datetime-local" name="expectedDeadline" class="form-control">
+                    </div>
+                    <div class="col-4">
+                        <label>Heures</label>
+                        <input type="number" step="0.5" name="hoursWorked" id="fHours" class="form-control" placeholder="Ex: 4" min="0">
+                        <div class="field-msg" id="msgHours"></div>
+                    </div>
+                </div>
+                <button type="submit" class="bo-btn bo-btn-primary w-100" id="actSubmit" disabled style="opacity:0.5;transition:opacity 0.3s"><i class="bi bi-check-lg me-1"></i>Assigner</button>
+            </form>
+        </div>
+    </div>
+
+    {# Right: Activities list with search #}
+    <div class="col-lg-7">
+        <div class="d-flex align-items-center justify-content-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px">
+            <h6 style="font-weight:700;margin:0">Activités assignées (<span id="actCount">{{ activities|length }}</span>)</h6>
+            <div style="position:relative;width:240px">
+                <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--bo-text-secondary);font-size:0.8rem"></i>
+                <input type="text" id="searchInput" placeholder="Rechercher..."
+                       style="width:100%;padding:8px 12px 8px 32px;border-radius:8px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.8rem;transition:border-color 0.2s"
+                       onfocus="this.style.borderColor='var(--primary-light)'" onblur="this.style.borderColor='var(--bo-border)'">
+            </div>
+        </div>
+
+        <div id="actList">
+            {% for a in activities %}
+                <div class="bo-card mb-2 d-flex align-items-start gap-3 activity-item">
+                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <i class="bi bi-activity" style="color:var(--accent)"></i>
+                    </div>
+                    <div style="flex:1">
+                        <div style="font-weight:600;font-size:0.9rem">{{ a.description }}</div>
+                        <div style="font-size:0.8rem;color:var(--bo-text-secondary);margin-top:2px">
+                            <i class="bi bi-person me-1"></i>{{ a.employee ? a.employee.email : '—' }}
+                            {% if a.project %} · <i class="bi bi-kanban me-1"></i>{{ a.project.name }}{% endif %}
+                            {% if a.hoursWorked %} · <span style="color:var(--accent);font-weight:700"><i class="bi bi-clock me-1"></i>{{ a.hoursWorked }}h</span>{% endif %}
+                            · {{ a.activityDate ? a.activityDate|date('d/m/Y') : '—' }}
+                        </div>
+                        {% if a.userReport %}
+                            <div style="width:100%;margin-top:12px;background:rgba(255,255,255,0.02);border:1px solid var(--bo-border);border-radius:8px;padding:10px">
+                                <div style="font-size:0.8rem;color:var(--bo-text-secondary);margin-bottom:4px">
+                                    <i class="bi bi-journal-text me-1"></i>Rapport de l'utilisateur
+                                </div>
+                                <div style="font-size:0.85rem;margin-bottom:10px">{{ a.userReport|nl2br }}</div>
+                                
+                                {% if a.isLateSubmission %}
+                                    <div style="margin-bottom:8px;font-size:0.75rem;color:#ef4444;font-weight:700">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>En retard de {{ a.delayInHours }}h (Deadline: {{ a.expectedDeadline|date('d/m/Y H:i') }})
+                                    </div>
+                                {% endif %}
+                                
+                                <div style="margin-bottom:12px">
+                                    {% if a.reportStatus == 'REVIEWED' %}
+                                        <span class="bo-badge bo-badge-success" style="font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(16,185,129,0.1);color:#10b981">Révisé</span>
+                                    {% elseif a.reportStatus == 'REVISION_REQUESTED' %}
+                                        <span class="bo-badge bo-badge-warning" style="font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(245,158,11,0.1);color:#f59e0b">Révision Demandée</span>
+                                        <div style="font-size:0.75rem;margin-top:4px;color:var(--bo-text-secondary)">Feedback: {{ a.adminFeedback }}</div>
+                                    {% elseif a.reportStatus == 'REJECTED' %}
+                                        <span class="bo-badge bo-badge-danger" style="font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(239,68,68,0.1);color:#ef4444">Rejeté</span>
+                                        <div style="font-size:0.75rem;margin-top:4px;color:var(--bo-text-secondary)">Feedback: {{ a.adminFeedback }}</div>
+                                    {% else %}
+                                        <span class="bo-badge bo-badge-primary" style="font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(6,182,212,0.1);color:#06b6d4">En attente ({{ a.reportStatus }})</span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if a.reportStatus == 'SUBMITTED' or a.reportStatus == 'PENDING' %}
+                                    <form method="post" action="{{ path('admin_activity_review', {id: a.id}) }}" style="margin:0;background:var(--bo-bg-input);padding:10px;border-radius:8px;border:1px solid var(--bo-border)">
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-4">
+                                                <label style="font-size:0.75rem;color:var(--bo-text-secondary);display:block;margin-bottom:4px">Action</label>
+                                                <select name="reviewAction" class="form-select" style="font-size:0.8rem;padding:4px 8px" onchange="document.getElementById('fb_{{ a.id }}').style.display = (this.value == 'approve') ? 'none' : 'block'">
+                                                    <option value="approve">✅ Approuver</option>
+                                                    <option value="revision">🔄 Demander révision</option>
+                                                    <option value="reject">❌ Rejeter</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-5" id="fb_{{ a.id }}" style="display:none">
+                                                <label style="font-size:0.75rem;color:var(--bo-text-secondary);display:block;margin-bottom:4px">Feedback</label>
+                                                <input type="text" name="adminFeedback" class="form-control" style="font-size:0.8rem;padding:4px 8px" placeholder="Raison de la révision/refus...">
+                                            </div>
+                                            <div class="col-md-3 text-end">
+                                                <button type="submit" class="bo-btn bo-btn-primary w-100" style="padding:4px 8px;font-size:0.8rem">Valider</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="bo-card text-center" style="padding:40px" id="emptyAct">
+                    <i class="bi bi-clipboard-data" style="font-size:2.5rem;color:var(--bo-text-secondary);opacity:0.5"></i>
+                    <p class="mt-3" style="color:var(--bo-text-secondary)">Aucune activité assignée.</p>
+                </div>
+            {% endfor %}
+        </div>
+        <div id="noResults" style="display:none;text-align:center;padding:40px 20px;color:var(--bo-text-secondary)">
+            <i class="bi bi-search" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:8px"></i>
+            Aucune activité trouvée
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Form validation
+    var candidate = document.getElementById('fCandidate');
+    var actDesc = document.getElementById('fActDesc');
+    var hours = document.getElementById('fHours');
+    var submitBtn = document.getElementById('actSubmit');
+    var msgs = {candidate: document.getElementById('msgCandidate'), desc: document.getElementById('msgActDesc'), hours: document.getElementById('msgHours')};
+    var state = {candidate: false, desc: false, hours: true};
+
+    function setField(el, ok) { el.classList.remove('field-valid','field-invalid'); if (el.value) el.classList.add(ok ? 'field-valid' : 'field-invalid'); }
+    function setMsg(el, t, type) { el.className = 'field-msg ' + type; el.innerHTML = '<i class="bi bi-' + (type==='error'?'x-circle-fill':'check-circle-fill') + '"></i> ' + t; }
+    function clearMsg(el) { el.className = 'field-msg'; el.innerHTML = ''; }
+    function checkForm() {
+        var ok = state.candidate && state.desc && state.hours;
+        submitBtn.disabled = !ok; submitBtn.style.opacity = ok ? '1' : '0.5';
+    }
+
+    candidate.addEventListener('change', function() {
+        if (!this.value) { setField(this,false); setMsg(msgs.candidate,'Sélectionnez un candidat','error'); state.candidate=false; }
+        else { setField(this,true); clearMsg(msgs.candidate); state.candidate=true; }
+        checkForm();
+    });
+    actDesc.addEventListener('input', function() {
+        if (!this.value.trim()) { setField(this,false); setMsg(msgs.desc,'La description est requise','error'); state.desc=false; }
+        else if (this.value.trim().length < 5) { setField(this,false); setMsg(msgs.desc,'Au moins 5 caractères','error'); state.desc=false; }
+        else { setField(this,true); setMsg(msgs.desc,'Description valide','success'); state.desc=true; }
+        checkForm();
+    });
+    hours.addEventListener('input', function() {
+        if (this.value && parseFloat(this.value) < 0) { setField(this,false); setMsg(msgs.hours,'Heures invalides','error'); state.hours=false; }
+        else { if (this.value) setField(this,true); else this.classList.remove('field-valid','field-invalid'); clearMsg(msgs.hours); state.hours=true; }
+        checkForm();
+    });
+
+    // Search
+    var searchInput = document.getElementById('searchInput');
+    var actCount = document.getElementById('actCount');
+    var noResults = document.getElementById('noResults');
+    searchInput.addEventListener('input', function() {
+        var q = this.value.toLowerCase().trim();
+        var items = document.querySelectorAll('.activity-item');
+        var visible = 0;
+        items.forEach(function(item) {
+            var match = q === '' || item.textContent.toLowerCase().includes(q);
+            item.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        actCount.textContent = visible;
+        noResults.style.display = (visible === 0 && items.length > 0) ? 'block' : 'none';
+    });
+})();
+</script>
+{% endblock %}

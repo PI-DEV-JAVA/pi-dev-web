@@ -1,0 +1,136 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Vérification email — Talentos{% endblock %}
+
+{% block base_stylesheets %}
+<style>
+    body { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f0f9ff 100%); min-height: 100vh; }
+    .login-wrapper {
+        min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        padding: 40px 20px; position: relative; overflow: hidden;
+    }
+    .login-wrapper::before {
+        content: ''; position: absolute; width: 500px; height: 500px;
+        background: radial-gradient(circle, rgba(79,70,229,0.06) 0%, transparent 70%);
+        top: -150px; right: -100px; border-radius: 50%;
+    }
+    .login-card {
+        background: white; border: 1px solid #e2e8f0; border-radius: 20px;
+        padding: 48px; width: 100%; max-width: 440px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.06); position: relative; z-index: 1;
+    }
+    .login-logo { text-align: center; margin-bottom: 32px; }
+    .login-logo h1 {
+        font-size: 2rem; font-weight: 800;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .login-logo p { color: #64748b; font-size: 0.9rem; margin-top: 4px; }
+    .login-card .form-control {
+        border: 1.5px solid #e2e8f0; border-radius: 12px;
+        padding: 14px 16px; font-size: 0.95rem; transition: all 0.2s;
+    }
+    .login-card .form-control:focus {
+        border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+    .otp-input {
+        text-align: center; font-size: 1.8rem; font-weight: 800; letter-spacing: 12px;
+        color: var(--primary); padding: 16px !important;
+    }
+    .otp-input::placeholder { letter-spacing: 6px; font-size: 1rem; font-weight: 400; }
+    .timer { text-align: center; margin: 12px 0; font-size: 0.85rem; color: #64748b; }
+    .timer.danger { color: #ef4444; font-weight: 700; }
+    .timer.expired { color: #ef4444; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-logo">
+            <h1><i class="bi bi-briefcase-fill"></i> Talentos</h1>
+            <p>Vérifiez votre email</p>
+        </div>
+
+        <div style="text-align:center;margin-bottom:24px">
+            <div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(6,182,212,0.1));display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+                <i class="bi bi-envelope-check" style="font-size:1.8rem;color:var(--primary)"></i>
+            </div>
+            <p style="color:#64748b;font-size:0.88rem;margin:0">
+                Un code à 6 chiffres a été envoyé à<br>
+                <strong style="color:var(--primary)">{{ email }}</strong>
+            </p>
+        </div>
+
+        {% if error %}
+            <div class="alert" style="background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+            </div>
+        {% endif %}
+        {% if success %}
+            <div class="alert" style="background:rgba(16,185,129,0.08);color:#059669;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+                <i class="bi bi-check-circle-fill me-2"></i>{{ success }}
+            </div>
+        {% endif %}
+
+        <div class="timer" id="otpTimer">
+            <i class="bi bi-clock me-1"></i> <span id="timerText">Calcul...</span>
+        </div>
+
+        <form method="post">
+            <input type="hidden" name="action" value="verify">
+            <div class="mb-3">
+                <input type="text" class="form-control otp-input" name="code" maxlength="6" pattern="\d{6}" placeholder="000000" required autofocus autocomplete="off" inputmode="numeric">
+            </div>
+            <button type="submit" class="btn btn-primary-custom w-100" id="verifyBtn">
+                <i class="bi bi-shield-check me-2"></i>Vérifier
+            </button>
+        </form>
+
+        <div style="text-align:center;margin-top:16px">
+            <form method="post" style="display:inline">
+                <input type="hidden" name="action" value="resend">
+                <button type="submit" style="background:none;border:none;color:var(--primary);font-size:0.85rem;font-weight:500;cursor:pointer;text-decoration:underline">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Renvoyer le code
+                </button>
+            </form>
+        </div>
+
+        <div style="text-align:center;margin-top:20px">
+            <a href="{{ path('app_login') }}" style="color:#64748b;text-decoration:none;font-size:0.85rem">
+                <i class="bi bi-arrow-left me-1"></i> Retour à la connexion
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const expiresAt = {{ expires }};
+        const timerEl = document.getElementById('timerText');
+        const timerWrap = document.getElementById('otpTimer');
+        const verifyBtn = document.getElementById('verifyBtn');
+
+        function updateTimer() {
+            const now = Math.floor(Date.now() / 1000);
+            const remaining = expiresAt - now;
+
+            if (remaining <= 0) {
+                timerEl.textContent = 'Code expiré — cliquez "Renvoyer"';
+                timerWrap.classList.add('expired');
+                verifyBtn.disabled = true;
+                verifyBtn.style.opacity = '0.5';
+                return;
+            }
+
+            const mins = Math.floor(remaining / 60);
+            const secs = remaining % 60;
+            timerEl.textContent = `Expire dans ${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+
+            if (remaining <= 60) timerWrap.classList.add('danger');
+            setTimeout(updateTimer, 1000);
+        }
+        updateTimer();
+    })();
+</script>
+{% endblock %}

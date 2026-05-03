@@ -1,0 +1,42 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}Mon Cercle — Talentos{% endblock %}
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <h1>Mon Cercle 🤝</h1>
+        <p>Vos connexions et conversations</p>
+    </div>
+</div>
+<section class="fo-section" style="padding-top:40px">
+    <div class="container">
+        {% if syncs is empty %}
+            <div class="fo-card text-center" style="padding:60px">
+                <i class="bi bi-people" style="font-size:3rem;color:var(--fo-text-secondary)"></i>
+                <p class="mt-3" style="color:var(--fo-text-secondary)">Aucune connexion pour le moment.</p>
+            </div>
+        {% else %}
+            <div class="row g-3">
+                {% for sync in syncs %}
+                    {% set other = sync.sender == app.user ? sync.receiver : sync.sender %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="fo-card d-flex align-items-center gap-3">
+                            <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;color:white;flex-shrink:0">
+                                {{ other.email|first|upper }}
+                            </div>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:600;font-size:0.9rem">{{ other.email }}</div>
+                                <span class="fo-badge fo-badge-{{ sync.status == 'ACCEPTED' ? 'success' : (sync.status == 'PENDING' ? 'warning' : 'primary') }}">{{ sync.status }}</span>
+                            </div>
+                            {% if sync.status == 'ACCEPTED' %}
+                                <a href="{{ path('app_chat', {id: sync.id}) }}" class="btn" style="border:1.5px solid var(--fo-border);border-radius:10px;padding:8px 14px" title="Chat">
+                                    <i class="bi bi-chat-dots" style="color:var(--primary)"></i>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

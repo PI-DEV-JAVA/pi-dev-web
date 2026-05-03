@@ -1,0 +1,393 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}{{ event.title }} — Talentos{% endblock %}
+
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <a href="{{ path('app_events') }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500">
+            <i class="bi bi-arrow-left me-1"></i> Retour aux évènements
+        </a>
+        <h1 class="mt-2">{{ event.title }}</h1>
+        <div class="d-flex gap-2 mt-2">
+            <span class="fo-badge fo-badge-{{ event.eventType == 'CONFERENCE' ? 'primary' : (event.eventType == 'WORKSHOP' ? 'warning' : 'accent') }}">{{ event.eventType }}</span>
+            {% if event.status %}<span class="fo-badge fo-badge-success">{{ event.status }}</span>{% endif %}
+        </div>
+    </div>
+</div>
+
+<section class="fo-section" style="padding-top:40px">
+    <div class="container">
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success mb-3"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+        {% endfor %}
+        {% for message in app.flashes('info') %}
+            <div class="alert alert-info mb-3"><i class="bi bi-info-circle-fill me-2"></i>{{ message }}</div>
+        {% endfor %}
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                {% if event.coverImage %}
+                    <img src="{{ event.coverImage }}" alt="{{ event.title }}" style="width:100%;height:300px;object-fit:cover;border-radius:16px;margin-bottom:24px">
+                {% endif %}
+
+                <div class="fo-card" style="margin-bottom:20px">
+                    <h5 style="font-weight:700;margin-bottom:16px">Description</h5>
+                    <div style="color:var(--fo-text-secondary);line-height:1.8;white-space:pre-line">{{ event.description|default('Aucune description.') }}</div>
+                </div>
+
+                {# Comments #}
+                <div class="fo-card">
+                    <h5 style="font-weight:700;margin-bottom:16px">Commentaires ({{ comments|length }})</h5>
+                    {% if app.user %}
+                        <form method="post" action="{{ path('app_event_comment', {id: event.id}) }}" class="fo-form mb-4">
+                            <div class="d-flex gap-2">
+                                <input type="text" name="content" class="form-control" placeholder="Ajouter un commentaire..." required>
+                                <button type="submit" class="btn btn-primary-custom" style="white-space:nowrap"><i class="bi bi-send"></i></button>
+                            </div>
+                        </form>
+                    {% endif %}
+                    {% for comment in comments %}
+                        <div class="mb-3 p-3" style="background:var(--fo-bg-section);border-radius:12px">
+                            <div class="d-flex justify-content-between mb-1">
+                                <strong style="font-size:0.85rem">{{ comment.user ? comment.user.email : 'Anonyme' }}</strong>
+                                <small style="color:var(--fo-text-secondary)">{{ comment.createdAt ? comment.createdAt|date('d/m/Y H:i') : '' }}</small>
+                            </div>
+                            <p style="margin:0;font-size:0.9rem;color:var(--fo-text-secondary)">{{ comment.content }}</p>
+                        </div>
+                    {% else %}
+                        <p style="color:var(--fo-text-secondary);font-size:0.9rem">Aucun commentaire pour le moment.</p>
+                    {% endfor %}
+                </div>
+
+                {# ── Feedback Section ── #}
+                <div class="fo-card" style="margin-top:20px">
+                    <h5 style="font-weight:700;margin-bottom:16px"><i class="bi bi-star-fill me-1" style="color:#fbbf24"></i>Avis ({{ feedbacks|length }})</h5>
+
+                    {% if canFeedback %}
+                    <form method="post" action="{{ path('app_event_feedback', {id: event.id}) }}" id="feedbackForm" style="background:var(--fo-bg-section);border-radius:12px;padding:20px;margin-bottom:20px">
+                        <div style="margin-bottom:16px">
+                            <label style="font-weight:600;font-size:0.88rem;display:block;margin-bottom:8px">Votre note</label>
+                            <div id="starRating" style="display:flex;gap:6px">
+                                {% for i in 1..5 %}
+                                <i class="bi bi-star star-pick" data-val="{{ i }}" style="font-size:1.6rem;cursor:pointer;color:#cbd5e1;transition:all 0.2s"
+                                   onmouseenter="hoverStar({{ i }})" onmouseleave="resetStars()" onclick="selectStar({{ i }})"></i>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="rating" id="ratingInput" value="0">
+                        </div>
+                        <div style="margin-bottom:16px">
+                            <label style="font-weight:600;font-size:0.88rem;display:block;margin-bottom:8px">Recommanderiez-vous cet événement ?</label>
+                            <div class="d-flex gap-3">
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem">
+                                    <input type="radio" name="recommend" value="1" checked style="accent-color:var(--primary)"> <i class="bi bi-hand-thumbs-up"></i> Oui
+                                </label>
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem">
+                                    <input type="radio" name="recommend" value="0" style="accent-color:var(--primary)"> <i class="bi bi-hand-thumbs-down"></i> Non
+                                </label>
+                            </div>
+                        </div>
+                        <div style="margin-bottom:16px">
+                            <label style="font-weight:600;font-size:0.88rem;display:block;margin-bottom:8px">Commentaire (optionnel)</label>
+                            <textarea name="comment" rows="3" placeholder="Partagez votre expérience..." style="width:100%;border:1.5px solid var(--fo-border);border-radius:10px;padding:12px;font-size:0.88rem;resize:vertical;background:white"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary-custom" onclick="return validateFeedback()">
+                            <i class="bi bi-send me-1"></i>Envoyer mon avis
+                        </button>
+                    </form>
+                    <script>
+                    var selectedRating = 0;
+                    function hoverStar(n) {
+                        document.querySelectorAll('.star-pick').forEach((s, i) => {
+                            s.className = i < n ? 'bi bi-star-fill star-pick' : 'bi bi-star star-pick';
+                            s.style.color = i < n ? '#fbbf24' : '#cbd5e1';
+                            s.style.transform = i < n ? 'scale(1.15)' : 'scale(1)';
+                        });
+                    }
+                    function resetStars() {
+                        document.querySelectorAll('.star-pick').forEach((s, i) => {
+                            s.className = i < selectedRating ? 'bi bi-star-fill star-pick' : 'bi bi-star star-pick';
+                            s.style.color = i < selectedRating ? '#fbbf24' : '#cbd5e1';
+                            s.style.transform = 'scale(1)';
+                        });
+                    }
+                    function selectStar(n) { selectedRating = n; document.getElementById('ratingInput').value = n; resetStars(); }
+                    function validateFeedback() {
+                        if (selectedRating === 0) { alert('Veuillez sélectionner une note (1-5 étoiles).'); return false; }
+                        return true;
+                    }
+                    </script>
+                    {% elseif myFeedback %}
+                    <div style="background:var(--fo-bg-section);border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid #fbbf24">
+                        <div style="font-weight:600;font-size:0.88rem;margin-bottom:6px">Votre avis</div>
+                        <div style="margin-bottom:4px">
+                            {% for i in 1..5 %}
+                                <i class="bi bi-star{{ i <= myFeedback.rating ? '-fill' : '' }}" style="color:{{ i <= myFeedback.rating ? '#fbbf24' : '#cbd5e1' }};font-size:1rem"></i>
+                            {% endfor %}
+                            <span style="font-weight:700;margin-left:8px">{{ myFeedback.rating }}/5</span>
+                            {% if myFeedback.wouldRecommend %}<i class="bi bi-hand-thumbs-up-fill ms-2" style="color:#34d399"></i>{% endif %}
+                        </div>
+                        {% if myFeedback.comment %}<p style="margin:0;font-size:0.85rem;color:var(--fo-text-secondary);margin-top:8px">{{ myFeedback.comment }}</p>{% endif %}
+                    </div>
+                    {% endif %}
+
+                    {# Other feedbacks #}
+                    {% for f in feedbacks %}
+                        {% if not myFeedback or f.id != myFeedback.id %}
+                        <div class="mb-3 p-3" style="background:var(--fo-bg-section);border-radius:12px">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong style="font-size:0.85rem">
+                                    {% if f.participation.user.profile and f.participation.user.profile.firstName %}
+                                        {{ f.participation.user.profile.firstName }} {{ f.participation.user.profile.lastName }}
+                                    {% else %}
+                                        {{ f.participation.user.email|split('@')[0] }}
+                                    {% endif %}
+                                </strong>
+                                <div>
+                                    {% for i in 1..5 %}
+                                        <i class="bi bi-star{{ i <= f.rating ? '-fill' : '' }}" style="color:{{ i <= f.rating ? '#fbbf24' : '#cbd5e1' }};font-size:0.75rem"></i>
+                                    {% endfor %}
+                                    {% if f.wouldRecommend %}<i class="bi bi-hand-thumbs-up-fill ms-1" style="color:#34d399;font-size:0.75rem"></i>{% endif %}
+                                </div>
+                            </div>
+                            {% if f.comment %}<p style="margin:0;font-size:0.85rem;color:var(--fo-text-secondary)">{{ f.comment }}</p>{% endif %}
+                            <small style="color:var(--fo-text-secondary);font-size:0.72rem">{{ f.createdAt|date('d/m/Y') }}</small>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="fo-card" style="position:sticky;top:100px;margin-bottom:16px">
+                    <h5 style="font-weight:700;margin-bottom:20px">Détails</h5>
+                    <div class="mb-3">
+                        <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Date</div>
+                        <div style="font-weight:600">{{ event.eventDate ? event.eventDate|date('d/m/Y à H:i') : '—' }}</div>
+                    </div>
+                    {% if event.location %}
+                    <div class="mb-3">
+                        <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Lieu</div>
+                        <div style="font-weight:600">{{ event.location }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Capacité</div>
+                        <div style="font-weight:600">{{ event.maxCapacity ?: 'Illimitée' }}</div>
+                    </div>
+                    <div class="mb-4">
+                        <div style="color:var(--fo-text-secondary);font-size:0.8rem;text-transform:uppercase;margin-bottom:4px">Likes</div>
+                        <div style="font-weight:600">{{ likesCount }} <i class="bi bi-heart-fill" style="color:var(--danger)"></i></div>
+                    </div>
+
+                    {% if app.user %}
+                        <div class="d-grid gap-2" id="participateArea">
+                            {% if participation %}
+                                {% if participation.status == 'PENDING' %}
+                                    <button onclick="resumeChallenge()" class="btn btn-primary-custom">
+                                        <i class="bi bi-qr-code me-1"></i> Compléter la vérification
+                                    </button>
+                                {% elseif participation.status == 'CONFIRMED' or participation.status == 'ATTENDED' %}
+                                    <div style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.2);border-radius:12px;padding:14px;text-align:center">
+                                        <i class="bi bi-check-circle-fill" style="color:#10b981;font-size:1.2rem"></i>
+                                        <span style="font-weight:600;color:#10b981;margin-left:8px">Participation confirmée</span>
+                                    </div>
+                                {% endif %}
+                                <button onclick="cancelParticipation()" class="btn" style="border:1.5px solid var(--fo-border);border-radius:12px;padding:10px;font-weight:600;color:var(--fo-text-secondary);font-size:0.85rem">
+                                    <i class="bi bi-x-circle me-1"></i> Annuler
+                                </button>
+                            {% else %}
+                                <button onclick="startParticipation()" class="btn btn-primary-custom" id="btnParticipate">
+                                    <i class="bi bi-check-circle me-1"></i> Participer
+                                </button>
+                            {% endif %}
+                            <a href="{{ path('app_event_like', {id: event.id}) }}" class="btn" style="border:1.5px solid var(--fo-border);border-radius:12px;padding:12px;font-weight:600;color:{{ liked ? '#ef4444' : 'var(--fo-text-secondary)' }}">
+                                <i class="bi bi-{{ liked ? 'heart-fill' : 'heart' }} me-1"></i>
+                                {{ liked ? 'Aimé' : 'Aimer' }}
+                            </a>
+                        </div>
+                    {% else %}
+                        <a href="{{ path('app_login') }}" class="btn btn-primary-custom w-100">Connectez-vous pour participer</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# ═══════ QR CHALLENGE MODAL ═══════ #}
+<div id="qrChallengeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+    <div style="background:white;border-radius:20px;padding:32px;max-width:420px;width:92%;text-align:center;box-shadow:0 25px 80px rgba(0,0,0,0.25);animation:modalSlideIn 0.3s ease">
+
+        {# Step 1: QR Display #}
+        <div id="challengeStep1">
+            <div style="width:60px;height:60px;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--accent));display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+                <i class="bi bi-qr-code" style="font-size:1.5rem;color:white"></i>
+            </div>
+            <h4 style="font-weight:800;margin-bottom:6px;color:#1e293b">Vérification requise</h4>
+            <p style="color:#64748b;font-size:0.88rem;margin-bottom:20px">Scannez ce QR code avec votre téléphone pour obtenir votre code de confirmation</p>
+
+            <div style="background:#f8fafc;border-radius:16px;padding:20px;margin-bottom:20px;border:2px dashed #e2e8f0">
+                <div id="challengeQR" style="display:inline-block"></div>
+            </div>
+
+            <div style="margin-bottom:20px">
+                <label style="font-weight:600;font-size:0.82rem;color:#475569;display:block;margin-bottom:8px;text-align:left">Entrez le code de 6 caractères</label>
+                <div class="d-flex gap-2">
+                    <input type="text" id="codeInput" maxlength="6" placeholder="EX: A3B7C9" autocomplete="off"
+                        style="flex:1;padding:14px 16px;border-radius:12px;border:2px solid #e2e8f0;font-size:1.1rem;font-weight:700;letter-spacing:6px;text-align:center;text-transform:uppercase;font-family:monospace;transition:border-color 0.2s"
+                        onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'"
+                        onkeyup="if(this.value.length===6)verifyCode()">
+                    <button onclick="verifyCode()" class="btn btn-primary-custom" style="padding:14px 20px;border-radius:12px;font-weight:700">
+                        <i class="bi bi-check-lg"></i>
+                    </button>
+                </div>
+                <div id="codeError" style="display:none;color:#ef4444;font-size:0.8rem;margin-top:8px;font-weight:600"></div>
+            </div>
+
+            <div id="challengeTimer" style="font-size:0.78rem;color:#94a3b8">
+                <i class="bi bi-clock me-1"></i>Le code expire dans <span id="timerCount" style="font-weight:700;color:var(--primary)">5:00</span>
+            </div>
+        </div>
+
+        {# Step 2: Success #}
+        <div id="challengeStep2" style="display:none">
+            <div style="font-size:4rem;margin-bottom:12px">🎉</div>
+            <h4 style="font-weight:800;margin-bottom:6px;color:#10b981">Participation confirmée !</h4>
+            <p style="color:#64748b;font-size:0.88rem;margin-bottom:24px">Vous êtes officiellement inscrit à cet événement. Votre QR code servira de billet d'entrée le jour J.</p>
+            <button onclick="closeChallenge();location.reload()" class="btn btn-primary-custom" style="padding:12px 32px;border-radius:12px;font-weight:700">
+                <i class="bi bi-check-circle me-1"></i> C'est noté !
+            </button>
+        </div>
+
+        <button onclick="closeChallenge()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px"><i class="bi bi-x-lg"></i></button>
+    </div>
+</div>
+
+<style>
+@keyframes modalSlideIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes confetti { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(-200px) rotate(720deg); opacity: 0; } }
+.confetti-piece { position: fixed; width: 8px; height: 8px; border-radius: 2px; animation: confetti 1.5s ease-out forwards; z-index: 10001; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+var eventId = {{ event.id }};
+var currentChallengeCode = null;
+var timerInterval = null;
+
+function startParticipation() {
+    var btn = document.getElementById('btnParticipate');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Inscription...';
+    btn.disabled = true;
+
+    fetch('/events/' + eventId + '/participate', {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            currentChallengeCode = data.challengeCode;
+            showChallengeModal(data.qrData, data.challengeCode);
+        } else {
+            alert(data.message);
+            location.reload();
+        }
+    })
+    .catch(() => { alert('Erreur réseau.'); location.reload(); });
+}
+
+function resumeChallenge() {
+    // Re-show the modal for PENDING participation
+    var qrData = '{{ participation ? participation.qrCode : "" }}';
+    if (qrData) {
+        var parts = qrData.split('_');
+        currentChallengeCode = parts[parts.length - 1];
+        showChallengeModal(qrData, currentChallengeCode);
+    }
+}
+
+function showChallengeModal(qrData, code) {
+    document.getElementById('challengeStep1').style.display = 'block';
+    document.getElementById('challengeStep2').style.display = 'none';
+    document.getElementById('codeInput').value = '';
+    document.getElementById('codeError').style.display = 'none';
+
+    // Generate QR
+    var qrDiv = document.getElementById('challengeQR');
+    qrDiv.innerHTML = '';
+    new QRCode(qrDiv, { text: code, width: 180, height: 180, colorDark: '#1e293b', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+
+    // Timer (5 min)
+    var timeLeft = 300;
+    document.getElementById('timerCount').textContent = '5:00';
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(function() {
+        timeLeft--;
+        var m = Math.floor(timeLeft / 60);
+        var s = timeLeft % 60;
+        document.getElementById('timerCount').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+        if (timeLeft <= 0) { clearInterval(timerInterval); closeChallenge(); }
+    }, 1000);
+
+    document.getElementById('qrChallengeModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('codeInput').focus(), 300);
+}
+
+function verifyCode() {
+    var input = document.getElementById('codeInput').value.trim().toUpperCase();
+    if (input.length < 6) return;
+
+    fetch('/events/' + eventId + '/verify-participation', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+        body: 'code=' + encodeURIComponent(input)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            clearInterval(timerInterval);
+            document.getElementById('challengeStep1').style.display = 'none';
+            document.getElementById('challengeStep2').style.display = 'block';
+            spawnConfetti();
+        } else {
+            var err = document.getElementById('codeError');
+            err.textContent = data.message;
+            err.style.display = 'block';
+            document.getElementById('codeInput').style.borderColor = '#ef4444';
+            setTimeout(() => { err.style.display = 'none'; document.getElementById('codeInput').style.borderColor = '#e2e8f0'; }, 3000);
+        }
+    });
+}
+
+function cancelParticipation() {
+    if (!confirm('Annuler votre participation ?')) return;
+    fetch('/events/' + eventId + '/cancel-participation', {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    }).then(() => location.reload());
+}
+
+function closeChallenge() {
+    document.getElementById('qrChallengeModal').style.display = 'none';
+    if (timerInterval) clearInterval(timerInterval);
+}
+document.getElementById('qrChallengeModal').addEventListener('click', function(e) { if (e.target === this) closeChallenge(); });
+
+function spawnConfetti() {
+    var colors = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    for (var i = 0; i < 40; i++) {
+        var el = document.createElement('div');
+        el.className = 'confetti-piece';
+        el.style.background = colors[Math.floor(Math.random() * colors.length)];
+        el.style.left = (30 + Math.random() * 40) + '%';
+        el.style.top = (40 + Math.random() * 20) + '%';
+        el.style.animationDuration = (1 + Math.random()) + 's';
+        el.style.animationDelay = (Math.random() * 0.5) + 's';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2500);
+    }
+}
+</script>
+{% endblock %}

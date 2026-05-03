@@ -1,0 +1,308 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Mon Profil{% endblock %}
+
+{% block content %}
+{# Cropper.js CDN #}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+
+<style>
+    /* Avatar Upload Zone */
+    .avatar-zone { position:relative; width:130px; height:130px; margin:0 auto 20px; cursor:pointer; }
+    .avatar-zone:hover .av-overlay { opacity:1; }
+    .av-circle {
+        width:130px; height:130px; border-radius:50%; object-fit:cover;
+        border:3px solid rgba(79,70,229,0.3); box-shadow:0 6px 24px rgba(79,70,229,0.15);
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .avatar-zone:hover .av-circle { transform:scale(1.04); box-shadow:0 8px 30px rgba(79,70,229,0.25); }
+    .av-initials {
+        width:130px; height:130px; border-radius:50%;
+        background:linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #10b981 100%);
+        display:flex; align-items:center; justify-content:center;
+        font-size:3rem; font-weight:800; color:white;
+        border:3px solid rgba(79,70,229,0.3); box-shadow:0 6px 24px rgba(79,70,229,0.15);
+        transition: transform 0.3s;
+    }
+    .avatar-zone:hover .av-initials { transform:scale(1.04); }
+    .av-overlay {
+        position:absolute; inset:0; border-radius:50%;
+        background:rgba(0,0,0,0.55); backdrop-filter:blur(2px);
+        display:flex; align-items:center; justify-content:center; flex-direction:column; gap:4px;
+        opacity:0; transition:opacity 0.3s;
+    }
+    .av-overlay i { font-size:1.5rem; color:white; }
+    .av-overlay span { font-size:0.7rem; color:rgba(255,255,255,0.85); font-weight:600; }
+    .avatar-zone.dragover { outline:3px dashed var(--primary-light); outline-offset:4px; }
+    .avatar-zone.dragover .av-overlay { opacity:1 !important; }
+    .av-btns { display:flex; justify-content:center; gap:8px; margin-bottom:16px; }
+    .av-btns .ab { font-size:0.72rem; padding:5px 14px; border-radius:8px; text-decoration:none; font-weight:600; cursor:pointer; transition:all 0.2s; border:1px solid var(--bo-border); display:inline-flex; align-items:center; gap:4px; }
+    .ab-upload { background:rgba(79,70,229,0.08); color:var(--primary-light); border-color:rgba(79,70,229,0.2); }
+    .ab-upload:hover { background:rgba(79,70,229,0.18); }
+    .ab-remove { background:rgba(239,68,68,0.08); color:#ef4444; border-color:rgba(239,68,68,0.2); }
+    .ab-remove:hover { background:rgba(239,68,68,0.18); }
+
+    /* Crop Modal */
+    .crop-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); z-index:9999; align-items:center; justify-content:center; }
+    .crop-modal-bg.open { display:flex; animation:fadeIn 0.25s ease; }
+    .crop-modal {
+        background:var(--bo-bg-card, #1e293b); border-radius:20px; padding:24px;
+        width:460px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.4);
+        border:1px solid var(--bo-border, #334155);
+    }
+    .crop-modal h5 { font-weight:700; margin:0 0 16px; font-size:1rem; }
+    .crop-container { width:100%; height:320px; background:#0f172a; border-radius:12px; overflow:hidden; margin-bottom:16px; }
+    .crop-container img { max-width:100%; display:block; }
+    .crop-controls { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:20px; }
+    .crop-controls button {
+        width:36px; height:36px; border-radius:10px; border:1px solid var(--bo-border);
+        background:rgba(255,255,255,0.05); color:var(--bo-text, #e2e8f0);
+        cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1rem;
+        transition:all 0.2s;
+    }
+    .crop-controls button:hover { background:rgba(79,70,229,0.2); color:var(--primary-light); border-color:rgba(79,70,229,0.3); }
+    .crop-zoom-label { font-size:0.75rem; color:var(--bo-text-secondary); font-weight:600; }
+    .crop-actions { display:flex; gap:10px; justify-content:flex-end; }
+    .crop-actions button { padding:10px 24px; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; border:none; transition:all 0.2s; }
+    .crop-btn-cancel { background:rgba(255,255,255,0.05); color:var(--bo-text-secondary); border:1px solid var(--bo-border) !important; }
+    .crop-btn-cancel:hover { background:rgba(255,255,255,0.1); }
+    .crop-btn-save { background:linear-gradient(135deg, #4f46e5, #7c3aed); color:white; }
+    .crop-btn-save:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 12px rgba(79,70,229,0.3); }
+
+    .file-error { text-align:center; font-size:0.78rem; color:#ef4444; margin-top:-10px; margin-bottom:10px; display:none; }
+    .profile-stat { text-align:center; padding:12px 0; }
+    .profile-stat-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin:0 auto 6px; font-size:1rem; }
+    .profile-stat-label { font-size:0.7rem; color:var(--bo-text-secondary); }
+</style>
+
+<div class="row g-4">
+    {# Left: Profile Card #}
+    <div class="col-lg-4">
+        <form method="post" enctype="multipart/form-data" id="profileForm">
+        <div class="bo-card" style="text-align:center;padding:32px 24px">
+            {# Avatar Zone #}
+            <div class="avatar-zone" id="avatarZone">
+                {% if profile.profilePicturePath %}
+                    <img src="{{ profile.profilePicturePath }}" class="av-circle" id="currentAvatar" alt="">
+                {% else %}
+                    <div class="av-initials" id="currentAvatar">{{ app.user.email|first|upper }}</div>
+                {% endif %}
+                <div class="av-overlay"><i class="bi bi-camera-fill"></i><span>Changer</span></div>
+            </div>
+
+            <div id="fileError" class="file-error"><i class="bi bi-exclamation-triangle me-1"></i><span></span></div>
+
+            <div class="av-btns">
+                <label class="ab ab-upload" for="avatarFileInput"><i class="bi bi-upload"></i>Photo</label>
+                {% if profile.profilePicturePath %}
+                    <a href="{{ path('admin_profile_remove_avatar') }}" class="ab ab-remove" onclick="return confirm('Supprimer la photo ?')"><i class="bi bi-trash"></i>Supprimer</a>
+                {% endif %}
+            </div>
+
+            <input type="file" id="avatarFileInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+            <input type="hidden" name="croppedAvatar" id="croppedAvatarData">
+
+            <h5 style="font-weight:700;margin-bottom:4px">
+                {% if profile.firstName or profile.lastName %}
+                    {{ profile.firstName }} {{ profile.lastName }}
+                {% else %}
+                    {{ app.user.email|split('@')[0] }}
+                {% endif %}
+            </h5>
+            {% if profile.professionalTitle %}
+                <div style="color:var(--primary-light);font-size:0.85rem;font-weight:500;margin-bottom:8px">{{ profile.professionalTitle }}</div>
+            {% endif %}
+            <div style="font-size:0.8rem;color:var(--bo-text-secondary);margin-bottom:16px">{{ app.user.email }}</div>
+
+            <div style="display:flex;justify-content:center;gap:24px;padding-top:16px;border-top:1px solid var(--bo-border)">
+                <div class="profile-stat">
+                    <div class="profile-stat-icon" style="background:rgba(79,70,229,0.1);color:var(--primary-light)"><i class="bi bi-shield-check"></i></div>
+                    <div class="profile-stat-label">{{ app.user.role }}</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-icon" style="background:rgba(16,185,129,0.1);color:#10b981"><i class="bi bi-calendar-check"></i></div>
+                    <div class="profile-stat-label">Depuis {{ app.user.createdAt|date('m/Y') }}</div>
+                </div>
+                {% if profile.yearsOfExperience %}
+                <div class="profile-stat">
+                    <div class="profile-stat-icon" style="background:rgba(245,158,11,0.1);color:#f59e0b"><i class="bi bi-briefcase"></i></div>
+                    <div class="profile-stat-label">{{ profile.yearsOfExperience }} ans exp.</div>
+                </div>
+                {% endif %}
+            </div>
+            {% if profile.location %}
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--bo-border);font-size:0.82rem;color:var(--bo-text-secondary)">
+                <i class="bi bi-geo-alt me-1"></i> {{ profile.location }}
+            </div>
+            {% endif %}
+        </div>
+
+        {# Account Info #}
+        <div class="bo-card" style="margin-top:16px">
+            <h6 style="font-weight:700;margin-bottom:16px"><i class="bi bi-shield-lock me-2" style="color:var(--primary-light)"></i>Compte</h6>
+            <div style="font-size:0.82rem;margin-bottom:10px"><span style="color:var(--bo-text-secondary)">Email :</span><span style="float:right;font-weight:600">{{ app.user.email }}</span></div>
+            <div style="font-size:0.82rem;margin-bottom:10px"><span style="color:var(--bo-text-secondary)">Rôle :</span><span style="float:right"><span class="bo-badge bo-badge-primary">{{ app.user.role }}</span></span></div>
+            <div style="font-size:0.82rem;margin-bottom:10px"><span style="color:var(--bo-text-secondary)">Vérification :</span><span style="float:right">{% if app.user.emailVerified %}<span style="color:#10b981"><i class="bi bi-check-circle-fill me-1"></i>Vérifié</span>{% else %}<span style="color:#f59e0b"><i class="bi bi-exclamation-circle-fill me-1"></i>Non vérifié</span>{% endif %}</span></div>
+            <div style="font-size:0.82rem"><span style="color:var(--bo-text-secondary)">Fournisseur :</span><span style="float:right;font-weight:600">{{ app.user.authProvider }}</span></div>
+        </div>
+    </div>
+
+    {# Right: Edit Form #}
+    <div class="col-lg-8">
+        <div class="bo-card">
+            <h5 style="font-weight:700;margin-bottom:24px"><i class="bi bi-pencil-square me-2" style="color:var(--accent)"></i>Modifier le profil</h5>
+            <div class="row g-3">
+                <div class="col-md-6"><label>Prénom</label><input type="text" name="firstName" class="form-control" value="{{ profile.firstName }}" placeholder="Votre prénom"></div>
+                <div class="col-md-6"><label>Nom</label><input type="text" name="lastName" class="form-control" value="{{ profile.lastName }}" placeholder="Votre nom"></div>
+                <div class="col-md-6"><label>Titre professionnel</label><input type="text" name="professionalTitle" class="form-control" value="{{ profile.professionalTitle }}" placeholder="Ex: Responsable RH"></div>
+                <div class="col-md-6"><label>Téléphone</label><input type="text" name="phoneNumber" class="form-control" value="{{ profile.phoneNumber }}" placeholder="+216 XX XXX XXX"></div>
+                <div class="col-md-6"><label>Localisation</label><input type="text" name="location" class="form-control" value="{{ profile.location }}" placeholder="Tunis, Tunisie"></div>
+                <div class="col-md-6"><label>Années d'expérience</label><input type="number" name="yearsOfExperience" class="form-control" value="{{ profile.yearsOfExperience }}" placeholder="5" min="0"></div>
+                <div class="col-12"><label>Bio / Résumé</label><textarea name="summary" class="form-control" rows="4" placeholder="Parlez-nous de vous...">{{ profile.summary }}</textarea></div>
+            </div>
+            <div class="mt-4"><button type="submit" class="bo-btn bo-btn-primary"><i class="bi bi-check-lg me-1"></i> Enregistrer</button></div>
+        </div>
+    </div>
+    </form>
+</div>
+
+{# ═══ CROP MODAL ═══ #}
+<div class="crop-modal-bg" id="cropModal">
+    <div class="crop-modal">
+        <h5><i class="bi bi-crop me-2" style="color:var(--primary-light)"></i>Recadrer la photo</h5>
+        <div class="crop-container"><img id="cropImage" src="" alt=""></div>
+
+        {# AI Analysis Panel #}
+        <div id="aiPanel" style="margin-bottom:16px;display:none">
+            <div id="aiLoading" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(99,102,241,0.06);border-radius:10px;font-size:0.8rem;color:var(--primary-light, #818cf8)">
+                <div style="width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+                <span>🤖 Analyse IA du portrait en cours...</span>
+            </div>
+            <div id="aiResults" style="display:none"></div>
+        </div>
+        <style>@keyframes spin { to { transform:rotate(360deg); } }</style>
+
+        <div class="crop-controls">
+            <button type="button" onclick="cropper.zoom(-0.1)" title="Zoom -"><i class="bi bi-zoom-out"></i></button>
+            <span class="crop-zoom-label">Zoom</span>
+            <button type="button" onclick="cropper.zoom(0.1)" title="Zoom +"><i class="bi bi-zoom-in"></i></button>
+            <button type="button" onclick="cropper.rotate(-45)" title="Rotation"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <button type="button" onclick="cropper.rotate(45)" title="Rotation"><i class="bi bi-arrow-clockwise"></i></button>
+            <button type="button" onclick="cropper.reset()" title="Reset"><i class="bi bi-arrow-repeat"></i></button>
+        </div>
+        <div class="crop-actions">
+            <button type="button" class="crop-btn-cancel" onclick="closeCropModal()">Annuler</button>
+            <button type="button" id="overrideBtn" style="display:none;padding:10px 16px;border-radius:10px;font-weight:600;font-size:0.8rem;cursor:pointer;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);color:#f59e0b;transition:all 0.2s" onclick="forceApplyCrop()">Utiliser quand même</button>
+            <button type="button" class="crop-btn-save" id="applyBtn" onclick="applyCrop()"><i class="bi bi-check-lg me-1"></i>Appliquer</button>
+        </div>
+    </div>
+</div>
+
+{# face-api.js + face-check.js #}
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="/js/face-check.js"></script>
+
+<script>
+var cropper = null;
+var faceCheckPassed = false;
+var ALLOWED_TYPES = ['image/jpeg','image/png','image/gif','image/webp'];
+var MAX_SIZE = 5 * 1024 * 1024;
+
+function showError(msg) {
+    var el = document.getElementById('fileError');
+    el.querySelector('span').textContent = msg;
+    el.style.display = 'block';
+    setTimeout(function() { el.style.display = 'none'; }, 5000);
+}
+
+function validateFile(file) {
+    if (!file) return false;
+    if (ALLOWED_TYPES.indexOf(file.type) === -1) { showError('Format non supporté. Utilisez JPG, PNG, GIF ou WebP.'); return false; }
+    if (file.size > MAX_SIZE) { showError('Image trop volumineuse (max 5 Mo).'); return false; }
+    return true;
+}
+
+function openCropModal(file) {
+    if (!validateFile(file)) return;
+    document.getElementById('fileError').style.display = 'none';
+    faceCheckPassed = false;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = document.getElementById('cropImage');
+        img.src = e.target.result;
+        document.getElementById('cropModal').classList.add('open');
+        // Reset AI panel
+        document.getElementById('aiPanel').style.display = 'block';
+        document.getElementById('aiLoading').style.display = 'flex';
+        document.getElementById('aiResults').style.display = 'none';
+        document.getElementById('overrideBtn').style.display = 'none';
+        var applyBtn = document.getElementById('applyBtn');
+        applyBtn.disabled = true; applyBtn.style.opacity = '0.5';
+        if (cropper) { cropper.destroy(); cropper = null; }
+        setTimeout(function() {
+            cropper = new Cropper(img, {
+                aspectRatio: 1, viewMode: 1, dragMode: 'move',
+                cropBoxResizable: false, cropBoxMovable: false,
+                minCropBoxWidth: 200, minCropBoxHeight: 200,
+                background: false, modal: true, guides: false, highlight: false, autoCropArea: 0.85,
+                ready: function() {
+                    var cb = document.querySelector('.cropper-crop-box'); if (cb) cb.style.borderRadius = '50%';
+                    var vb = document.querySelector('.cropper-view-box'); if (vb) vb.style.borderRadius = '50%';
+                    runFaceCheck(img);
+                }
+            });
+        }, 100);
+    };
+    reader.readAsDataURL(file);
+}
+
+async function runFaceCheck(imgEl) {
+    var result = await FACE_CHECK.analyze(imgEl);
+    document.getElementById('aiLoading').style.display = 'none';
+    var resultsEl = document.getElementById('aiResults');
+    FACE_CHECK.renderResults(resultsEl, result);
+    var applyBtn = document.getElementById('applyBtn');
+    if (result.hasFace) {
+        faceCheckPassed = true;
+        applyBtn.disabled = false; applyBtn.style.opacity = '1';
+        document.getElementById('overrideBtn').style.display = 'none';
+    } else {
+        faceCheckPassed = false;
+        applyBtn.disabled = true; applyBtn.style.opacity = '0.4';
+        document.getElementById('overrideBtn').style.display = 'inline-block';
+    }
+}
+
+function closeCropModal() {
+    document.getElementById('cropModal').classList.remove('open');
+    if (cropper) { cropper.destroy(); cropper = null; }
+}
+
+function forceApplyCrop() { faceCheckPassed = true; applyCrop(); }
+
+function applyCrop() {
+    if (!cropper) return;
+    var canvas = cropper.getCroppedCanvas({ width: 400, height: 400, imageSmoothingQuality: 'high' });
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    var container = document.getElementById('currentAvatar');
+    if (container.tagName === 'IMG') { container.src = dataUrl; }
+    else { var img = document.createElement('img'); img.src = dataUrl; img.className = 'av-circle'; img.id = 'currentAvatar'; container.parentNode.replaceChild(img, container); }
+    document.getElementById('croppedAvatarData').value = dataUrl;
+    closeCropModal();
+}
+
+// Click to upload
+document.getElementById('avatarZone').addEventListener('click', function() { document.getElementById('avatarFileInput').click(); });
+document.getElementById('avatarFileInput').addEventListener('change', function() { if (this.files && this.files[0]) openCropModal(this.files[0]); });
+
+// Drag & drop
+var zone = document.getElementById('avatarZone');
+['dragenter','dragover'].forEach(function(ev) { zone.addEventListener(ev, function(e) { e.preventDefault(); e.stopPropagation(); zone.classList.add('dragover'); }); });
+['dragleave','drop'].forEach(function(ev) { zone.addEventListener(ev, function(e) { e.preventDefault(); e.stopPropagation(); zone.classList.remove('dragover'); }); });
+zone.addEventListener('drop', function(e) { if (e.dataTransfer.files.length > 0) openCropModal(e.dataTransfer.files[0]); });
+
+// Close modal on bg click
+document.getElementById('cropModal').addEventListener('click', function(e) { if (e.target === this) closeCropModal(); });
+</script>
+{% endblock %}
+

@@ -1,0 +1,51 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}Notifications — Talentos{% endblock %}
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1>Notifications 🔔</h1>
+                <p>Vos dernières notifications</p>
+            </div>
+            {% if notifications|length > 0 %}
+                <a href="{{ path('app_notifications_read_all') }}" class="btn btn-primary-custom" style="padding:10px 20px;border-radius:10px">
+                    <i class="bi bi-check2-all me-1"></i>Tout marquer comme lu
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<section class="fo-section" style="padding-top:40px">
+    <div class="container" style="max-width:700px">
+        {% for n in notifications %}
+            <a href="{{ path('app_notification_read', {id: n.id}) }}" class="fo-card d-flex align-items-start gap-3 mb-2 text-decoration-none" style="{{ not n.read ? 'border-left:3px solid var(--primary);background:rgba(79,70,229,0.02)' : '' }}">
+                <div style="width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+                    {% if n.type == 'OFFER_DECISION' %}background:rgba(16,185,129,0.1);color:var(--success)
+                    {% elseif n.type == 'REPLY' %}background:rgba(6,182,212,0.1);color:var(--accent)
+                    {% elseif n.type == 'INTERVIEW' %}background:rgba(245,158,11,0.1);color:var(--warning)
+                    {% elseif n.type == 'ACTIVITY' %}background:rgba(99,102,241,0.1);color:#818cf8
+                    {% elseif n.type == 'EVENT' %}background:rgba(236,72,153,0.1);color:#ec4899
+                    {% else %}background:rgba(79,70,229,0.1);color:var(--primary){% endif %}">
+                    <i class="bi bi-{% if n.type == 'OFFER_DECISION' %}briefcase{% elseif n.type == 'REPLY' %}chat-dots{% elseif n.type == 'INTERVIEW' %}camera-video{% elseif n.type == 'ACTIVITY' %}clipboard-data{% elseif n.type == 'EVENT' %}calendar-event{% else %}bell{% endif %}" style="font-size:1.1rem"></i>
+                </div>
+                <div style="flex:1">
+                    <div style="font-weight:{{ not n.read ? '700' : '600' }};font-size:0.9rem;color:var(--fo-text)">{{ n.title }}</div>
+                    {% if n.message %}<p style="color:var(--fo-text-secondary);font-size:0.85rem;margin:4px 0 0;line-height:1.4">{{ n.message|slice(0,120) }}</p>{% endif %}
+                    <div style="font-size:0.75rem;color:var(--fo-text-secondary);margin-top:6px">
+                        <i class="bi bi-clock me-1"></i>{{ n.createdAt|date('d/m/Y H:i') }}
+                    </div>
+                </div>
+                {% if not n.read %}
+                    <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:6px"></div>
+                {% endif %}
+            </a>
+        {% else %}
+            <div class="fo-card text-center" style="padding:60px">
+                <i class="bi bi-bell-slash" style="font-size:3rem;color:var(--fo-text-secondary);opacity:0.4"></i>
+                <p class="mt-3" style="color:var(--fo-text-secondary)">Aucune notification.</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

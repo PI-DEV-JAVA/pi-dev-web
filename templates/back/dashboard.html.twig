@@ -1,0 +1,130 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}{{ 'title.dashboard'|trans }}{% endblock %}
+{% block title %}{{ 'nav.administration'|trans }} — Talentos{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    {% if app.user.role == 'ADMIN' %}
+    {# Admin sees all stats #}
+    <div class="col-md-4 col-lg-2">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(79,70,229,0.15);color:var(--primary-light)"><i class="bi bi-people-fill"></i></div>
+            <div class="stat-value">{{ stats.users }}</div>
+            <div class="stat-label">{{ 'stats.total_users'|trans }}</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(6,182,212,0.15);color:var(--accent)"><i class="bi bi-megaphone-fill"></i></div>
+            <div class="stat-value">{{ stats.offers }}</div>
+            <div class="stat-label">{{ 'nav.offers'|trans }}</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(16,185,129,0.15);color:var(--success)"><i class="bi bi-calendar-event-fill"></i></div>
+            <div class="stat-value">{{ stats.events }}</div>
+            <div class="stat-label">{{ 'nav.events'|trans }}</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(245,158,11,0.15);color:var(--warning)"><i class="bi bi-book-fill"></i></div>
+            <div class="stat-value">{{ stats.courses }}</div>
+            <div class="stat-label">{{ 'nav.courses'|trans }}</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(99,102,241,0.15);color:#818cf8"><i class="bi bi-kanban-fill"></i></div>
+            <div class="stat-value">{{ stats.projects }}</div>
+            <div class="stat-label">{{ 'nav.projects'|trans }}</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(239,68,68,0.15);color:var(--danger)"><i class="bi bi-headset"></i></div>
+            <div class="stat-value">{{ stats.openTickets }}</div>
+            <div class="stat-label">{{ 'nav.tickets'|trans }}</div>
+        </div>
+    </div>
+    {% else %}
+    {# HR sees own stats #}
+    <div class="col-md-6 col-lg-3">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(6,182,212,0.15);color:var(--accent)"><i class="bi bi-megaphone-fill"></i></div>
+            <div class="stat-value">{{ stats.offers }}</div>
+            <div class="stat-label">{{ 'nav.offers'|trans }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(99,102,241,0.15);color:#818cf8"><i class="bi bi-file-earmark-text-fill"></i></div>
+            <div class="stat-value">{{ stats.applications }}</div>
+            <div class="stat-label">{{ 'nav.applications'|trans }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(16,185,129,0.15);color:var(--success)"><i class="bi bi-kanban-fill"></i></div>
+            <div class="stat-value">{{ stats.projects }}</div>
+            <div class="stat-label">{{ 'nav.projects'|trans }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="bo-card bo-stat-card">
+            <div class="stat-icon" style="background:rgba(245,158,11,0.15);color:var(--warning)"><i class="bi bi-calendar-event-fill"></i></div>
+            <div class="stat-value">{{ stats.events }}</div>
+            <div class="stat-label">{{ 'nav.events'|trans }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="bo-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 style="font-weight:700;margin:0">{{ app.user.role == 'ADMIN' ? 'stats.recent_offers'|trans : 'stats.recent_offers'|trans }}</h6>
+                <a href="{{ path('admin_offers') }}" class="bo-btn bo-btn-outline" style="padding:6px 14px;font-size:0.8rem">{{ 'btn.view_all'|trans }}</a>
+            </div>
+            <table class="bo-table">
+                <thead><tr><th>{{ 'table.title'|trans }}</th><th>{{ 'table.type'|trans }}</th><th>{{ 'nav.applications'|trans }}</th><th>{{ 'table.date'|trans }}</th></tr></thead>
+                <tbody>
+                    {% for offer in recentOffers %}
+                        <tr>
+                            <td style="font-weight:600">{{ offer.title }}</td>
+                            <td><span class="bo-badge bo-badge-primary">{{ offer.contractType ?: '—' }}</span></td>
+                            <td>{{ offer.applicationsReceived }}</td>
+                            <td style="color:var(--bo-text-secondary);font-size:0.85rem">{{ offer.publishDate ? offer.publishDate|date('d/m') : '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="4" class="text-center" style="padding:20px;color:var(--bo-text-secondary)">{{ 'offers.no_offers'|trans }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="bo-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 style="font-weight:700;margin:0">{{ 'stats.recent_applications'|trans }}</h6>
+            </div>
+            {% for app_item in recentApplications %}
+                <div class="d-flex align-items-center gap-3 py-2" style="border-bottom:1px solid var(--bo-border)">
+                    <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.75rem;color:white;flex-shrink:0">
+                        {{ app_item.user ? app_item.user.email|first|upper : '?' }}
+                    </div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ app_item.offer ? app_item.offer.title : '—' }}</div>
+                        <div style="font-size:0.75rem;color:var(--bo-text-secondary)">{{ app_item.user ? app_item.user.email : '—' }}</div>
+                    </div>
+                    <span class="bo-badge bo-badge-{{ app_item.status == 'Acceptée' ? 'success' : (app_item.status == 'Refusée' ? 'danger' : 'warning') }}">{{ app_item.status }}</span>
+                </div>
+            {% else %}
+                <p class="text-center" style="padding:20px;color:var(--bo-text-secondary)">{{ 'applications.no_applications'|trans }}</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

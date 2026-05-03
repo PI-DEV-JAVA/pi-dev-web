@@ -1,0 +1,410 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}Talentos — {{ 'title.home'|trans }}{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .hero {
+        min-height: 92vh;
+        display: flex; align-items: center;
+        background: linear-gradient(160deg, #ffffff 0%, #eef2ff 40%, #f0f9ff 70%, #f8fafc 100%);
+        position: relative; overflow: hidden;
+    }
+    .hero::before {
+        content: ''; position: absolute;
+        width: 700px; height: 700px;
+        background: radial-gradient(circle, rgba(79,70,229,0.08) 0%, transparent 70%);
+        top: -200px; right: -150px; border-radius: 50%;
+    }
+    .hero::after {
+        content: ''; position: absolute;
+        width: 500px; height: 500px;
+        background: radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 70%);
+        bottom: -150px; left: -100px; border-radius: 50%;
+    }
+    .hero-content { position: relative; z-index: 2; }
+    .hero h1 {
+        font-size: 3.5rem; font-weight: 900;
+        line-height: 1.1; letter-spacing: -1.5px;
+        margin-bottom: 20px;
+    }
+    .hero h1 .gradient-text {
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+        font-size: 1.2rem; color: var(--fo-text-secondary);
+        line-height: 1.7; max-width: 500px; margin-bottom: 32px;
+    }
+    .hero-search {
+        display: flex; gap: 8px;
+        background: white; border-radius: 16px;
+        padding: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid var(--fo-border);
+        max-width: 540px;
+    }
+    .hero-search input {
+        flex: 1; border: none; padding: 14px 20px;
+        font-size: 1rem; outline: none; border-radius: 10px;
+        background: transparent;
+    }
+    .hero-search button {
+        padding: 14px 28px; border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white; border: none; font-weight: 600;
+        display: flex; align-items: center; gap: 8px;
+        transition: all 0.2s; white-space: nowrap;
+    }
+    .hero-search button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(79,70,229,0.3);
+    }
+    .hero-stats {
+        display: flex; gap: 40px; margin-top: 48px;
+    }
+    .hero-stat-value {
+        font-size: 2rem; font-weight: 800;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-stat-label {
+        font-size: 0.85rem; color: var(--fo-text-secondary); margin-top: 2px;
+    }
+    .hero-visual {
+        position: relative; z-index: 2;
+    }
+    .hero-float-card {
+        background: white; border-radius: 16px;
+        padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+        border: 1px solid var(--fo-border);
+        animation: float 6s ease-in-out infinite;
+    }
+    .hero-float-card:nth-child(2) { animation-delay: -2s; }
+    .hero-float-card:nth-child(3) { animation-delay: -4s; }
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-12px); }
+    }
+
+    /* ── Feature Cards ── */
+    .feature-icon {
+        width: 56px; height: 56px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; margin-bottom: 20px;
+    }
+
+    /* ── Offer Cards ── */
+    .offer-preview {
+        display: flex; align-items: center; gap: 16px;
+        padding: 16px 20px; border-radius: 12px;
+        background: white; border: 1px solid var(--fo-border);
+        transition: all 0.2s; text-decoration: none; color: var(--fo-text);
+    }
+    .offer-preview:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-color: rgba(79,70,229,0.2);
+        color: var(--fo-text);
+    }
+    .offer-icon {
+        width: 44px; height: 44px; border-radius: 10px;
+        background: linear-gradient(135deg, rgba(79,70,229,0.1), rgba(6,182,212,0.08));
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; color: var(--primary);
+    }
+
+    /* ── Connect Cards ── */
+    .connect-section { background: linear-gradient(160deg, #eef2ff 0%, #f0f9ff 50%, #faf5ff 100%); }
+    .connect-card {
+        background: rgba(255,255,255,0.85); backdrop-filter: blur(12px);
+        border: 1px solid rgba(79,70,229,0.1); border-radius: 16px;
+        padding: 24px; text-align: center; transition: all 0.3s;
+        text-decoration: none; color: var(--fo-text); display: block;
+    }
+    .connect-card:hover {
+        transform: translateY(-4px); box-shadow: 0 12px 32px rgba(79,70,229,0.12);
+        border-color: rgba(79,70,229,0.25); color: var(--fo-text);
+    }
+    .connect-avatar {
+        width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 1.2rem; color: white; flex-shrink: 0;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        border: 3px solid white; box-shadow: 0 4px 12px rgba(79,70,229,0.2);
+        overflow: hidden;
+    }
+    .connect-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .connect-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 18px; border-radius: 10px; font-size: 0.8rem;
+        font-weight: 600; border: 1.5px solid var(--primary);
+        color: var(--primary); background: transparent; cursor: pointer;
+        transition: all 0.2s; margin-top: 12px;
+    }
+    .connect-btn:hover { background: var(--primary); color: white; }
+    .connect-btn.sent { border-color: #94a3b8; color: #94a3b8; pointer-events: none; }
+
+    @media (max-width: 992px) {
+        .hero h1 { font-size: 2.5rem; }
+        .hero-stats { gap: 24px; }
+        .hero-visual { display: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# ════════ HERO ════════ #}
+<section class="hero">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 hero-content">
+                <div class="fo-badge fo-badge-primary mb-3">{{ 'home.badge'|trans }}</div>
+                <h1>
+                    {{ 'home.hero_title1'|trans }}<br>
+                    <span class="gradient-text">{{ 'home.hero_title2'|trans }}</span>
+                </h1>
+                <p>{{ 'home.hero_desc'|trans }}</p>
+
+                <form action="{{ path('app_offers') }}" method="get" class="hero-search">
+                    <input type="text" name="q" placeholder="{{ 'home.search_placeholder'|trans }}">
+                    <button type="submit"><i class="bi bi-search"></i> {{ 'home.search_btn'|trans }}</button>
+                </form>
+
+                <div class="hero-stats">
+                    <div>
+                        <div class="hero-stat-value">{{ offersCount }}+</div>
+                        <div class="hero-stat-label">{{ 'home.stat_offers'|trans }}</div>
+                    </div>
+                    <div>
+                        <div class="hero-stat-value">{{ eventsCount }}+</div>
+                        <div class="hero-stat-label">{{ 'home.stat_events'|trans }}</div>
+                    </div>
+                    <div>
+                        <div class="hero-stat-value">{{ coursesCount }}+</div>
+                        <div class="hero-stat-label">{{ 'home.stat_courses'|trans }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5 offset-lg-1 hero-visual d-none d-lg-block">
+                <div class="hero-float-card mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="offer-icon"><i class="bi bi-briefcase"></i></div>
+                        <div>
+                            <div style="font-weight:700;font-size:0.95rem">{{ featuredOffer ? featuredOffer.title : 'Senior Developer' }}</div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">
+                                {{ featuredOffer ? (featuredOffer.contractType ?: 'CDI') ~ ' · ' ~ (featuredOffer.location ?: 'Paris') : 'CDI · Paris' }}
+                            </div>
+                        </div>
+                        <span class="fo-badge fo-badge-success ms-auto">{{ 'home.new'|trans }}</span>
+                    </div>
+                </div>
+                <div class="hero-float-card mb-3" style="margin-left:40px">
+                    <div class="d-flex align-items-center gap-3">
+                        <div style="width:44px;height:44px;border-radius:10px;background:rgba(16,185,129,0.1);display:flex;align-items:center;justify-content:center;color:var(--success)">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:0.95rem">{{ featuredEvent ? featuredEvent.title : 'Tech Meetup' }}</div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">
+                                {{ featuredEvent ? featuredEvent.eventDate|date('d/m/Y') : 'home.soon'|trans }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-float-card" style="margin-left:20px">
+                    <div class="d-flex align-items-center gap-3">
+                        <div style="width:44px;height:44px;border-radius:10px;background:rgba(245,158,11,0.1);display:flex;align-items:center;justify-content:center;color:var(--warning)">
+                            <i class="bi bi-mortarboard"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:0.95rem">{{ 'home.courses_count'|trans({'%count%': coursesCount}) }}</div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">{{ 'home.develop_skills'|trans }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# ════════ FEATURES ════════ #}
+<section class="fo-section">
+    <div class="container">
+        <div class="text-center">
+            <div class="fo-badge fo-badge-accent mb-3">{{ 'home.how_it_works'|trans }}</div>
+            <h2 class="fo-section-title">{{ 'home.features_title'|trans }}</h2>
+            <p class="fo-section-subtitle mx-auto" style="max-width:600px">{{ 'home.features_subtitle'|trans }}</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="fo-card text-center h-100">
+                    <div class="feature-icon mx-auto" style="background:rgba(79,70,229,0.08);color:var(--primary)">
+                        <i class="bi bi-search-heart"></i>
+                    </div>
+                    <h5 style="font-weight:700;margin-bottom:8px">{{ 'home.feature_offers_title'|trans }}</h5>
+                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">{{ 'home.feature_offers_desc'|trans }}</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="fo-card text-center h-100">
+                    <div class="feature-icon mx-auto" style="background:rgba(16,185,129,0.08);color:var(--success)">
+                        <i class="bi bi-calendar-heart"></i>
+                    </div>
+                    <h5 style="font-weight:700;margin-bottom:8px">{{ 'home.feature_events_title'|trans }}</h5>
+                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">{{ 'home.feature_events_desc'|trans }}</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="fo-card text-center h-100">
+                    <div class="feature-icon mx-auto" style="background:rgba(245,158,11,0.08);color:var(--warning)">
+                        <i class="bi bi-lightbulb"></i>
+                    </div>
+                    <h5 style="font-weight:700;margin-bottom:8px">{{ 'home.feature_courses_title'|trans }}</h5>
+                    <p style="color:var(--fo-text-secondary);font-size:0.9rem;line-height:1.7">{{ 'home.feature_courses_desc'|trans }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# ════════ CONNECT WITH TALENT ════════ #}
+{% if app.user and suggestedUsers|length > 0 %}
+<section class="fo-section connect-section">
+    <div class="container">
+        <div class="text-center mb-4">
+            <div class="fo-badge fo-badge-primary mb-3"><i class="bi bi-people-fill me-1"></i> {{ 'home.connect_badge'|trans }}</div>
+            <h2 class="fo-section-title">{{ 'home.connect_title'|trans }}</h2>
+            <p class="fo-section-subtitle mx-auto" style="max-width:550px">{{ 'home.connect_subtitle'|trans }}</p>
+        </div>
+        <div class="row g-3 justify-content-center">
+            {% for u in suggestedUsers %}
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="connect-card">
+                        <a href="{{ path('app_user_profile', {id: u.id}) }}" style="text-decoration:none;color:inherit">
+                            <div class="connect-avatar">
+                                {% if u.profile and u.profile.profilePicturePath %}
+                                    <img src="{{ u.profile.profilePicturePath }}" alt="">
+                                {% else %}
+                                    {{ u.email|first|upper }}
+                                {% endif %}
+                            </div>
+                            <div style="font-weight:700;font-size:0.9rem;margin-bottom:2px">
+                                {% if u.profile and u.profile.firstName %}{{ u.profile.firstName }} {{ u.profile.lastName|first }}.{% else %}{{ u.email|split('@')[0] }}{% endif %}
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--fo-text-secondary);min-height:18px">
+                                {{ u.profile ? u.profile.professionalTitle : '' }}
+                            </div>
+                        </a>
+                        <button class="connect-btn" data-uid="{{ u.id }}" onclick="sendConnect(this, {{ u.id }})">
+                            <i class="bi bi-person-plus"></i> Connect
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{{ path('app_connect') }}" class="btn btn-primary-custom" style="padding:12px 28px;font-size:0.9rem">
+                {{ 'home.connect_browse_all'|trans }} <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</section>
+<script>
+function sendConnect(btn, uid) {
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Pending';
+    btn.classList.add('sent');
+    fetch('/connect/' + uid + '/request', {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    });
+}
+</script>
+{% endif %}
+
+{# ════════ RECENT OFFERS ════════ #}
+{% if recentOffers|length > 0 %}
+<section class="fo-section fo-section-alt">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="fo-section-title">{{ 'home.recent_offers'|trans }}</h2>
+                <p style="color:var(--fo-text-secondary);font-size:1rem">{{ 'home.latest_opportunities'|trans }}</p>
+            </div>
+            <a href="{{ path('app_offers') }}" class="btn btn-primary-custom" style="padding:10px 24px;font-size:0.9rem">
+                {{ 'home.view_all'|trans }} <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="row g-3">
+            {% for offer in recentOffers %}
+                <div class="col-md-6">
+                    <a href="{{ path('app_offer_detail', {id: offer.id}) }}" class="offer-preview">
+                        <div class="offer-icon"><i class="bi bi-briefcase"></i></div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:600;font-size:0.95rem">{{ offer.title }}</div>
+                            <div style="color:var(--fo-text-secondary);font-size:0.8rem">
+                                {{ offer.contractType ?: 'CDI' }} · {{ offer.location ?: 'home.not_specified'|trans }}
+                                {% if offer.salaryMin and offer.salaryMax %} · {{ offer.salaryMin|number_format(0,',',' ') }}–{{ offer.salaryMax|number_format(0,',',' ') }} DT{% endif %}
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right" style="color:var(--fo-text-secondary)"></i>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# ════════ UPCOMING EVENTS ════════ #}
+{% if upcomingEvents|length > 0 %}
+<section class="fo-section">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="fo-section-title">{{ 'home.upcoming_events'|trans }}</h2>
+                <p style="color:var(--fo-text-secondary);font-size:1rem">{{ 'home.join_community'|trans }}</p>
+            </div>
+            <a href="{{ path('app_events') }}" class="btn btn-primary-custom" style="padding:10px 24px;font-size:0.9rem">
+                {{ 'home.all_events'|trans }} <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="row g-4">
+            {% for event in upcomingEvents %}
+                <div class="col-md-4">
+                    <a href="{{ path('app_event_detail', {id: event.id}) }}" class="text-decoration-none">
+                        <div class="fo-card h-100">
+                            <div class="fo-badge fo-badge-{{ event.eventType == 'CONFERENCE' ? 'primary' : (event.eventType == 'WORKSHOP' ? 'warning' : 'accent') }} mb-3">
+                                {{ event.eventType }}
+                            </div>
+                            <h5 style="font-weight:700;color:var(--fo-text);margin-bottom:8px">{{ event.title }}</h5>
+                            <div style="color:var(--fo-text-secondary);font-size:0.85rem">
+                                <div class="mb-1"><i class="bi bi-calendar3 me-1"></i>{{ event.eventDate|date('d/m/Y à H:i') }}</div>
+                                {% if event.location %}
+                                    <div><i class="bi bi-geo-alt me-1"></i>{{ event.location }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# ════════ CTA ════════ #}
+<section style="padding:80px 0;background:linear-gradient(135deg,#4f46e5 0%,#4338ca 50%,#3730a3 100%);color:white;text-align:center">
+    <div class="container" style="max-width:700px">
+        <h2 style="font-size:2.25rem;font-weight:800;margin-bottom:12px;letter-spacing:-0.5px">{{ 'home.cta_title'|trans }}</h2>
+        <p style="font-size:1.1rem;opacity:0.85;margin-bottom:32px;line-height:1.7">{{ 'home.cta_desc'|trans }}</p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a href="{{ path('app_register') }}" class="btn" style="background:white;color:var(--primary);font-weight:700;padding:14px 32px;border-radius:12px;font-size:1rem;transition:all 0.2s">
+                {{ 'home.cta_register'|trans }} <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+            <a href="{{ path('app_offers') }}" class="btn" style="border:2px solid rgba(255,255,255,0.3);color:white;font-weight:600;padding:14px 32px;border-radius:12px;font-size:1rem;transition:all 0.2s">
+                {{ 'home.cta_explore'|trans }}
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

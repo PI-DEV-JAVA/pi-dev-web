@@ -1,0 +1,185 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}{{ project ? 'Modifier le projet' : 'Nouveau projet' }}{% endblock %}
+{% block content %}
+<style>
+    .field-valid { border-color: #10b981 !important; }
+    .field-valid:focus { box-shadow: 0 0 0 3px rgba(16,185,129,0.15) !important; }
+    .field-invalid { border-color: #ef4444 !important; }
+    .field-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.15) !important; }
+    .field-msg { font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px; min-height: 18px; }
+    .field-msg.error { color: #ef4444; }
+    .field-msg.success { color: #10b981; }
+    .req { color: #ef4444; font-weight: 700; }
+    .bo-form label { display: flex; align-items: center; gap: 4px; }
+</style>
+
+<div class="mb-3"><a href="{{ path('admin_projects') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour</a></div>
+
+{% for message in app.flashes('danger') %}
+    <div class="alert" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+    </div>
+{% endfor %}
+{% for message in app.flashes('success') %}
+    <div class="alert" style="background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+        <i class="bi bi-check-circle-fill me-2"></i>{{ message }}
+    </div>
+{% endfor %}
+
+<div class="row g-4">
+    <div class="{{ project ? 'col-lg-7' : 'col-12' }}">
+        <div class="bo-card bo-form" style="max-width:700px">
+            <h6 style="font-weight:700;margin-bottom:20px">{{ project ? 'Informations du projet' : 'Nouveau projet' }}</h6>
+            <form method="post" id="projectForm" novalidate>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label>Nom <span class="req">*</span></label>
+                        <input type="text" name="name" id="fName" class="form-control" value="{{ project ? project.name : '' }}" placeholder="Ex: Refonte du site web" required>
+                        <div class="field-msg" id="msgName"></div>
+                    </div>
+                    <div class="col-12">
+                        <label>Description</label>
+                        <textarea name="description" id="fDesc" class="form-control" rows="3" placeholder="Objectifs et périmètre du projet...">{{ project ? project.description : '' }}</textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label>Statut <span class="req">*</span></label>
+                        <select name="status" class="form-select">
+                            <option value="PLANNED" {{ project and project.status == 'PLANNED' ? 'selected' }}>Planifié</option>
+                            <option value="IN_PROGRESS" {{ project and project.status == 'IN_PROGRESS' ? 'selected' }}>En cours</option>
+                            <option value="DONE" {{ project and project.status == 'DONE' ? 'selected' }}>Terminé</option>
+                            <option value="ON_HOLD" {{ project and project.status == 'ON_HOLD' ? 'selected' }}>En attente</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label>Date début</label>
+                        <input type="date" name="startDate" id="fStart" class="form-control" value="{{ project and project.startDate ? project.startDate|date('Y-m-d') : '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label>Date fin</label>
+                        <input type="date" name="endDate" id="fEnd" class="form-control" value="{{ project and project.endDate ? project.endDate|date('Y-m-d') : '' }}">
+                        <div class="field-msg" id="msgDates"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Budget (DT)</label>
+                        <input type="number" step="0.01" name="budget" id="fBudget" class="form-control" value="{{ project ? project.budget : '' }}" min="0" placeholder="0.00">
+                        <div class="field-msg" id="msgBudget"></div>
+                    </div>
+                </div>
+                <div class="mt-4 d-flex align-items-center gap-3">
+                    <button type="submit" class="bo-btn bo-btn-primary" id="submitBtn" disabled style="opacity:0.5;transition:opacity 0.3s">
+                        <i class="bi bi-check-lg me-1"></i> {{ project ? 'Enregistrer' : 'Créer' }}
+                    </button>
+                    <span id="formStatus" style="font-size:0.8rem;color:var(--bo-text-secondary)"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if project and activities is defined %}
+    <div class="col-lg-5">
+        <div class="bo-card" style="margin-bottom:16px">
+            <h6 style="font-weight:700;margin-bottom:16px"><i class="bi bi-activity me-2" style="color:var(--accent)"></i>Activités ({{ activities|length }})</h6>
+
+            <form method="post" action="{{ path('admin_project_activity_new', {id: project.id}) }}" class="bo-form mb-3" id="actForm" novalidate>
+                <div class="mb-2">
+                    <input type="text" name="description" id="actDesc" class="form-control" placeholder="Description de l'activité..." required>
+                    <div class="field-msg" id="msgActDesc"></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><input type="date" name="activityDate" class="form-control" value="{{ 'now'|date('Y-m-d') }}"></div>
+                    <div class="col-6"><input type="number" step="0.5" name="hoursWorked" class="form-control" placeholder="Heures" min="0"></div>
+                </div>
+                <button type="submit" class="bo-btn bo-btn-primary" id="actSubmit" disabled style="width:100%;padding:8px;opacity:0.5;transition:opacity 0.3s"><i class="bi bi-plus me-1"></i>Ajouter</button>
+            </form>
+
+            {% for a in activities %}
+                <div class="d-flex align-items-start gap-3 py-2" style="border-bottom:1px solid var(--bo-border)">
+                    <div style="width:32px;height:32px;border-radius:8px;background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <i class="bi bi-activity" style="color:var(--accent);font-size:0.85rem"></i>
+                    </div>
+                    <div style="flex:1">
+                        <div style="font-weight:600;font-size:0.85rem">{{ a.description }}</div>
+                        <div style="font-size:0.75rem;color:var(--bo-text-secondary)">
+                            {{ a.activityDate ? a.activityDate|date('d/m/Y') : '' }}
+                            {% if a.hoursWorked %} · {{ a.hoursWorked }}h{% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <p style="color:var(--bo-text-secondary);font-size:0.85rem;text-align:center;padding:16px 0">Aucune activité.</p>
+            {% endfor %}
+
+            <div class="mt-2">
+                <a href="{{ path('admin_project_logs', {id: project.id}) }}" class="bo-btn bo-btn-outline" style="width:100%;padding:8px;text-align:center;font-size:0.82rem">
+                    <i class="bi bi-clock-history me-1"></i>Voir tous les logs
+                </a>
+            </div>
+        </div>
+
+
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    // Project form validation
+    var name = document.getElementById('fName'), startD = document.getElementById('fStart'),
+        endD = document.getElementById('fEnd'), budget = document.getElementById('fBudget'),
+        submitBtn = document.getElementById('submitBtn'), formStatus = document.getElementById('formStatus');
+    var msgs = {name: document.getElementById('msgName'), dates: document.getElementById('msgDates'), budget: document.getElementById('msgBudget')};
+    var state = {name: false, dates: true, budget: true};
+
+    function setField(el, ok) { el.classList.remove('field-valid','field-invalid'); if (el.value) el.classList.add(ok ? 'field-valid' : 'field-invalid'); }
+    function setMsg(el, t, type) { el.className = 'field-msg ' + type; el.innerHTML = '<i class="bi bi-' + (type==='error'?'x-circle-fill':'check-circle-fill') + '"></i> ' + t; }
+    function clearMsg(el) { el.className = 'field-msg'; el.innerHTML = ''; }
+    function checkForm() {
+        var ok = state.name && state.dates && state.budget;
+        submitBtn.disabled = !ok; submitBtn.style.opacity = ok ? '1' : '0.5';
+        formStatus.textContent = ok ? '' : 'Le nom du projet est requis';
+    }
+
+    name.addEventListener('input', function() {
+        if (!this.value.trim()) { setField(this,false); setMsg(msgs.name,'Le nom est requis','error'); state.name=false; }
+        else if (this.value.trim().length < 2) { setField(this,false); setMsg(msgs.name,'Au moins 2 caractères','error'); state.name=false; }
+        else { setField(this,true); setMsg(msgs.name,'Nom valide','success'); state.name=true; }
+        checkForm();
+    });
+
+    function validateDates() {
+        if (startD.value && endD.value && endD.value < startD.value) {
+            setField(endD,false); setMsg(msgs.dates,'La date fin doit être après la date début','error'); state.dates=false;
+        } else {
+            if (startD.value) setField(startD,true); if (endD.value) setField(endD,true);
+            clearMsg(msgs.dates); state.dates=true;
+        }
+        checkForm();
+    }
+    startD.addEventListener('input', validateDates);
+    endD.addEventListener('input', validateDates);
+
+    budget.addEventListener('input', function() {
+        if (this.value && parseFloat(this.value) < 0) {
+            setField(this,false); setMsg(msgs.budget,'Le budget ne peut pas être négatif','error'); state.budget=false;
+        } else {
+            if (this.value) setField(this,true); else this.classList.remove('field-valid','field-invalid');
+            clearMsg(msgs.budget); state.budget=true;
+        }
+        checkForm();
+    });
+
+    if (name.value) name.dispatchEvent(new Event('input'));
+    checkForm();
+
+    // Activity mini-form validation (if exists)
+    var actDesc = document.getElementById('actDesc');
+    var actSubmit = document.getElementById('actSubmit');
+    if (actDesc && actSubmit) {
+        var msgActDesc = document.getElementById('msgActDesc');
+        actDesc.addEventListener('input', function() {
+            if (!this.value.trim()) { setField(this,false); setMsg(msgActDesc,'La description est requise','error'); actSubmit.disabled=true; actSubmit.style.opacity='0.5'; }
+            else { setField(this,true); clearMsg(msgActDesc); actSubmit.disabled=false; actSubmit.style.opacity='1'; }
+        });
+    }
+})();
+</script>
+{% endblock %}

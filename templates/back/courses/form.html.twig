@@ -1,0 +1,480 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}{{ formation ? 'Gérer la formation' : 'Nouvelle formation' }}{% endblock %}
+{% block content %}
+<style>
+    .field-valid { border-color: #10b981 !important; }
+    .field-valid:focus { box-shadow: 0 0 0 3px rgba(16,185,129,0.15) !important; }
+    .field-invalid { border-color: #ef4444 !important; }
+    .field-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.15) !important; }
+    .field-msg { font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px; min-height: 18px; }
+    .field-msg.error { color: #ef4444; }
+    .field-msg.success { color: #10b981; }
+    .req { color: #ef4444; font-weight: 700; }
+
+    /* Tabs */
+    .course-tabs { display: flex; gap: 2px; background: var(--bo-bg-input); border-radius: 12px; padding: 4px; margin-bottom: 24px; }
+    .course-tab { flex: 1; padding: 12px 16px; border: none; background: transparent; color: var(--bo-text-secondary); font-weight: 600; font-size: 0.85rem; border-radius: 10px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .course-tab.active { background: var(--bo-bg-card); color: var(--primary-light); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .course-tab:hover:not(.active) { color: var(--bo-text); }
+    .course-tab .tab-count { background: rgba(79,70,229,0.2); color: var(--primary-light); padding: 1px 8px; border-radius: 10px; font-size: 0.7rem; }
+    .tab-panel { display: none; animation: fadeIn 0.3s ease; }
+    .tab-panel.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Mini cards */
+    .item-card { background: var(--bo-bg-input); border-radius: 12px; padding: 16px; margin-bottom: 10px; border: 1.5px solid var(--bo-border); transition: all 0.3s; }
+    .item-card:hover { border-color: rgba(79,70,229,0.3); transform: translateX(4px); }
+    .type-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+    .type-online { background: rgba(79,70,229,0.15); color: var(--primary-light); }
+    .type-onsite { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
+    /* Quiz accordion */
+    .quiz-card { background: var(--bo-bg-input); border-radius: 12px; border: 1.5px solid var(--bo-border); margin-bottom: 10px; overflow: hidden; transition: all 0.3s; }
+    .quiz-card:hover { border-color: rgba(79,70,229,0.3); }
+    .quiz-header { padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: between; }
+    .quiz-body { display: none; padding: 0 16px 16px; border-top: 1px solid var(--bo-border); }
+    .quiz-card.open .quiz-body { display: block; }
+    .quiz-chevron { transition: transform 0.3s; margin-left: auto; color: var(--bo-text-secondary); }
+    .quiz-card.open .quiz-chevron { transform: rotate(180deg); }
+
+    /* Question inside quiz */
+    .q-item { padding: 10px 0; border-bottom: 1px solid var(--bo-border); }
+    .q-item:last-child { border-bottom: none; }
+    .choice-correct { color: #10b981; }
+    .choice-wrong { color: var(--bo-text-secondary); }
+
+    /* Inline add forms */
+    .inline-form { background: var(--bo-bg-card); border: 1.5px dashed var(--bo-border); border-radius: 12px; padding: 20px; margin-top: 16px; transition: border-color 0.3s; }
+    .inline-form:focus-within { border-color: var(--primary-light); }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--bo-text-secondary); }
+    .empty-state i { font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 10px; }
+
+    /* Smooth section headers */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section-title { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+</style>
+
+<div class="mb-3"><a href="{{ path('admin_courses') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour aux formations</a></div>
+
+{% for message in app.flashes('danger') %}
+    <div class="alert" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}</div>
+{% endfor %}
+{% for message in app.flashes('success') %}
+    <div class="alert" style="background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+{% endfor %}
+
+{# ── Tab navigation (only in edit mode) ── #}
+{% if formation %}
+<div class="course-tabs">
+    <button class="course-tab active" onclick="showTab('info', this)">
+        <i class="bi bi-info-circle"></i> Informations
+    </button>
+    <button class="course-tab" onclick="showTab('seances', this)">
+        <i class="bi bi-calendar3"></i> Séances <span class="tab-count">{{ seances|length }}</span>
+    </button>
+    <button class="course-tab" onclick="showTab('quizzes', this)">
+        <i class="bi bi-patch-question"></i> Quiz <span class="tab-count">{{ quizzes|length }}</span>
+    </button>
+</div>
+{% endif %}
+
+{# ════════════ TAB 1: Course Info ════════════ #}
+<div id="tab-info" class="tab-panel active">
+<div class="bo-card bo-form" style="max-width:700px">
+    <div class="section-header">
+        <div class="section-title"><i class="bi bi-book" style="color:var(--accent)"></i> {{ formation ? 'Informations de la formation' : 'Nouvelle formation' }}</div>
+    </div>
+    <form method="post" id="courseForm" novalidate>
+        <div class="row g-3">
+            <div class="col-12">
+                <label>Titre <span class="req">*</span></label>
+                <input type="text" name="titre" id="fTitre" class="form-control" value="{{ formation ? formation.titre : '' }}" placeholder="Ex: Formation Python Avancé">
+                <div class="field-msg" id="msgTitre"></div>
+            </div>
+            <div class="col-12">
+                <label>Description <span class="req">*</span></label>
+                <textarea name="description" id="fDesc" class="form-control" rows="3" placeholder="Objectifs et contenu de la formation...">{{ formation ? formation.description : '' }}</textarea>
+                <div class="field-msg" id="msgDesc"></div>
+            </div>
+            <div class="col-md-4">
+                <label>Durée (heures) <span class="req">*</span></label>
+                <input type="number" name="duree" id="fDuree" class="form-control" value="{{ formation ? formation.duree : 1 }}" min="1">
+                <div class="field-msg" id="msgDuree"></div>
+            </div>
+            <div class="col-md-4">
+                <label>Niveau</label>
+                <select name="niveau" class="form-select">
+                    <option value="Débutant" {{ formation and formation.niveau == 'Débutant' ? 'selected' }}>Débutant</option>
+                    <option value="Intermédiaire" {{ formation and formation.niveau == 'Intermédiaire' ? 'selected' }}>Intermédiaire</option>
+                    <option value="Avancé" {{ formation and formation.niveau == 'Avancé' ? 'selected' }}>Avancé</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label>Date de début</label>
+                <input type="date" name="dateDebut" class="form-control" value="{{ formation and formation.dateDebut ? formation.dateDebut|date('Y-m-d') : '' }}">
+            </div>
+        </div>
+        <div class="mt-4 d-flex align-items-center gap-3">
+            <button type="submit" class="bo-btn bo-btn-primary" id="submitBtn" disabled style="opacity:0.5;transition:opacity 0.3s">
+                <i class="bi bi-check-lg me-1"></i> {{ formation ? 'Enregistrer' : 'Créer la formation' }}
+            </button>
+            {% if not formation %}
+            <span style="font-size:0.8rem;color:var(--bo-text-secondary)"><i class="bi bi-info-circle me-1"></i>Après création, vous pourrez ajouter des séances et quiz</span>
+            {% endif %}
+        </div>
+    </form>
+</div>
+</div>
+
+{% if formation %}
+{# ════════════ TAB 2: Sessions ════════════ #}
+<div id="tab-seances" class="tab-panel">
+    <div class="row g-4">
+        {# Sessions list #}
+        <div class="col-lg-7 order-lg-2">
+            <div class="section-header">
+                <div class="section-title"><i class="bi bi-calendar3" style="color:var(--primary-light)"></i> Séances ({{ seances|length }})</div>
+            </div>
+            {% for s in seances %}
+                <div class="item-card">
+                    <div class="d-flex align-items-start justify-content-between">
+                        <div style="flex:1">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span style="font-weight:700;font-size:0.95rem">{{ s.titre }}</span>
+                                <span class="type-badge {{ s.type == 'EN_LIGNE' ? 'type-online' : 'type-onsite' }}">
+                                    {{ s.type == 'EN_LIGNE' ? '🖥 En ligne' : '📍 Présentiel' }}
+                                </span>
+                            </div>
+                            <div style="font-size:0.8rem;color:var(--bo-text-secondary);display:flex;flex-wrap:wrap;gap:12px;margin-top:6px">
+                                <span><i class="bi bi-calendar-event me-1"></i>{{ s.dateDebut|date('d/m/Y') }}</span>
+                                <span><i class="bi bi-clock me-1"></i>{{ s.dateDebut|date('H:i') }} → {{ s.dateFin|date('H:i') }}</span>
+                                {% if s.dureeMinutes %}<span><i class="bi bi-hourglass me-1"></i>{{ s.dureeMinutes }}min</span>{% endif %}
+                                {% if s.adresse %}<span><i class="bi bi-geo-alt me-1"></i>{{ s.adresse }}</span>{% endif %}
+                                {% if s.videoPath %}<span><i class="bi bi-play-btn me-1"></i><a href="{{ s.videoPath }}" target="_blank" style="color:var(--primary-light);text-decoration:none">Vidéo</a></span>{% endif %}
+                            </div>
+                        </div>
+                        <a href="{{ path('admin_course_seance_delete', {id: formation.id, sid: s.id}) }}" class="bo-action-btn danger" title="Supprimer" onclick="return confirm('Supprimer cette séance ?')" style="flex-shrink:0;margin-left:12px"><i class="bi bi-trash"></i></a>
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state"><i class="bi bi-calendar-x"></i> Aucune séance — ajoutez-en une ci-dessous</div>
+            {% endfor %}
+        </div>
+
+        {# Add session form #}
+        <div class="col-lg-5 order-lg-1">
+            <div class="inline-form bo-form">
+                <div class="section-title" style="margin-bottom:16px"><i class="bi bi-plus-circle" style="color:var(--accent)"></i> Nouvelle séance</div>
+                <form method="post" action="{{ path('admin_course_seance_new', {id: formation.id}) }}" id="seanceForm" novalidate>
+                    <div class="mb-3">
+                        <label>Titre <span class="req">*</span></label>
+                        <input type="text" name="titre" id="sTitre" class="form-control" placeholder="Ex: Introduction aux bases">
+                        <div class="field-msg" id="msgSTitre"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label>Type</label>
+                        <select name="type" class="form-select" id="sType">
+                            <option value="PRESENTIEL">📍 Présentiel</option>
+                            <option value="EN_LIGNE">🖥 En ligne</option>
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label>Début <span class="req">*</span></label>
+                            <input type="datetime-local" name="dateDebut" id="sDebut" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label>Fin <span class="req">*</span></label>
+                            <input type="datetime-local" name="dateFin" id="sFin" class="form-control">
+                            <div class="field-msg" id="msgSDates"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label>Adresse / Lien</label>
+                        <input type="text" name="adresse" class="form-control" placeholder="Adresse ou lien visio">
+                    </div>
+                    <div class="mb-3" id="videoUrlGroup" style="display:none">
+                        <label><i class="bi bi-play-btn me-1"></i>URL Vidéo (YouTube, etc.)</label>
+                        <input type="url" name="videoPath" id="sVideoPath" class="form-control" placeholder="https://youtu.be/kJQP7kiw5Fk">
+                        <div id="videoPreview" style="margin-top:8px;display:none">
+                            <iframe id="videoFrame" width="100%" height="180" style="border-radius:8px;border:none" allowfullscreen></iframe>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label>Durée (minutes)</label>
+                        <input type="number" name="dureeMinutes" class="form-control" min="1" placeholder="60">
+                    </div>
+                    <button type="submit" class="bo-btn bo-btn-primary w-100" id="seanceSubmit" disabled style="opacity:0.5;transition:opacity 0.3s"><i class="bi bi-plus me-1"></i>Ajouter la séance</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ════════════ TAB 3: Quizzes ════════════ #}
+<div id="tab-quizzes" class="tab-panel">
+    <div class="row g-4">
+        {# Quiz list with inline question management #}
+        <div class="col-lg-7 order-lg-2">
+            <div class="section-header">
+                <div class="section-title"><i class="bi bi-patch-question" style="color:var(--primary-light)"></i> Quiz ({{ quizzes|length }})</div>
+            </div>
+            {% for q in quizzes %}
+                <div class="quiz-card" id="quiz-{{ q.id }}">
+                    <div class="quiz-header" onclick="toggleQuiz(this)">
+                        <div style="flex:1;display:flex;align-items:center;gap:10px">
+                            <div style="width:36px;height:36px;border-radius:10px;background:rgba(79,70,229,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                <i class="bi bi-patch-question-fill" style="color:var(--primary-light)"></i>
+                            </div>
+                            <div>
+                                <span style="font-weight:700;font-size:0.9rem">{{ q.titre }}</span>
+                                {% if q.duree %}<span style="font-size:0.75rem;color:var(--bo-text-secondary);margin-left:6px">{{ q.duree }}min</span>{% endif %}
+                            </div>
+                            <span class="tab-count">{{ q.questions|length }} question(s)</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{{ path('admin_course_quiz_delete', {id: formation.id, qid: q.id}) }}" class="bo-action-btn danger" title="Supprimer" onclick="event.stopPropagation();return confirm('Supprimer ce quiz ?')" style="width:28px;height:28px"><i class="bi bi-trash" style="font-size:0.8rem"></i></a>
+                            <i class="bi bi-chevron-down quiz-chevron"></i>
+                        </div>
+                    </div>
+                    <div class="quiz-body">
+                        {# Questions list #}
+                        {% for question in q.questions %}
+                            <div class="q-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <span style="font-weight:600;font-size:0.85rem"><span style="color:var(--primary-light)">Q{{ loop.index }}.</span> {{ question.enonce }}</span>
+                                    <a href="{{ path('admin_course_question_delete', {id: formation.id, qid: q.id, questionId: question.id}) }}" class="bo-action-btn danger" onclick="return confirm('Supprimer ?')" style="width:24px;height:24px;flex-shrink:0"><i class="bi bi-x" style="font-size:0.8rem"></i></a>
+                                </div>
+                                <div style="margin-top:6px;padding-left:16px">
+                                    {% for choix in question.choix %}
+                                        <div style="font-size:0.8rem;padding:2px 0" class="{{ choix.isCorrect ? 'choice-correct' : 'choice-wrong' }}">
+                                            <i class="bi {{ choix.isCorrect ? 'bi-check-circle-fill' : 'bi-circle' }}" style="font-size:0.7rem;margin-right:4px"></i>{{ choix.texte }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+
+                        {# Inline add question form #}
+                        <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--bo-border)">
+                            <form method="post" action="{{ path('admin_course_question_new', {id: formation.id, qid: q.id}) }}" class="question-form" novalidate>
+                                <div style="font-weight:600;font-size:0.8rem;color:var(--accent);margin-bottom:8px"><i class="bi bi-plus-circle me-1"></i>Ajouter une question</div>
+                                <div class="mb-2">
+                                    <input type="text" name="enonce" class="form-control q-enonce" placeholder="Tapez l'énoncé de la question..." style="font-size:0.85rem">
+                                </div>
+                                <div class="q-choices" data-count="2">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <input type="text" name="choix[]" class="form-control choix-input" placeholder="Choix 1 (correct)" style="flex:1;font-size:0.85rem">
+                                        <label style="display:flex;align-items:center;gap:3px;font-size:0.75rem;cursor:pointer;white-space:nowrap"><input type="radio" name="correct" value="0" checked> <span style="color:#10b981">✓</span></label>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <input type="text" name="choix[]" class="form-control choix-input" placeholder="Choix 2" style="flex:1;font-size:0.85rem">
+                                        <label style="display:flex;align-items:center;gap:3px;font-size:0.75rem;cursor:pointer;white-space:nowrap"><input type="radio" name="correct" value="1"> <span style="color:#10b981">✓</span></label>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 mt-2">
+                                    <button type="button" onclick="addInlineChoice(this)" class="btn" style="font-size:0.75rem;padding:3px 10px;border:1px dashed var(--bo-border);color:var(--bo-text-secondary);border-radius:6px"><i class="bi bi-plus"></i> Choix</button>
+                                    <button type="submit" class="bo-btn bo-btn-primary q-submit" disabled style="opacity:0.5;font-size:0.8rem;padding:6px 14px;margin-left:auto"><i class="bi bi-plus me-1"></i>Ajouter</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state"><i class="bi bi-question-diamond"></i> Aucun quiz — créez-en un ci-dessous</div>
+            {% endfor %}
+        </div>
+
+        {# Add quiz form #}
+        <div class="col-lg-5 order-lg-1">
+            <div class="inline-form bo-form">
+                <div class="section-title" style="margin-bottom:16px"><i class="bi bi-plus-circle" style="color:var(--accent)"></i> Nouveau quiz</div>
+                <form method="post" action="{{ path('admin_course_quiz_new', {id: formation.id}) }}" id="quizForm" novalidate>
+                    <div class="mb-3">
+                        <label>Titre <span class="req">*</span></label>
+                        <input type="text" name="titre" id="qTitre" class="form-control" placeholder="Ex: Quiz chapitre 1">
+                        <div class="field-msg" id="msgQTitre"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label>Durée (minutes)</label>
+                        <input type="number" name="duree" class="form-control" min="1" placeholder="15">
+                    </div>
+                    <button type="submit" class="bo-btn bo-btn-primary w-100" id="quizSubmit" disabled style="opacity:0.5;transition:opacity 0.3s"><i class="bi bi-plus me-1"></i>Créer le quiz</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// ═══ Tab switching ═══
+function showTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.course-tab').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+}
+
+// Auto-open correct tab from URL hash
+{% if formation %}
+(function() {
+    var hash = window.location.hash;
+    if (hash === '#seances' || hash === '#quizzes') {
+        var tabName = hash.substring(1);
+        var tabs = document.querySelectorAll('.course-tab');
+        tabs.forEach(function(t) {
+            t.classList.remove('active');
+            if (t.textContent.toLowerCase().includes(tabName === 'seances' ? 'séance' : 'quiz')) { t.classList.add('active'); }
+        });
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        document.getElementById('tab-' + tabName).classList.add('active');
+    }
+})();
+{% endif %}
+
+// ═══ Quiz accordion ═══
+function toggleQuiz(header) { header.closest('.quiz-card').classList.toggle('open'); }
+
+// ═══ Inline add choice ═══
+function addInlineChoice(btn) {
+    var container = btn.closest('form').querySelector('.q-choices');
+    var count = parseInt(container.getAttribute('data-count'));
+    var div = document.createElement('div');
+    div.className = 'd-flex align-items-center gap-2 mb-1';
+    div.innerHTML = '<input type="text" name="choix[]" class="form-control choix-input" placeholder="Choix '+(count+1)+'" style="flex:1;font-size:0.85rem">' +
+        '<label style="display:flex;align-items:center;gap:3px;font-size:0.75rem;cursor:pointer;white-space:nowrap"><input type="radio" name="correct" value="'+count+'"> <span style="color:#10b981">✓</span></label>' +
+        '<button type="button" onclick="this.parentElement.remove();validateInlineQ(this);" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.9rem"><i class="bi bi-x"></i></button>';
+    container.appendChild(div);
+    container.setAttribute('data-count', count + 1);
+    div.querySelector('input[type=text]').addEventListener('input', function() { validateInlineQ(this); });
+}
+
+// ═══ Inline question validation ═══
+function validateInlineQ(el) {
+    var form = el.closest('.question-form') || el.closest('form');
+    var enonce = form.querySelector('.q-enonce');
+    var choices = form.querySelectorAll('.choix-input');
+    var submit = form.querySelector('.q-submit');
+    var eOk = enonce.value.trim().length >= 5;
+    var allFilled = true;
+    choices.forEach(function(c) { if (!c.value.trim()) allFilled = false; });
+    var ok = eOk && allFilled && choices.length >= 2;
+    submit.disabled = !ok; submit.style.opacity = ok ? '1' : '0.5';
+}
+document.querySelectorAll('.q-enonce').forEach(function(e) { e.addEventListener('input', function() { validateInlineQ(this); }); });
+document.querySelectorAll('.choix-input').forEach(function(c) { c.addEventListener('input', function() { validateInlineQ(this); }); });
+
+// ═══ Course form validation ═══
+(function() {
+    var titre = document.getElementById('fTitre'), desc = document.getElementById('fDesc'), duree = document.getElementById('fDuree');
+    var submitBtn = document.getElementById('submitBtn');
+    var msgs = {titre: document.getElementById('msgTitre'), desc: document.getElementById('msgDesc'), duree: document.getElementById('msgDuree')};
+    var state = {titre: false, desc: false, duree: true};
+
+    function setField(el, ok) { el.classList.remove('field-valid','field-invalid'); if (el.value) el.classList.add(ok ? 'field-valid' : 'field-invalid'); }
+    function setMsg(el, t, type) { el.className = 'field-msg ' + type; el.innerHTML = '<i class="bi bi-' + (type==='error'?'x-circle-fill':'check-circle-fill') + '"></i> ' + t; }
+    function clearMsg(el) { el.className = 'field-msg'; el.innerHTML = ''; }
+    function checkForm() {
+        var ok = state.titre && state.desc && state.duree;
+        submitBtn.disabled = !ok; submitBtn.style.opacity = ok ? '1' : '0.5';
+    }
+
+    titre.addEventListener('input', function() {
+        if (!this.value.trim()) { setField(this,false); setMsg(msgs.titre,'Le titre est requis','error'); state.titre=false; }
+        else if (this.value.trim().length < 3) { setField(this,false); setMsg(msgs.titre,'Au moins 3 caractères','error'); state.titre=false; }
+        else { setField(this,true); setMsg(msgs.titre,'Titre valide','success'); state.titre=true; }
+        checkForm();
+    });
+    desc.addEventListener('input', function() {
+        if (!this.value.trim()) { setField(this,false); setMsg(msgs.desc,'La description est requise','error'); state.desc=false; }
+        else if (this.value.trim().length < 10) { setField(this,false); setMsg(msgs.desc,'Au moins 10 caractères ('+this.value.trim().length+'/10)','error'); state.desc=false; }
+        else { setField(this,true); setMsg(msgs.desc,'Description valide','success'); state.desc=true; }
+        checkForm();
+    });
+    duree.addEventListener('input', function() {
+        var v = parseInt(this.value);
+        if (isNaN(v) || v < 1) { setField(this,false); setMsg(msgs.duree,'Au moins 1 heure','error'); state.duree=false; }
+        else { setField(this,true); clearMsg(msgs.duree); state.duree=true; }
+        checkForm();
+    });
+
+    if (titre.value) titre.dispatchEvent(new Event('input'));
+    if (desc.value) desc.dispatchEvent(new Event('input'));
+    duree.dispatchEvent(new Event('input'));
+})();
+
+// ═══ Séance form validation ═══
+(function() {
+    var st = document.getElementById('sTitre'), sd = document.getElementById('sDebut'), sf = document.getElementById('sFin');
+    var sub = document.getElementById('seanceSubmit');
+    if (!st) return;
+    var msgs = {titre: document.getElementById('msgSTitre'), dates: document.getElementById('msgSDates')};
+    var state = {titre: false, dates: false};
+
+    function setField(el, ok) { el.classList.remove('field-valid','field-invalid'); if (el.value) el.classList.add(ok ? 'field-valid' : 'field-invalid'); }
+    function setMsg(el, t, type) { el.className = 'field-msg ' + type; el.innerHTML = '<i class="bi bi-' + (type==='error'?'x-circle-fill':'check-circle-fill') + '"></i> ' + t; }
+    function clearMsg(el) { el.className = 'field-msg'; el.innerHTML = ''; }
+    function check() { var ok = state.titre && state.dates; sub.disabled = !ok; sub.style.opacity = ok ? '1' : '0.5'; }
+
+    st.addEventListener('input', function() {
+        if (!this.value.trim()) { setField(this,false); setMsg(msgs.titre,'Le titre est requis','error'); state.titre=false; }
+        else { setField(this,true); clearMsg(msgs.titre); state.titre=true; }
+        check();
+    });
+    function validateDates() {
+        if (!sd.value || !sf.value) { state.dates=false; clearMsg(msgs.dates); check(); return; }
+        if (sf.value <= sd.value) { setField(sf,false); setMsg(msgs.dates,'La fin doit être après le début','error'); state.dates=false; }
+        else { setField(sd,true); setField(sf,true); clearMsg(msgs.dates); state.dates=true; }
+        check();
+    }
+    sd.addEventListener('input', validateDates);
+    sf.addEventListener('input', validateDates);
+})();
+
+// ═══ Quiz form validation ═══
+(function() {
+    var qt = document.getElementById('qTitre'), sub = document.getElementById('quizSubmit');
+    if (!qt) return;
+    qt.addEventListener('input', function() {
+        if (!this.value.trim()) { this.classList.remove('field-valid'); this.classList.add('field-invalid'); sub.disabled=true; sub.style.opacity='0.5'; }
+        else { this.classList.remove('field-invalid'); this.classList.add('field-valid'); sub.disabled=false; sub.style.opacity='1'; }
+    });
+})();
+
+// ═══ Video URL toggle + YouTube preview ═══
+(function() {
+    var sType = document.getElementById('sType');
+    var videoGroup = document.getElementById('videoUrlGroup');
+    var videoInput = document.getElementById('sVideoPath');
+    var videoPreview = document.getElementById('videoPreview');
+    var videoFrame = document.getElementById('videoFrame');
+    if (!sType || !videoGroup) return;
+
+    function toggleVideo() {
+        videoGroup.style.display = sType.value === 'EN_LIGNE' ? 'block' : 'none';
+    }
+    sType.addEventListener('change', toggleVideo);
+    toggleVideo();
+
+    function getYouTubeId(url) {
+        var m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+        return m ? m[1] : null;
+    }
+
+    if (videoInput) {
+        videoInput.addEventListener('input', function() {
+            var id = getYouTubeId(this.value);
+            if (id) {
+                videoFrame.src = 'https://www.youtube.com/embed/' + id;
+                videoPreview.style.display = 'block';
+            } else {
+                videoPreview.style.display = 'none';
+                videoFrame.src = '';
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}Ticket #{{ ticket.id }} — Talentos{% endblock %}
+{% block content %}
+<div class="fo-page-header">
+    <div class="container">
+        <a href="{{ path('app_support') }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500"><i class="bi bi-arrow-left me-1"></i> Retour</a>
+        <h1 class="mt-2">{{ ticket.subject }}</h1>
+        <span class="fo-badge fo-badge-{{ ticket.status == 'OPEN' ? 'warning' : 'success' }}">{{ ticket.status }}</span>
+    </div>
+</div>
+<section class="fo-section" style="padding-top:40px">
+    <div class="container" style="max-width:750px">
+        <div class="fo-card mb-3">
+            <div style="color:var(--fo-text-secondary);font-size:0.8rem;margin-bottom:8px">{{ ticket.createdAt ? ticket.createdAt|date('d/m/Y H:i') : '' }}</div>
+            <div style="line-height:1.7">{{ ticket.description }}</div>
+        </div>
+        {% for reply in replies %}
+            <div class="fo-card mb-2" style="border-left:4px solid {{ reply.user == app.user ? 'var(--primary)' : 'var(--success)' }}">
+                <div class="d-flex justify-content-between mb-1">
+                    <strong style="font-size:0.85rem">{{ reply.user ? reply.user.email : 'Support' }}</strong>
+                    <small style="color:var(--fo-text-secondary)">{{ reply.createdAt ? reply.createdAt|date('d/m/Y H:i') : '' }}</small>
+                </div>
+                <p style="margin:0;font-size:0.9rem">{{ reply.message }}</p>
+            </div>
+        {% endfor %}
+        {% if ticket.status == 'OPEN' %}
+            <div class="fo-card mt-3">
+                <form method="post" action="{{ path('app_support_reply', {id: ticket.id}) }}" class="fo-form">
+                    <div class="d-flex gap-2">
+                        <input type="text" name="content" class="form-control" placeholder="Votre réponse..." required>
+                        <button type="submit" class="btn btn-primary-custom" style="white-space:nowrap"><i class="bi bi-send"></i></button>
+                    </div>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

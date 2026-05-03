@@ -1,0 +1,43 @@
+{% extends 'front/_base.html.twig' %}
+
+{% block title %}Résultat — {{ quiz.titre }}{% endblock %}
+
+{% block content %}
+<section class="fo-section">
+    <div class="container" style="max-width:700px">
+        <div class="fo-card text-center" style="margin-bottom:24px;padding:40px">
+            <div style="width:80px;height:80px;border-radius:50%;background:{{ score >= 50 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' }};display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+                <i class="bi bi-{{ score >= 50 ? 'trophy' : 'emoji-frown' }}" style="font-size:2rem;color:{{ score >= 50 ? 'var(--success)' : 'var(--danger)' }}"></i>
+            </div>
+            <h2 style="font-weight:800;margin-bottom:4px">{{ score }}%</h2>
+            <p style="color:var(--fo-text-secondary)">{{ correct }}/{{ total }} réponses correctes</p>
+            <p style="font-weight:600;color:{{ score >= 50 ? 'var(--success)' : 'var(--danger)' }}">
+                {{ score >= 80 ? 'Excellent !' : (score >= 50 ? 'Bien joué !' : 'À retravailler') }}
+            </p>
+        </div>
+
+        {% for r in results %}
+            <div class="fo-card mb-3" style="border-left:4px solid {{ r.isCorrect ? 'var(--success)' : 'var(--danger)' }}">
+                <h6 style="font-weight:700;margin-bottom:8px">{{ r.question.texte }}</h6>
+                <div style="font-size:0.9rem">
+                    <div style="color:{{ r.isCorrect ? 'var(--success)' : 'var(--danger)' }}">
+                        <i class="bi bi-{{ r.isCorrect ? 'check-circle' : 'x-circle' }} me-1"></i>
+                        Votre réponse : {{ r.userAnswer ? r.userAnswer.texte : 'Non répondu' }}
+                    </div>
+                    {% if not r.isCorrect and r.correctAnswer %}
+                        <div style="color:var(--success);margin-top:4px">
+                            <i class="bi bi-check-circle me-1"></i>Bonne réponse : {{ r.correctAnswer.texte }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+
+        <div class="text-center mt-4">
+            <a href="{{ path('app_course_detail', {id: quiz.formation.id}) }}" class="btn btn-primary-custom" style="width:auto;padding:12px 32px">
+                <i class="bi bi-arrow-left me-2"></i>Retour à la formation
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

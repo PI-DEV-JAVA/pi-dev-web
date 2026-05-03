@@ -1,0 +1,70 @@
+{% extends 'base.html.twig' %}
+{% from 'components/_sidebar.html.twig' import sidebar %}
+
+{% block title %}Support — Talentos{% endblock %}
+
+{% block body %}
+{{ sidebar(app.user) }}
+
+<main class="app-main">
+    <div class="page-header d-flex align-items-center justify-content-between">
+        <div>
+            <h2>Support 🎧</h2>
+            <p>{{ app.user.role == 'ADMIN' ? 'Gérez les tickets de support' : 'Besoin d\'aide ? Créez un ticket' }}</p>
+        </div>
+    </div>
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+    {% endfor %}
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="stat-card">
+                <h5 style="font-weight:600;margin-bottom:16px">Tickets</h5>
+                {% if tickets is empty %}
+                    <p style="color:var(--text-secondary)">Aucun ticket.</p>
+                {% else %}
+                    {% for t in tickets %}
+                        <a href="{{ path('app_support_detail', {id: t.id}) }}" class="text-decoration-none d-block mb-2">
+                            <div class="d-flex align-items-center gap-3 p-3" style="background:var(--bg-input);border-radius:10px;transition:all 0.2s">
+                                <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;
+                                            background:{{ t.status == 'OPEN' ? 'var(--warning)' : (t.status == 'RESOLVED' ? 'var(--success)' : 'var(--text-secondary)') }}"></div>
+                                <div style="flex:1;min-width:0">
+                                    <div style="font-weight:600;color:var(--text-primary);font-size:0.9rem">{{ t.subject }}</div>
+                                    <div style="color:var(--text-secondary);font-size:0.8rem">
+                                        {{ t.createdAt|date('d/m/Y') }} · {{ t.status }}
+                                        {% if app.user.role == 'ADMIN' %} · {{ t.user.email }}{% endif %}
+                                    </div>
+                                </div>
+                                <i class="bi bi-chevron-right" style="color:var(--text-secondary)"></i>
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        {% if app.user.role != 'ADMIN' %}
+        <div class="col-md-4">
+            <div class="stat-card">
+                <h5 style="font-weight:600;margin-bottom:16px">Nouveau ticket</h5>
+                <form method="post" action="{{ path('app_support_new') }}">
+                    <div class="mb-3">
+                        <input type="text" name="subject" class="form-control" placeholder="Sujet" required
+                               style="background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px">
+                    </div>
+                    <div class="mb-3">
+                        <textarea name="message" class="form-control" rows="4" placeholder="Décrivez votre problème..." required
+                                  style="background:var(--bg-input);border-color:var(--border);color:var(--text-primary);border-radius:10px"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary-custom" style="padding:10px">
+                        <i class="bi bi-send me-2"></i>Envoyer
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

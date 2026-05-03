@@ -1,0 +1,188 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Utilisateurs{% endblock %}
+{% block content %}
+{# Header + filter bar #}
+<div class="d-flex align-items-center justify-content-between" style="margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <h5 style="font-weight:700;margin:0">Utilisateurs (<span id="userCount">{{ users|length }}</span>)</h5>
+    <div style="position:relative;width:320px">
+        <i class="bi bi-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--bo-text-secondary);font-size:0.85rem"></i>
+        <input type="text" id="searchInput" placeholder="Rechercher par email, rôle, statut..." 
+               style="width:100%;padding:10px 14px 10px 38px;border-radius:10px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.85rem;transition:border-color 0.2s"
+               onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--bo-border)'">
+    </div>
+</div>
+
+<div class="bo-card" style="overflow-x:auto">
+    <table class="bo-table" id="usersTable">
+        <thead>
+            <tr>
+                <th style="cursor:pointer;user-select:none" onclick="sortTable(0)">
+                    <span class="d-flex align-items-center gap-1">Email <i class="bi bi-arrow-up sort-icon" id="sort-0" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
+                </th>
+                <th style="cursor:pointer;user-select:none" onclick="sortTable(1)">
+                    <span class="d-flex align-items-center gap-1">Rôle <i class="bi bi-arrow-up sort-icon" id="sort-1" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
+                </th>
+                <th style="cursor:pointer;user-select:none" onclick="sortTable(2)">
+                    <span class="d-flex align-items-center gap-1">Statut <i class="bi bi-arrow-up sort-icon" id="sort-2" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
+                </th>
+                <th style="cursor:pointer;user-select:none" onclick="sortTable(3)">
+                    <span class="d-flex align-items-center gap-1">Inscription <i class="bi bi-arrow-up sort-icon" id="sort-3" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
+                </th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="usersBody">
+            {% for u in users %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.75rem;color:white;flex-shrink:0">
+                                {{ u.email|first|upper }}
+                            </div>
+                            <span style="font-weight:600">{{ u.email }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <form method="post" action="{{ path('admin_user_role', {id: u.id}) }}" style="display:inline">
+                            <select name="role" class="form-select form-select-sm" style="background:var(--bo-bg-input);border-color:var(--bo-border);color:var(--bo-text);width:130px;border-radius:8px" onchange="this.form.submit()">
+                                <option value="CANDIDATE" {{ u.role == 'CANDIDATE' ? 'selected' }}>Candidat</option>
+                                <option value="HR" {{ u.role == 'HR' ? 'selected' }}>Recruteur</option>
+                                <option value="ADMIN" {{ u.role == 'ADMIN' ? 'selected' }}>Admin</option>
+                            </select>
+                        </form>
+                    </td>
+                    <td>
+                        <span class="bo-badge bo-badge-{{ u.active ? 'success' : 'danger' }}">{{ u.active ? 'Actif' : 'Bloqué' }}</span>
+                    </td>
+                    <td style="color:var(--bo-text-secondary);font-size:0.85rem">{{ u.createdAt ? u.createdAt|date('d/m/Y') : '—' }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="{{ path('admin_user_toggle', {id: u.id}) }}" class="bo-action-btn {{ u.active ? 'danger' : '' }}" title="{{ u.active ? 'Bloquer' : 'Activer' }}">
+                                <i class="bi bi-{{ u.active ? 'lock' : 'unlock' }}"></i>
+                            </a>
+                            <button type="button" class="bo-action-btn danger" title="Supprimer" onclick="confirmDelete({{ u.id }}, '{{ u.email|e('js') }}')" style="border:none;cursor:pointer">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div id="noResults" style="display:none;text-align:center;padding:40px 20px;color:var(--bo-text-secondary)">
+        <i class="bi bi-search" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:8px"></i>
+        Aucun utilisateur trouvé
+    </div>
+</div>
+
+{# Delete confirmation modal #}
+<div id="deleteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div style="background:var(--bo-bg-card);border-radius:16px;padding:32px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);border:1px solid var(--bo-border)">
+        <div style="width:56px;height:56px;border-radius:14px;background:rgba(239,68,68,0.1);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size:1.5rem;color:#ef4444"></i>
+        </div>
+        <h5 style="font-weight:700;margin-bottom:8px">Supprimer l'utilisateur ?</h5>
+        <p style="color:var(--bo-text-secondary);font-size:0.9rem;margin-bottom:24px">
+            Cette action est <strong style="color:#ef4444">irréversible</strong>. L'utilisateur<br>
+            <strong id="deleteUserEmail" style="color:var(--bo-text)"></strong><br>
+            et toutes ses données seront supprimés.
+        </p>
+        <div class="d-flex gap-2 justify-content-center">
+            <button onclick="closeDeleteModal()" class="btn" style="padding:10px 24px;border-radius:10px;font-weight:600;font-size:0.85rem;border:1.5px solid var(--bo-border);color:var(--bo-text);background:transparent">
+                Annuler
+            </button>
+            <form id="deleteForm" method="post" style="display:inline">
+                <button type="submit" class="btn" style="padding:10px 24px;border-radius:10px;font-weight:600;font-size:0.85rem;background:#ef4444;color:white;border:none">
+                    <i class="bi bi-trash3 me-1"></i> Supprimer
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(id, email) {
+    document.getElementById('deleteUserEmail').textContent = email;
+    document.getElementById('deleteForm').action = '/admin/users/' + id + '/delete';
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+}
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+});
+
+// ═══ Dynamic Search ═══
+const searchInput = document.getElementById('searchInput');
+const tbody = document.getElementById('usersBody');
+const userCount = document.getElementById('userCount');
+const noResults = document.getElementById('noResults');
+
+searchInput.addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    const rows = tbody.querySelectorAll('tr');
+    let visible = 0;
+
+    rows.forEach(function(row) {
+        const text = row.textContent.toLowerCase();
+        const match = q === '' || text.includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+
+    userCount.textContent = visible;
+    noResults.style.display = visible === 0 ? 'block' : 'none';
+});
+
+// ═══ Column Sorting ═══
+let currentSort = { col: -1, asc: true };
+
+function sortTable(colIndex) {
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    // Toggle direction if same column, else default asc
+    if (currentSort.col === colIndex) {
+        currentSort.asc = !currentSort.asc;
+    } else {
+        currentSort.col = colIndex;
+        currentSort.asc = true;
+    }
+
+    // Update all sort icons
+    document.querySelectorAll('.sort-icon').forEach(function(icon) {
+        icon.className = 'bi bi-arrow-up sort-icon';
+        icon.style.opacity = '0.4';
+    });
+
+    const activeIcon = document.getElementById('sort-' + colIndex);
+    activeIcon.className = currentSort.asc ? 'bi bi-arrow-up sort-icon' : 'bi bi-arrow-down sort-icon';
+    activeIcon.style.opacity = '1';
+
+    // Sort rows
+    rows.sort(function(a, b) {
+        let aText = a.cells[colIndex].textContent.trim().toLowerCase();
+        let bText = b.cells[colIndex].textContent.trim().toLowerCase();
+
+        // Date sorting for column 3 (dd/mm/yyyy)
+        if (colIndex === 3) {
+            const parseDate = function(d) {
+                const p = d.split('/');
+                return p.length === 3 ? new Date(p[2], p[1]-1, p[0]).getTime() : 0;
+            };
+            aText = parseDate(aText);
+            bText = parseDate(bText);
+            return currentSort.asc ? aText - bText : bText - aText;
+        }
+
+        // Default alphabetical
+        if (aText < bText) return currentSort.asc ? -1 : 1;
+        if (aText > bText) return currentSort.asc ? 1 : -1;
+        return 0;
+    });
+
+    // Re-append sorted rows
+    rows.forEach(function(row) { tbody.appendChild(row); });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Projets{% endblock %}
+{% block content %}
+{# Header + Search + New button #}
+<div class="d-flex align-items-center justify-content-between" style="margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <h5 style="font-weight:700;margin:0">Mes projets (<span id="projCount">{{ projects|length }}</span>)</h5>
+    <div class="d-flex align-items-center gap-3">
+        <div style="position:relative;width:300px">
+            <i class="bi bi-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--bo-text-secondary);font-size:0.85rem"></i>
+            <input type="text" id="searchInput" placeholder="Rechercher par nom, statut..."
+                   style="width:100%;padding:10px 14px 10px 38px;border-radius:10px;border:1.5px solid var(--bo-border);background:var(--bo-bg-input);color:var(--bo-text);font-size:0.85rem;transition:border-color 0.2s"
+                   onfocus="this.style.borderColor='var(--primary-light)'" onblur="this.style.borderColor='var(--bo-border)'">
+        </div>
+        <a href="{{ path('admin_projects_kanban') }}" class="bo-btn bo-btn-outline" style="white-space:nowrap"><i class="bi bi-kanban me-1"></i> Kanban</a>
+        <a href="{{ path('admin_project_new') }}" class="bo-btn bo-btn-primary" style="white-space:nowrap"><i class="bi bi-plus-lg me-1"></i> Nouveau projet</a>
+    </div>
+</div>
+
+{% for message in app.flashes('success') %}
+    <div class="alert" style="background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+        <i class="bi bi-check-circle-fill me-2"></i>{{ message }}
+    </div>
+{% endfor %}
+
+<div class="bo-card" style="overflow-x:auto">
+    <table class="bo-table" id="projTable">
+        <thead>
+            <tr>
+                <th style="cursor:pointer;user-select:none" onclick="sortTable(0)">
+                    <span class="d-flex align-items-center gap-1">Nom <i class="bi bi-arrow-up sort-icon" id="sort-0" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
+                </th>
+                <th style="cursor:pointer;user-select:none" onclick="sortTable(1)">
+                    <span class="d-flex align-items-center gap-1">Statut <i class="bi bi-arrow-up sort-icon" id="sort-1" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
+                </th>
+                <th style="cursor:pointer;user-select:none" onclick="sortTable(2)">
+                    <span class="d-flex align-items-center gap-1">Début <i class="bi bi-arrow-up sort-icon" id="sort-2" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
+                </th>
+                <th style="cursor:pointer;user-select:none" onclick="sortTable(3)">
+                    <span class="d-flex align-items-center gap-1">Fin <i class="bi bi-arrow-up sort-icon" id="sort-3" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
+                </th>
+                <th style="cursor:pointer;user-select:none" onclick="sortTable(4)">
+                    <span class="d-flex align-items-center gap-1">Budget <i class="bi bi-arrow-up sort-icon" id="sort-4" style="font-size:0.7rem;opacity:0.4;transition:all 0.2s"></i></span>
+                </th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="projBody">
+            {% for p in projects %}
+                <tr>
+                    <td style="font-weight:600">{{ p.name }}</td>
+                    <td>
+                        <span class="bo-badge bo-badge-{{ p.status == 'DONE' ? 'success' : (p.status == 'IN_PROGRESS' ? 'primary' : (p.status == 'ON_HOLD' ? 'danger' : 'warning')) }}">{{ p.status }}</span>
+                    </td>
+                    <td style="color:var(--bo-text-secondary)" data-date="{{ p.startDate ? p.startDate|date('Y-m-d') : '' }}">{{ p.startDate ? p.startDate|date('d/m/Y') : '—' }}</td>
+                    <td style="color:var(--bo-text-secondary)" data-date="{{ p.endDate ? p.endDate|date('Y-m-d') : '' }}">{{ p.endDate ? p.endDate|date('d/m/Y') : '—' }}</td>
+                    <td data-num="{{ p.budget ?: 0 }}">{{ p.budget ? p.budget ~ ' DT' : '—' }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="{{ path('admin_project_edit', {id: p.id}) }}" class="bo-action-btn" title="Modifier / Activités"><i class="bi bi-pencil"></i></a>
+                            <button type="button" class="bo-action-btn danger" title="Supprimer" onclick="confirmDelete({{ p.id }}, '{{ p.name|e('js') }}')" style="border:none;cursor:pointer"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr id="emptyRow"><td colspan="6" class="text-center" style="padding:30px;color:var(--bo-text-secondary)">Aucun projet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div id="noResults" style="display:none;text-align:center;padding:40px 20px;color:var(--bo-text-secondary)">
+        <i class="bi bi-search" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:8px"></i>
+        Aucun projet trouvé
+    </div>
+</div>
+
+{# Delete confirmation modal #}
+<div id="deleteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div style="background:var(--bo-bg-card);border-radius:16px;padding:32px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);border:1px solid var(--bo-border)">
+        <div style="width:56px;height:56px;border-radius:14px;background:rgba(239,68,68,0.1);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size:1.5rem;color:#ef4444"></i>
+        </div>
+        <h5 style="font-weight:700;margin-bottom:8px">Supprimer ce projet ?</h5>
+        <p style="color:var(--bo-text-secondary);font-size:0.9rem;margin-bottom:24px">
+            <strong id="deleteTitle" style="color:var(--bo-text)"></strong> et toutes ses activités seront supprimés.
+        </p>
+        <div class="d-flex gap-2 justify-content-center">
+            <button onclick="closeDeleteModal()" class="btn" style="padding:10px 24px;border-radius:10px;font-weight:600;font-size:0.85rem;border:1.5px solid var(--bo-border);color:var(--bo-text);background:transparent">Annuler</button>
+            <a id="deleteLink" href="#" class="btn" style="padding:10px 24px;border-radius:10px;font-weight:600;font-size:0.85rem;background:#ef4444;color:white;border:none;text-decoration:none">
+                <i class="bi bi-trash3 me-1"></i> Supprimer
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(id, title) {
+    document.getElementById('deleteTitle').textContent = title;
+    document.getElementById('deleteLink').href = '/admin/projects/' + id + '/delete';
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+function closeDeleteModal() { document.getElementById('deleteModal').style.display = 'none'; }
+document.getElementById('deleteModal').addEventListener('click', function(e) { if (e.target === this) closeDeleteModal(); });
+
+// Search
+var searchInput = document.getElementById('searchInput');
+var tbody = document.getElementById('projBody');
+var projCount = document.getElementById('projCount');
+var noResults = document.getElementById('noResults');
+searchInput.addEventListener('input', function() {
+    var q = this.value.toLowerCase().trim();
+    var rows = tbody.querySelectorAll('tr:not(#emptyRow)');
+    var visible = 0;
+    rows.forEach(function(row) {
+        var match = q === '' || row.textContent.toLowerCase().includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    projCount.textContent = visible;
+    noResults.style.display = (visible === 0 && rows.length > 0) ? 'block' : 'none';
+});
+
+// Sort
+var currentSort = { col: -1, asc: true };
+function sortTable(colIndex) {
+    var rows = Array.from(tbody.querySelectorAll('tr:not(#emptyRow)'));
+    if (!rows.length) return;
+    currentSort.asc = currentSort.col === colIndex ? !currentSort.asc : true;
+    currentSort.col = colIndex;
+    document.querySelectorAll('.sort-icon').forEach(function(i) { i.className = 'bi bi-arrow-up sort-icon'; i.style.opacity = '0.4'; });
+    var icon = document.getElementById('sort-' + colIndex);
+    icon.className = currentSort.asc ? 'bi bi-arrow-up sort-icon' : 'bi bi-arrow-down sort-icon';
+    icon.style.opacity = '1';
+    rows.sort(function(a, b) {
+        var aT, bT;
+        if (colIndex === 2 || colIndex === 3) { // dates
+            aT = a.cells[colIndex].getAttribute('data-date') || '';
+            bT = b.cells[colIndex].getAttribute('data-date') || '';
+        } else if (colIndex === 4) { // budget numeric
+            aT = parseFloat(a.cells[4].getAttribute('data-num')) || 0;
+            bT = parseFloat(b.cells[4].getAttribute('data-num')) || 0;
+            return currentSort.asc ? aT - bT : bT - aT;
+        } else {
+            aT = a.cells[colIndex].textContent.trim().toLowerCase();
+            bT = b.cells[colIndex].textContent.trim().toLowerCase();
+        }
+        return currentSort.asc ? (aT < bT ? -1 : aT > bT ? 1 : 0) : (aT > bT ? -1 : aT < bT ? 1 : 0);
+    });
+    rows.forEach(function(r) { tbody.appendChild(r); });
+}
+</script>
+{% endblock %}
