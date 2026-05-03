@@ -2,7 +2,7 @@
 {% block page_title %}Projets{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h5 style="font-weight:700;margin:0">Mes projets ({{ projects|length }})</h5>
+    <h5 style="font-weight:700;margin:0">Mes projets ({{ projects.getTotalItemCount }})</h5>
     <a href="{{ path('admin_project_new') }}" class="bo-btn bo-btn-primary"><i class="bi bi-plus-lg me-1"></i> Nouveau projet</a>
 </div>
 <div class="bo-card">
@@ -44,4 +44,58 @@
         </tbody>
     </table>
 </div>
+
+{# ═══ PAGINATION (KnpPaginatorBundle) ═══ #}
+{% if projects.getTotalItemCount > 6 %}
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <div style="font-size:0.85rem;color:var(--bo-text-secondary)">
+        Page {{ projects.getCurrentPageNumber }} / {{ projects.getPageCount }} — {{ projects.getTotalItemCount }} projets au total
+    </div>
+    <nav class="knp-pagination-nav">
+        {{ knp_pagination_render(projects) }}
+    </nav>
+</div>
+{% endif %}
+
+<style>
+.knp-pagination-nav .pagination {
+    display: flex;
+    gap: 4px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.knp-pagination-nav .pagination li a,
+.knp-pagination-nav .pagination li span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--bo-text-secondary);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--bo-border);
+    transition: all 0.2s;
+}
+.knp-pagination-nav .pagination li a:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+.knp-pagination-nav .pagination li.active span,
+.knp-pagination-nav .pagination li.current span {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+.knp-pagination-nav .pagination li.disabled span {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+</style>
 {% endblock %}

@@ -21,6 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
+use Knp\Component\Pager\PaginatorInterface;
 
 #[Route('/admin')]
 class AdminDashboardController extends AbstractController
@@ -309,15 +310,25 @@ class AdminDashboardController extends AbstractController
     //  PROJECTS (HR: own only; ADMIN: all)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     #[Route('/projects', name: 'admin_projects')]
-    public function projects(EntityManagerInterface $em): Response
+    public function projects(EntityManagerInterface $em, Request $request, PaginatorInterface $paginator): Response
     {
         if ($this->isAdmin()) {
-            $projects = $em->getRepository(Project::class)->findBy([], ['createdAt' => 'DESC']);
+            $query = $em->getRepository(Project::class)->createQueryBuilder('p')
+                ->orderBy('p.createdAt', 'DESC')
+                ->getQuery();
         } else {
-            $projects = $em->getRepository(Project::class)->findBy(
-                ['projectManagerId' => $this->getUser()->getId()], ['createdAt' => 'DESC']
-            );
+            $query = $em->getRepository(Project::class)->createQueryBuilder('p')
+                ->where('p.projectManagerId = :uid')->setParameter('uid', $this->getUser()->getId())
+                ->orderBy('p.createdAt', 'DESC')
+                ->getQuery();
         }
+
+        $projects = $paginator->paginate(
+            $query,
+            $request->query->getInt('page', 1),
+            6
+        );
+
         return $this->render('back/projects/list.html.twig', ['projects' => $projects]);
     }
 
@@ -434,6 +445,24 @@ class AdminDashboardController extends AbstractController
         $em->flush();
         $this->addFlash('success', 'Projet supprimé.');
         return $this->redirectToRoute('admin_projects');
+    }
+
+    #[Route('/projects/{id}/timer-save', name: 'admin_project_timer_save', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function projectTimerSave(Project $project, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $project->getProjectManagerId() !== $this->getUser()->getId()) {
+            return $this->json(['error' => 'Access denied'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $seconds = isset($data['seconds']) ? (int)$data['seconds'] : 0;
+
+        if ($seconds > 0) {
+            $project->setTimeSpent($seconds);
+            $em->flush();
+        }
+
+        return $this->json(['success' => true, 'total' => $project->getTimeSpent()]);
     }
 
     #[Route('/projects/{id}/activity/new', name: 'admin_project_activity_new', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -673,20 +702,22 @@ class AdminDashboardController extends AbstractController
     }
 
     #[Route('/activities', name: 'admin_activities')]
-    public function activities(EntityManagerInterface $em): Response
+    public function activities(EntityManagerInterface $em, Request $request, PaginatorInterface $paginator): Response
     {
         $user = $this->getUser();
 
         if ($this->isAdmin()) {
-            $activities = $em->getRepository(Activity::class)->findBy([], ['activityDate' => 'DESC']);
+            $query = $em->getRepository(Activity::class)->createQueryBuilder('a')
+                ->orderBy('a.activityDate', 'DESC')
+                ->getQuery();
             $candidates = $em->getRepository(User::class)->findBy(['role' => 'CANDIDATE']);
         } else {
             // HR: activities assigned by this HR to their candidates
-            $activities = $em->getRepository(Activity::class)->createQueryBuilder('a')
+            $query = $em->getRepository(Activity::class)->createQueryBuilder('a')
                 ->join('a.project', 'p')
                 ->where('p.projectManagerId = :uid')->setParameter('uid', $user->getId())
                 ->orderBy('a.activityDate', 'DESC')
-                ->getQuery()->getResult();
+                ->getQuery();
 
             // HR's candidates = users who applied to their offers
             $candidates = $em->createQueryBuilder()
@@ -697,6 +728,12 @@ class AdminDashboardController extends AbstractController
                 ->where('o.recruiterId = :uid')->setParameter('uid', $user->getId())
                 ->getQuery()->getResult();
         }
+
+        $activities = $paginator->paginate(
+            $query,
+            $request->query->getInt('page', 1),
+            8
+        );
 
         // Load HR's own projects for the assignment form
         if ($this->isAdmin()) {
