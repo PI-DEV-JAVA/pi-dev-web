@@ -1,0 +1,17 @@
+includes:
+    - vendor/phpstan/phpstan-symfony/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - src
+    
+    # 'excludes_analyse' is deprecated; use 'excludePaths' instead
+    excludePaths:
+        - tests/*
+
+    # Symfony-specific configuration (Highly Recommended)
+    symfony:
+        # If you have a specific container XML file, point to it here:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+        # consoleApplicationLoader: tests/console-loader.php
