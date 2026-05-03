@@ -66,7 +66,7 @@ class OfferController extends AbstractController
     }
 
     #[Route('/offers/{id}/apply', name: 'app_offer_apply', methods: ['POST'])]
-    public function apply(Offer $offer, Request $request, EntityManagerInterface $em): Response
+    public function apply(Offer $offer, Request $request, EntityManagerInterface $em, \App\Service\WorkflowEngine $workflowEngine): Response
     {
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
         $user = $this->getUser();
@@ -98,6 +98,9 @@ class OfferController extends AbstractController
         $offer->setApplicationsReceived($offer->getApplicationsReceived() + 1);
         $em->persist($application);
         $em->flush();
+
+        // Trigger Automation Workflow
+        $workflowEngine->processApplicationCreated($application);
 
         // Notify the recruiter
         $recruiter = $offer->getRecruiter();

@@ -1561,6 +1561,8 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_users');
     }
 
+
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  OFFER APPLICATIONS (view & decision)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1590,6 +1592,18 @@ class AdminDashboardController extends AbstractController
         $newStatus = $request->request->get('status');
         if (in_array($newStatus, ['Acceptée', 'Refusée', 'Entretien', 'En attente'])) {
             $application->setStatus($newStatus);
+            
+            if ($newStatus === 'Entretien') {
+                $existingInterview = $em->getRepository(Interview::class)->findOneBy(['application' => $application]);
+                if (!$existingInterview) {
+                    $interview = new Interview();
+                    $interview->setApplication($application);
+                    $interview->setInterviewDate(new \DateTime('+1 day'));
+                    $interview->setStatus('SCHEDULED');
+                    $em->persist($interview);
+                }
+            }
+            
             $em->flush();
 
             // Notify the candidate
@@ -1882,5 +1896,37 @@ class AdminDashboardController extends AbstractController
             'conversations' => $conversations,
             'newCandidates' => $newCandidates,
         ]);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  WORKFLOW PIPELINE AUTOMATIONS (n8n like)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/offers/{id}/workflow', name: 'admin_offer_workflow', requirements: ['id' => '\d+'])]
+    public function offerWorkflow(Offer $offer): Response
+    {
+        if (!$this->isAdmin() && $offer->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        return $this->render('back/offers/workflow.html.twig', [
+            'offer' => $offer,
+        ]);
+    }
+
+    #[Route('/offers/{id}/workflow/save', name: 'admin_offer_workflow_save', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function offerWorkflowSave(Offer $offer, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $offer->getRecruiterId() !== $this->getUser()->getId()) {
+            return $this->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        if (!$data) {
+            return $this->json(['success' => false, 'message' => 'Invalid JSON']);
+        }
+
+        $offer->setWorkflow($data);
+        $em->flush();
+
+        return $this->json(['success' => true]);
     }
 }

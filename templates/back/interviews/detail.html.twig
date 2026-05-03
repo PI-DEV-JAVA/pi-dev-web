@@ -1,0 +1,273 @@
+{% extends 'back/_base.html.twig' %}
+
+{% block page_title %}Détail de l'Entretien{% endblock %}
+
+{% block base_stylesheets %}
+{{ parent() }}
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<style>
+    /* Quill Editor Dark Theme overrides to match panel */
+    .ql-toolbar { background: #f8fafc; border-radius: 8px 8px 0 0; border: 1px solid var(--bo-border) !important;}
+    .ql-container { background: var(--bo-bg-input); color: var(--bo-text); border-radius: 0 0 8px 8px; border: 1px solid var(--bo-border) !important;}
+    .ql-editor { min-height: 150px; font-size: 0.95rem; }
+    .quill-view-content { background: var(--bo-bg-input); padding: 16px; border-radius: 8px; border: 1px solid var(--bo-border); color: var(--bo-text); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a href="{{ path('admin_interviews') }}" class="bo-btn bo-btn-outline"><i class="bi bi-arrow-left me-2"></i>Retour aux entretiens</a>
+        
+        <div class="d-flex gap-2">
+            <a href="{{ path('admin_interview_workflow', {'id': interview.id}) }}" class="bo-btn" style="background:#8b5cf6; color:white; border:none;" title="Créer un parcours automatisé sur-mesure pour ce candidat"><i class="bi bi-infinity me-2"></i>Workflow Sur-Mesure</a>
+            <button class="bo-btn bo-btn-primary" data-bs-toggle="modal" data-bs-target="#editInterviewModal"><i class="bi bi-pencil me-2"></i>Modifier l'Entretien</button>
+            <form method="post" action="{{ path('admin_interview_delete', {'id': interview.id}) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet entretien et toute la série de meets associés ?');">
+                <input type="hidden" name="_token" value="{{ csrf_token('delete_interview_' ~ interview.id) }}">
+                <button class="bo-btn" style="background:var(--bo-border); color:var(--bo-text)"><i class="bi bi-trash"></i></button>
+            </form>
+        </div>
+    </div>
+    
+    <h1 class="h3 text-white">Candidat : {{ interview.application.user.email }}</h1>
+    <p class="text-muted mb-1">Offre : {{ interview.application.offer.title }}</p>
+    <p class="text-muted">Statut : <span class="badge bg-{{ interview.status == 'COMPLETED' ? 'success' : (interview.status == 'CANCELLED' ? 'danger' : 'primary') }}">{{ interview.status }}</span></p>
+</div>
+
+<!-- Edit Interview Modal -->
+<div class="modal fade" id="editInterviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color: var(--bo-bg-card); border: 1px solid var(--bo-border);">
+            <form method="post" action="{{ path('admin_interview_edit', {'id': interview.id}) }}" class="bo-form">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title">Modifier l'Entretien</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Date globale d'Entretien</label>
+                        <input type="datetime-local" name="interviewDate" class="form-control" value="{{ interview.interviewDate ? interview.interviewDate|date('Y-m-d\\TH:i') : '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label>Statut global</label>
+                        <select name="status" class="form-select">
+                            <option value="PENDING" {% if interview.status == 'PENDING' %}selected{% endif %}>En Attente</option>
+                            <option value="COMPLETED" {% if interview.status == 'COMPLETED' %}selected{% endif %}>Complété</option>
+                            <option value="CANCELLED" {% if interview.status == 'CANCELLED' %}selected{% endif %}>Annulé</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="bo-btn bo-btn-outline" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="bo-btn bo-btn-primary">Sauvegarder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="bo-card mb-4">
+            <h4 class="mb-3 text-white">Série de Meets (Rencontres)</h4>
+            
+            {% if interview.meets is empty %}
+                <div class="alert alert-info">Aucun meet n'a été planifié pour le moment.</div>
+            {% else %}
+                <div class="row g-4 mt-1">
+                    {% for meet in interview.meets %}
+                        <div class="col-12">
+                            <div class="bo-card" style="border: 1px solid var(--bo-border); padding: 20px;">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h5 class="text-primary mb-1">
+                                            {{ meet.title }}
+                                            {% if meet.meetType == 'TECHNICAL' %}
+                                                <span class="badge bg-warning ms-2" style="font-size:0.75rem">Technique</span>
+                                            {% elseif meet.meetType == 'SYSTEM_DESIGN' %}
+                                                <span class="badge bg-info ms-2" style="font-size:0.75rem">System Design</span>
+                                            {% endif %}
+                                        </h5>
+                                        <div class="text-muted"><i class="bi bi-clock me-1"></i> {{ meet.meetDate|date('Y-m-d H:i') }} | <i class="bi bi-geo-alt me-1"></i> {{ meet.roomId }}</div>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="bo-btn bo-btn-outline btn-sm me-2" data-bs-toggle="modal" data-bs-target="#editMeetModal-{{ meet.id }}" title="Modifier Meet">
+                                            <i class="bi bi-pencil"></i> Modif
+                                        </button>
+                                        <a href="{{ path('app_meet_room', {'roomId': meet.roomId}) }}" class="bo-btn bo-btn-outline btn-sm me-2" title="Rejoindre la visio" target="_blank">
+                                            <i class="bi bi-camera-video"></i> Rejoindre
+                                        </a>
+                                        <button type="button" class="bo-btn bo-btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#gradeModal-{{ meet.id }}" title="Noter l'entretien">
+                                            <i class="bi bi-pencil-square"></i> Évaluer
+                                        </button>
+                                        <form method="post" action="{{ path('admin_interview_meet_delete', {'id': meet.id}) }}" class="d-inline-block ms-2" onsubmit="return confirm('Supprimer ce meet ?');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete_meet_' ~ meet.id) }}">
+                                            <button type="submit" class="bo-btn btn-sm" style="background:transparent; border:1px solid #ea4335; color:#ea4335" title="Supprimer Meet"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt-4">
+                                    <div class="col-md-9">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <h6 class="text-white mb-0">Observations et Notes :</h6>
+                                            {% if meet.notes %}
+                                                <form method="post" action="{{ path('admin_interview_meet_clear_notes', {'id': meet.id}) }}" onsubmit="return confirm('Effacer toutes les notes ?');">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('clear_notes_' ~ meet.id) }}">
+                                                    <button type="submit" class="btn btn-sm text-danger border-0 bg-transparent p-0"><i class="bi bi-eraser"></i> Effacer</button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                        <div class="quill-view-content ql-editor" style="background:var(--bo-bg-input); border-radius:8px; padding:16px; border:1px solid var(--bo-border); color:var(--bo-text); min-height: 80px;">
+                                            {% if meet.notes %}
+                                                {{ meet.notes|raw }}
+                                            {% else %}
+                                                <div class="text-muted fst-italic">Aucune note rédigée.</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h6 class="text-white">Note :</h6>
+                                        <div class="p-3 text-center" style="background:var(--bo-bg-input); border-radius:8px; border:1px solid var(--bo-border);">
+                                            {% if meet.grade is not null %}
+                                                <h3 class="mb-0 {% if meet.grade >= 10 %}text-success{% else %}text-danger{% endif %}">{{ meet.grade }}/20</h3>
+                                            {% else %}
+                                                <span class="text-muted">Non noté</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Grade Modal -->
+                                <div class="modal fade" id="gradeModal-{{ meet.id }}" tabindex="-1" aria-hidden="true" style="backdrop-filter: blur(5px);">
+                                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                                        <div class="modal-content" style="background-color: var(--bo-bg-card); border: 1px solid var(--bo-border);">
+                                            <form method="post" action="{{ path('admin_interview_meet_grade', {'id': meet.id}) }}" class="bo-form">
+                                                <div class="modal-header border-bottom-0">
+                                                    <h5 class="modal-title">Évaluer : <span class="text-primary">{{ meet.title }}</span></h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label>Note sur 20</label>
+                                                        <input type="number" step="0.5" min="0" max="20" name="grade" class="form-control" value="{{ meet.grade }}">
+                                                    </div>
+                                                    <div class="mb-3 quill-wrapper">
+                                                        <label>Notes (Observation)</label>
+                                                        <div id="quill-editor-{{ meet.id }}" style="background:var(--bo-bg-input); border:1px solid var(--bo-border);">{{ meet.notes|raw }}</div>
+                                                        <input type="hidden" name="notes" id="quill-input-{{ meet.id }}">
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-top-0">
+                                                    <button type="button" class="bo-btn bo-btn-outline" data-bs-dismiss="modal">Annuler</button>
+                                                    <button type="submit" class="bo-btn bo-btn-primary">Sauvegarder</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Edit Meet Modal -->
+                                <div class="modal fade" id="editMeetModal-{{ meet.id }}" tabindex="-1" aria-hidden="true" style="backdrop-filter: blur(5px);">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content" style="background-color: var(--bo-bg-card); border: 1px solid var(--bo-border);">
+                                            <form method="post" action="{{ path('admin_interview_meet_edit', {'id': meet.id}) }}" class="bo-form">
+                                                <div class="modal-header border-bottom-0">
+                                                    <h5 class="modal-title">Modifier : <span class="text-primary">{{ meet.title }}</span></h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label>Titre / Sujet</label>
+                                                        <input type="text" name="title" class="form-control" value="{{ meet.title }}" required minlength="2" maxlength="150">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label>Date et Heure</label>
+                                                        <input type="datetime-local" name="meetDate" class="form-control" value="{{ meet.meetDate|date('Y-m-d\\TH:i') }}" required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label>Type de Meet</label>
+                                                        <select name="meetType" class="form-select">
+                                                            <option value="GENERAL" {% if meet.meetType == 'GENERAL' %}selected{% endif %}>Général (Échange en visio classique)</option>
+                                                            <option value="TECHNICAL" {% if meet.meetType == 'TECHNICAL' %}selected{% endif %}>Technique (Code en direct via Monaco Editor)</option>
+                                                            <option value="SYSTEM_DESIGN" {% if meet.meetType == 'SYSTEM_DESIGN' %}selected{% endif %}>System Design (Tableau blanc interactif TLDraw)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-top-0">
+                                                    <button type="button" class="bo-btn bo-btn-outline" data-bs-dismiss="modal">Annuler</button>
+                                                    <button type="submit" class="bo-btn bo-btn-primary">Mettre à jour</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="bo-card">
+            <h4 class="mb-3 text-white">Planifier un Meet</h4>
+            <form action="{{ path('admin_interview_meet_new', {'id': interview.id}) }}" method="post" class="bo-form">
+                <div class="mb-3">
+                    <label>Titre</label>
+                    <input type="text" name="title" class="form-control" required minlength="3" maxlength="150" placeholder="Ex: Entretien Technique">
+                </div>
+                <div class="mb-3">
+                    <label>Date et Heure</label>
+                    <input type="datetime-local" name="meetDate" class="form-control" required min="{{ 'now'|date('Y-m-d\\TH:i') }}">
+                </div>
+                <div class="mb-3">
+                    <label>Type de Meet</label>
+                    <select name="meetType" class="form-select">
+                        <option value="GENERAL">Général (Échange en visio classique)</option>
+                        <option value="TECHNICAL">Technique (Code en direct via Monaco Editor)</option>
+                        <option value="SYSTEM_DESIGN">System Design (Tableau blanc interactif TLDraw)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>Notes Initiale / Ordre du jour (Optionnel)</label>
+                    <textarea name="notes" class="form-control" rows="3" maxlength="2000"></textarea>
+                </div>
+                <button type="submit" class="bo-btn bo-btn-primary w-100 mt-2">Créer le Meet et Générer le Lien</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[id^=gradeModal-]').forEach(modal => {
+        modal.addEventListener('shown.bs.modal', function() {
+            let meetId = this.id.split('-')[1];
+            if (!this.dataset.quillInit) {
+                let quill = new Quill('#quill-editor-' + meetId, {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'color': [] }, { 'background': [] }],
+                            ['clean']
+                        ]
+                    }
+                });
+                
+                let form = this.querySelector('form');
+                let hiddenInput = this.querySelector('#quill-input-' + meetId);
+                form.addEventListener('submit', function() {
+                    hiddenInput.value = quill.root.innerHTML;
+                });
+                
+                this.dataset.quillInit = true;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

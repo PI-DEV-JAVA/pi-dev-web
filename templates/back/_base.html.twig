@@ -390,6 +390,9 @@
         <a href="{{ path('admin_offers') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_offer' ? 'active' : '' }}">
             <i class="bi bi-megaphone"></i> {{ 'nav.offers'|trans }}
         </a>
+        <a href="{{ path('admin_interviews') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_interview' ? 'active' : '' }}">
+            <i class="bi bi-camera-video"></i> Entretiens
+        </a>
         <a href="{{ path('admin_events') }}" class="bo-nav-link {{ app.request.attributes.get('_route') in ['admin_events','admin_event_new','admin_event_edit','admin_event_delete','admin_events_calendar_data','admin_event_participations','admin_participation_status'] ? 'active' : '' }}">
             <i class="bi bi-calendar-event"></i> {{ 'nav.events'|trans }}
         </a>
