@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meet - {{ meet.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --bg-color: #202124;
+            --sidebar-color: #ffffff;
+            --text-color: #ffffff;
+            --btn-bg: #3c4043;
+            --btn-hover: #4a4d51;
+            --danger-bg: #ea4335;
+        }
+        body, html {
+            height: 100%;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        
+        /* ── Name Prompt Overlay ── */
+        #namePromptOverlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(32, 33, 36, 0.95);
+            z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .prompt-card {
+            background: white; color: #202124;
+            padding: 40px; border-radius: 16px;
+            width: 100%; max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+
+        /* ── Layout ── */
+        .meet-container {
+            display: flex;
+            height: calc(100vh - 80px); /* 80px for bottom bar */
+        }
+        .video-area {
+            flex: 1;
+            padding: 16px;
+            display: grid;
+            gap: 16px;
+            /* Grid layout will be updated dynamically via JS */
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .video-box {
+            position: relative;
+            background: #3c4043;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            min-height: 250px;
+        }
+        .video-box video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+        .video-label {
+            position: absolute; bottom: 12px; left: 12px;
+            background: rgba(0,0,0,0.6); color: white;
+            padding: 4px 10px; border-radius: 6px;
+            font-size: 0.85rem; font-weight: 500;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ── Technical Layout ── */
+        .meet-container.technical-layout {
+            flex-direction: row;
+        }
+        .technical-layout .video-area {
+            flex: 0 0 300px; /* Video sidebar width */
+            grid-template-columns: 1fr;
+            background: #2a2b2e;
+            border-right: 1px solid #3c4043;
+            padding: 10px;
+        }
+        .technical-layout .video-box { 
+            min-height: 200px; /* Smaller videos */
+            max-height: 200px;
+        }
+        .code-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+            overflow: hidden;
+            position: relative;
+        }
+        .code-header {
+            padding: 12px 20px;
+            background: #252526;
+            color: #ccc;
+            border-bottom: 1px solid #333;
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        #editor {
+            flex: 1;
+            width: 100%;
+        }
+        .code-console {
+            height: 180px;
+            background: #111111;
+            border-top: 1px solid #333;
+            display: flex; flex-direction: column;
+        }
+        .code-console-header {
+            padding: 6px 12px;
+            background: #1e1e1e;
+            border-bottom: 1px solid #333;
+            font-size: 0.8rem; font-weight: 600; color: #aaa;
+            display: flex; justify-content: space-between;
+        }
+        .code-console-output {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            color: #10b981;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            margin: 0;
+        }
+        .code-console-output.error {
+            color: #ef4444;
+        }
+
+        /* ── Sidebar (Chat) ── */
+        .sidebar {
+            width: 360px;
+            background: white;
+            color: #202124;
+            display: flex; flex-direction: column;
+            border-radius: 16px 0 0 16px;
+            transition: transform 0.3s ease;
+            transform: translateX(100%);
+            position: absolute; right: 0; top: 0; bottom: 80px;
+            z-index: 1000;
+        }
+        .sidebar.active {
+            transform: translateX(0);
+        }
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .sidebar-header h5 { margin: 0; font-weight: 600; font-size: 1.1rem; }
+        .close-sidebar {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.2rem; color: #5f6368;
+        }
+        
+        /* ── Notes Panel ── */
+        .notes-area {
+            flex: 1; padding: 20px;
+            display: none; flex-direction: column;
+        }
+        .notes-area.active { display: flex; }
+        .notes-textarea {
+            flex: 1; width: 100%; resize: none;
+            border: 1px solid #e0e0e0; border-radius: 8px;
+            padding: 12px; margin-bottom: 12px; font-size: 0.9rem;
+            outline: none; background: #fafafa;
+        }
+        .notes-textarea:focus { border-color: #1a73e8; background: white; }
+
+        .chat-area {
+            flex: 1; display: none; flex-direction: column;
+        }
+        .chat-area.active { display: flex; }
+        .chat-messages {
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .chat-msg {
+            background: #f1f3f4; padding: 10px 14px;
+            border-radius: 2px 14px 14px 14px;
+            width: fit-content; max-width: 85%;
+        }
+        .chat-msg.self {
+            background: #e8f0fe;
+            align-self: flex-end;
+            border-radius: 14px 2px 14px 14px;
+        }
+        .chat-msg-author {
+            font-size: 0.75rem; font-weight: 600; color: #5f6368; margin-bottom: 4px;
+        }
+        .chat-input-area {
+            padding: 16px; border-top: 1px solid #e0e0e0;
+        }
+        .chat-input-wrapper {
+            display: flex; gap: 8px; background: #f1f3f4;
+            border-radius: 24px; padding: 6px 16px;
+        }
+        .chat-input-wrapper input {
+            border: none; background: transparent; flex: 1;
+            outline: none; font-size: 0.9rem; color: #202124;
+        }
+        .chat-send-btn {
+            background: none; border: none; color: #1a73e8;
+            cursor: pointer; font-size: 1.2rem;
+        }
+
+        /* ── Bottom Bar ── */
+        .bottom-bar {
+            height: 80px;
+            background: var(--bg-color);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 24px;
+        }
+        .meet-info { font-weight: 500; font-size: 1rem; width: 250px;}
+        
+        .controls { display: flex; gap: 12px; align-items: center; justify-content: center; flex: 1;}
+        .ctrl-btn {
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            background: var(--btn-bg);
+            border: none; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ctrl-btn:hover { background: var(--btn-hover); }
+        .ctrl-btn.off { background: var(--danger-bg); }
+        .ctrl-btn.leave { background: var(--danger-bg); padding: 0 24px; border-radius: 24px; width: auto; font-size: 1.1rem; gap: 8px; font-weight: 500;}
+        .ctrl-btn.leave:hover { filter: brightness(0.9); }
+        
+        .side-controls { display: flex; gap: 12px; width: 250px; justify-content: flex-end;}
+
+        /* ── Subtitle Overlay ── */
+        .subtitle-overlay {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            max-width: 80%;
+            text-align: center;
+            display: none;
+            z-index: 500;
+            backdrop-filter: blur(4px);
+        }
+        .subtitle-user {
+            font-weight: 600;
+            color: #90caf9;
+            margin-right: 8px;
+        }
+        
+        #inviteLinkToast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: #fff; color: #333; padding: 12px 24px;
+            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none; font-weight: 500; z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Join Prompt Overlay -->
+<div id="joinPromptOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(32, 33, 36, 0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+    <div class="prompt-card">
+        <h3 class="mb-4 text-dark" style="font-weight:700">Rejoindre la réunion</h3>
+        {% if not userName %}
+            <p class="text-muted mb-4">Veuillez saisir votre nom pour rejoindre la visioconférence.</p>
+            <form id="joinForm">
+                <input type="text" id="guestNameInput" class="form-control form-control-lg mb-3" placeholder="Votre nom complet" required minlength="2">
+                <button type="submit" class="btn btn-primary btn-lg w-100" style="background: #1a73e8; border:none; border-radius: 24px;">Demander à participer</button>
+            </form>
+        {% else %}
+            <p class="text-muted mb-4">Bienvenue, {{ userName }}. Prêt(e) à rejoindre ?</p>
+            <button id="btnJoinNow" class="btn btn-primary btn-lg w-100" style="background: #1a73e8; border:none; border-radius: 24px;">Rejoindre l'appel</button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="meet-container {% if meet.meetType in ['TECHNICAL', 'SYSTEM_DESIGN'] %}technical-layout{% endif %}">
+    <div class="video-area" id="videoArea">
+        <!-- Local Video -->
+        <div class="video-box" id="localVideoContainer">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <div class="video-label">Vous (<span id="displayNameLabel">{{ userName|default('Anonyme') }}</span>)</div>
+        </div>
+        <!-- Remote Videos will be appended here -->
+    </div>
+
+    {% if meet.meetType == 'TECHNICAL' %}
+    <div class="code-area">
+        <div class="code-header">
+            <span><i class="bi bi-code-square me-2"></i> Élévation Technique</span>
+            <div class="d-flex align-items-center gap-2">
+                <button id="btnRunCode" class="btn btn-sm btn-success" style="font-weight:600; border-radius:8px; padding:4px 12px">
+                    <i class="bi bi-play-fill"></i> Exécuter
+                </button>
+                <select id="languageSelect" class="form-select form-select-sm" style="width: 150px; background: #333; color: white; border: 1px solid #444;">
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="php">PHP</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                </select>
+            </div>
+        </div>
+        <div id="editor"></div>
+        <div class="code-console">
+            <div class="code-console-header">
+                <span>Terminal Output</span>
+                <button id="btnClearConsole" class="btn btn-sm text-muted p-0 border-0"><i class="bi bi-trash"></i></button>
+            </div>
+            <pre class="code-console-output" id="consoleOutput">En attente d'exécution...</pre>
+        </div>
+    </div>
+    {% elseif meet.meetType == 'SYSTEM_DESIGN' %}
+    <div class="code-area" style="background: #f8f9fa;">
+        <div class="code-header" style="background: #ffffff; color: #333; border-bottom: 1px solid #e0e0e0;">
+            <span><i class="bi bi-diagram-3 me-2"></i> System Design (Excalidraw)</span>
+            <a href="https://excalidraw.com/#room=PI-{{ meet.roomId }}-001,A1b2C3d4E5f6G7h8I9j0-A" target="_blank" class="btn btn-sm btn-outline-primary py-0" title="Ouvrir dans un nouvel onglet">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+        </div>
+        <div style="flex: 1; position: relative;">
+            <iframe src="https://excalidraw.com/#room=PI-{{ meet.roomId }}-001,A1b2C3d4E5f6G7h8I9j0-A" style="position: absolute; width: 100%; height: 100%; border: none;"></iframe>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Subtitles Overlay -->
+    <div class="subtitle-overlay" id="subtitleOverlay">
+        <span class="subtitle-user" id="subtitleUser"></span><span id="subtitleText"></span>
+    </div>
+
+    <!-- Sidebar container -->
+    <div class="sidebar" id="appSidebar">
+        <div class="sidebar-header">
+            <h5 id="sidebarTitle">Messages</h5>
+            <button class="close-sidebar" onclick="closeSidebar()"><i class="bi bi-x"></i></button>
+        </div>
+        
+        <div class="chat-area active" id="chatArea">
+            <div class="chat-messages" id="chatMessages">
+                <div class="text-center text-muted" style="font-size:0.8rem; margin-top:20px;">
+                    Les messages ne sont visibles que par les participants connectés.
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <form id="chatForm" class="chat-input-wrapper">
+                    <input type="text" id="chatInput" placeholder="Envoyer un message..." autocomplete="off" required>
+                    <button type="submit" class="chat-send-btn"><i class="bi bi-send-fill"></i></button>
+                </form>
+            </div>
+        </div>
+
+        {% if isRecruiter %}
+        <div class="notes-area" id="notesArea">
+            <textarea class="notes-textarea" id="recruiterNotes" placeholder="Prenez des notes rapides pendant l'entretien...">{{ meet.notes }}</textarea>
+            <button class="btn btn-primary" style="background:#1a73e8; border:none; border-radius:24px;" onclick="saveNotes()">
+                <span id="saveNotesText">Sauvegarder les notes</span>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="bottom-bar">
+    <div class="meet-info">
+        <span id="clock" style="font-weight:600; margin-right: 12px;"></span> | <span style="margin-left:12px; font-weight:400; color:#ddd">{{ meet.roomId }}</span>
+    </div>
+    
+    <div class="controls">
+        <button class="ctrl-btn" id="btnMic" onclick="toggleMic()" title="Désactiver le micro"><i class="bi bi-mic-fill"></i></button>
+        <button class="ctrl-btn" id="btnCam" onclick="toggleCam()" title="Désactiver la caméra"><i class="bi bi-camera-video-fill"></i></button>
+        <button class="ctrl-btn" id="btnCc" onclick="toggleCc()" title="Activer le sous-titrage automatique (Transcription)"><i class="bi bi-badge-cc"></i></button>
+        <button class="ctrl-btn leave" onclick="leaveRoom()"><i class="bi bi-telephone-x-fill"></i> Quitter</button>
+    </div>
+    
+    <div class="side-controls">
+        <button class="ctrl-btn" style="background:transparent; color:#e8eaed" onclick="copyInviteLink()" title="Copier le lien d'invitation"><i class="bi bi-info-circle"></i></button>
+        {% if isRecruiter %}
+        <button class="ctrl-btn" style="background:transparent; color:#e8eaed" onclick="openSidebar('notes')" title="Notes Rapides"><i class="bi bi-journal-text"></i></button>
+        {% endif %}
+        <button class="ctrl-btn" style="background:transparent; color:#e8eaed" onclick="openSidebar('chat')" title="Ouvrir le chat"><i class="bi bi-chat-left-text-fill"></i></button>
+    </div>
+</div>
+
+<div id="inviteLinkToast">Lien de la réunion copié !</div>
+
+<script>
+    // --- Global Config ---
+    const ROOM_ID = '{{ meet.roomId }}';
+    const JANUS_SERVER = 'http://4.233.136.0:8088/janus'; // Standard HTTP REST API
+    const WS_CHAT_SERVER = 'ws://4.233.136.0:3000';
+    let DISPLAY_NAME = '{{ userName|escape('js') }}' || '';
+    
+    // Convert string Room ID to a numeric ID for Janus
+    // Hardcoded to 1234 for testing purposes
+    const NUMERIC_ROOM_ID = 1234;
+
+    // --- DOM Elements ---
+    const localVideo = document.getElementById('localVideo');
+    const localVideoContainer = document.getElementById('localVideoContainer');
+    const videoArea = document.getElementById('videoArea');
+    const btnMic = document.getElementById('btnMic');
+    const btnCam = document.getElementById('btnCam');
+    const appSidebar = document.getElementById('appSidebar');
+    const chatArea = document.getElementById('chatArea');
+    const notesArea = document.getElementById('notesArea');
+    const sidebarTitle = document.getElementById('sidebarTitle');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const chatInput = document.getElementById('chatInput');
+    const joinForm = document.getElementById('joinForm');
+    const btnJoinNow = document.getElementById('btnJoinNow');
+    const joinPromptOverlay = document.getElementById('joinPromptOverlay');
+
+    // --- State ---
+    let localStream = null;
+    let micEnabled = true;
+    let camEnabled = true;
+
+    // --- Join Prompt Logic ---
+    if (joinForm) {
+        joinForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            DISPLAY_NAME = document.getElementById('guestNameInput').value.trim();
+            if (DISPLAY_NAME) {
+                joinPromptOverlay.style.display = 'none';
+                document.getElementById('displayNameLabel').innerText = DISPLAY_NAME;
+                initApp();
+            }
+        });
+    } else if (btnJoinNow) {
+        btnJoinNow.addEventListener('click', () => {
+            joinPromptOverlay.style.display = 'none';
+            initApp();
+        });
+    }
+
+    function initApp() {
+        startLocalStream().then(() => {
+            initWebSocketChat();
+            startJanusWebRTC();
+        });
+    }
+
+    // --- UI Logic ---
+    setInterval(() => {
+        const d = new Date();
+        document.getElementById('clock').innerText = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }, 1000);
+
+    function openSidebar(panel) {
+        appSidebar.classList.add('active');
+        if(panel === 'chat') {
+            sidebarTitle.innerText = "Messages";
+            chatArea.classList.add('active');
+            if (notesArea) notesArea.classList.remove('active');
+        } else if (panel === 'notes') {
+            sidebarTitle.innerText = "Notes de l'Entretien";
+            if (notesArea) notesArea.classList.add('active');
+            chatArea.classList.remove('active');
+        }
+    }
+
+    function closeSidebar() {
+        appSidebar.classList.remove('active');
+    }
+
+    {% if isRecruiter %}
+    async function saveNotes() {
+        const txt = document.getElementById('recruiterNotes').value;
+        const btnText = document.getElementById('saveNotesText');
+        btnText.innerText = "Sauvegarde...";
+        try {
+            const resp = await fetch("{{ path('api_meet_save_notes', {id: meet.id}) }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ notes: txt })
+            });
+            if(resp.ok) {
+                btnText.innerText = "Enregistré !";
+                setTimeout(() => btnText.innerText = "Sauvegarder les notes", 3000);
+            } else {
+                btnText.innerText = "Erreur";
+            }
+        } catch(e) {
+            btnText.innerText = "Erreur res";
+        }
+    }
+    {% endif %}
+
+    function copyInviteLink() {
+        navigator.clipboard.writeText(window.location.href);
+        const toast = document.getElementById('inviteLinkToast');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+    }
+
+    function leaveRoom() {
+        if(confirm("Voulez-vous vraiment quitter l'appel ?")) {
+            window.location.href = "{{ path('app_interviews') }}";
+        }
+    }
+
+    // --- Local Media Handling ---
+    async function startLocalStream() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            localVideo.srcObject = localStream;
+        } catch (e) {
+            console.error("Erreur gUM: ", e);
+            alert("Erreur d'accès à la caméra/micro. Vérifiez vos permissions.");
+        }
+    }
+
+    function toggleMic() {
+        if (!localStream) return;
+        micEnabled = !micEnabled;
+        localStream.getAudioTracks().forEach(track => track.enabled = micEnabled);
+        btnMic.className = micEnabled ? 'ctrl-btn' : 'ctrl-btn off';
+        btnMic.innerHTML = micEnabled ? '<i class="bi bi-mic-fill"></i>' : '<i class="bi bi-mic-mute-fill"></i>';
+    }
+
+    function toggleCam() {
+        if (!localStream) return;
+        camEnabled = !camEnabled;
+        localStream.getVideoTracks().forEach(track => track.enabled = camEnabled);
+        btnCam.className = camEnabled ? 'ctrl-btn' : 'ctrl-btn off';
+        btnCam.innerHTML = camEnabled ? '<i class="bi bi-camera-video-fill"></i>' : '<i class="bi bi-camera-video-off-fill"></i>';
+    }
+
+    // --- Custom WebSocket Chat ---
+    let ws;
+    function initWebSocketChat() {
+        try {
+            ws = new WebSocket(WS_CHAT_SERVER);
+            ws.onopen = () => {
+                console.log("Connecté au WebSockets.");
+                ws.send(JSON.stringify({ type: "join", room: ROOM_ID }));
+            };
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.room === ROOM_ID) {
+                        if (data.type === "chat") {
+                            appendMessage(data.user, data.text, false);
+                        } else if (data.type === "code" && window.applyRemoteCodeChange) {
+                            window.applyRemoteCodeChange(data);
+                        } else if (data.type === "code_lang" && window.applyRemoteLangChange) {
+                            window.applyRemoteLangChange(data.language);
+                        } else if (data.type === "code_output" && window.applyRemoteOutput) {
+                            window.applyRemoteOutput(data);
+                        } else if (data.type === "cc") {
+                            showSubtitle(data.user, data.text);
+                        }
+                    }
+                } catch (e) {}
+            };
+        } catch (e) {
+            console.error("WS error", e);
+        }
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (text && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "chat", room: ROOM_ID, user: DISPLAY_NAME, text: text }));
+                appendMessage(DISPLAY_NAME, text, true);
+                chatInput.value = '';
+            }
+        });
+    }
+
+    function appendMessage(user, text, isSelf) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'chat-msg flex-column ' + (isSelf ? 'self' : '');
+        
+        const authorDiv = document.createElement('div');
+        authorDiv.className = 'chat-msg-author';
+        authorDiv.innerText = isSelf ? 'Vous' : user;
+        
+        const textDiv = document.createElement('div');
+        textDiv.innerText = text;
+
+        msgDiv.appendChild(authorDiv);
+        msgDiv.appendChild(textDiv);
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Auto-open chat if hidden and new message arrives
+        if (!isSelf && !appSidebar.classList.contains('active')) {
+            openSidebar('chat');
+        }
+    }
+
+
+    // =======================================================================
+    // VANILLA JANUS REST API SIGNALING (No janus.js)
+    // =======================================================================
+    let sessionId = null;
+    let publisherHandleId = null;
+    let publisherPc = null;
+    let longPollXhr = null;
+    let myId = null; // Janus assigned ID
+    const STUN_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+
+    // Map of feed_id -> peer connection mapping
+    const remoteFeeds = {}; 
+
+    async function reqJanus(path, payload) {
+        const res = await fetch(`${JANUS_SERVER}${path}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        return res.json();
+    }
+
+    async function startJanusWebRTC() {
+        try {
+            // 1. Create session
+            let rep = await reqJanus('', { janus: "create", transaction: txn() });
+            if (rep.janus !== 'success') throw new Error("Janus session creation failed");
+            sessionId = rep.data.id;
+
+            // 2. Attach VideoRoom plugin
+            rep = await reqJanus(`/${sessionId}`, { janus: "attach", plugin: "janus.plugin.videoroom", transaction: txn() });
+            publisherHandleId = rep.data.id;
+
+            // 3. Start Long Polling immediately
+            startLongPolling();
+
+            // 5. Join the room as publisher
+            const joinReq = { janus: "message", transaction: txn(), body: { request: "join", room: NUMERIC_ROOM_ID, ptype: "publisher", display: DISPLAY_NAME } };
+            const joinRes = await reqJanus(`/${sessionId}/${publisherHandleId}`, joinReq);
+
+            if (joinRes && (joinRes.plugindata || joinRes.jsep)) {
+                handleJanusEvent(joinRes);
+            }
+
+        } catch(e) {
+            console.error("Erreur Janus INIT:", e);
+        }
+    }
+
+    // Long polling loop
+    async function startLongPolling() {
+        if (!sessionId) return;
+        try {
+            const res = await fetch(`${JANUS_SERVER}/${sessionId}?maxev=5`);
+            const responseData = await res.json();
+            
+            let events = Array.isArray(responseData) ? responseData : [responseData];
+
+            for (let event of events) {
+                if (event.janus === 'keepalive') {
+                    // ignore
+                } else if (event.janus === 'event') {
+                    handleJanusEvent(event);
+                } else if (event.janus === 'trickle') {
+                    const handleId = event.sender;
+                    // Provide the ICE candidate to the correct PeerConnection
+                    if (event.candidate && event.candidate.candidate !== "") {
+                        if (handleId === publisherHandleId && publisherPc) {
+                            publisherPc.addIceCandidate(event.candidate).catch(e => console.error("Error adding publisher ICE", e));
+                        } else if (remoteFeeds[handleId]) {
+                            remoteFeeds[handleId].pc.addIceCandidate(event.candidate).catch(e => console.error("Error adding subscriber ICE", e));
+                        }
+                    }
+                }
+            }
+            
+            // Loop back immediately
+            startLongPolling();
+        } catch (e) {
+            console.error("Long poll error", e);
+            setTimeout(startLongPolling, 2000);
+        }
+    }
+
+    async function handleJanusEvent(event) {
+        const handleId = event.sender;
+        const plugindata = event.plugindata;
+        
+        if (plugindata && plugindata.data) {
+            const data = plugindata.data;
+            const videoroom = data.videoroom;
+
+            if (videoroom === 'joined') {
+                // Publisher joined successfully
+                myId = data.id;
+                
+                // If there are already publishers in the room, subscribe to them
+                if (data.publishers) {
+                    data.publishers.forEach(pub => subscribeToFeed(pub.id, pub.display));
+                }
+
+                // Publish our stream
+                publishOwnStream();
+            } 
+            else if (videoroom === 'event') {
+                if (data.publishers) {
+                    data.publishers.forEach(pub => subscribeToFeed(pub.id, pub.display));
+                }
+                if (data.leaving) {
+                    removeRemoteVideo(data.leaving);
+                }
+                if (data.unpublished) {
+                    removeRemoteVideo(data.unpublished);
+                }
+            }
+        }
+
+        // Handle JSEP remote answers for our local stream 
+        if (event.jsep && handleId === publisherHandleId) {
+            if(publisherPc) {
+                await publisherPc.setRemoteDescription(new RTCSessionDescription(event.jsep));
+            }
+        } 
+        // Handle JSEP remote offers for subscriber streams
+        else if (event.jsep && remoteFeeds[handleId]) {
+            const pc = remoteFeeds[handleId].pc;
+            await pc.setRemoteDescription(new RTCSessionDescription(event.jsep));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            
+            // Send answer back
+            await reqJanus(`/${sessionId}/${handleId}`, {
+                janus: 'message',
+                transaction: txn(),
+                body: { request: 'start', room: NUMERIC_ROOM_ID },
+                jsep: pc.localDescription
+            });
+        }
+    }
+
+    async function publishOwnStream() {
+        publisherPc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+        
+        // Add local tracks
+        localStream.getTracks().forEach(track => publisherPc.addTrack(track, localStream));
+
+        // Trickle ICE
+        publisherPc.onicecandidate = async (e) => {
+            if (e.candidate) {
+                await reqJanus(`/${sessionId}/${publisherHandleId}`, { janus: "trickle", candidate: e.candidate, transaction: txn() });
+            } else {
+                await reqJanus(`/${sessionId}/${publisherHandleId}`, { janus: "trickle", candidate: {completed: true}, transaction: txn() });
+            }
+        };
+
+        const offer = await publisherPc.createOffer();
+        await publisherPc.setLocalDescription(offer);
+
+        // Send configure request
+        const body = { request: "configure", audio: true, video: true };
+        const confRes = await reqJanus(`/${sessionId}/${publisherHandleId}`, { janus: "message", transaction: txn(), body, jsep: publisherPc.localDescription });
+        
+        if (confRes && (confRes.plugindata || confRes.jsep)) {
+            handleJanusEvent(confRes);
+        }
+    }
+
+    async function subscribeToFeed(feedId, display) {
+        // 1. Attach a new handle for this subscription
+        const rep = await reqJanus(`/${sessionId}`, { janus: "attach", plugin: "janus.plugin.videoroom", transaction: txn() });
+        const subHandleId = rep.data.id;
+
+        const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+
+        remoteFeeds[subHandleId] = { pc, feedId, display };
+
+        pc.onicecandidate = async (e) => {
+            if (e.candidate) {
+                await reqJanus(`/${sessionId}/${subHandleId}`, { janus: "trickle", candidate: e.candidate, transaction: txn() });
+            } else {
+                await reqJanus(`/${sessionId}/${subHandleId}`, { janus: "trickle", candidate: {completed: true}, transaction: txn() });
+            }
+        };
+
+        pc.ontrack = (event) => {
+            addRemoteVideo(feedId, display, event.streams[0]);
+        };
+
+        // 2. Send join request as subscriber
+        const body = { request: "join", room: NUMERIC_ROOM_ID, ptype: "subscriber", feed: feedId };
+        const subRes = await reqJanus(`/${sessionId}/${subHandleId}`, { janus: "message", transaction: txn(), body });
+        
+        // JSEP offer typically comes back synchronously here
+        if (subRes && (subRes.plugindata || subRes.jsep)) {
+            handleJanusEvent(subRes);
+        }
+    }
+
+    function addRemoteVideo(feedId, display, stream) {
+        if (document.getElementById(`video-${feedId}`)) return;
+
+        const box = document.createElement('div');
+        box.className = 'video-box';
+        box.id = `videobox-${feedId}`;
+
+        const video = document.createElement('video');
+        video.id = `video-${feedId}`;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.srcObject = stream;
+
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'video-label';
+        labelDiv.innerText = display || 'Participant';
+
+        box.appendChild(video);
+        box.appendChild(labelDiv);
+        videoArea.appendChild(box);
+    }
+
+    function removeRemoteVideo(feedId) {
+        const box = document.getElementById(`videobox-${feedId}`);
+        if (box) {
+            box.remove();
+        }
+        // Cleanup peer connection
+        for (const handleId in remoteFeeds) {
+            if (remoteFeeds[handleId].feedId === feedId) {
+                remoteFeeds[handleId].pc.close();
+                delete remoteFeeds[handleId];
+                break;
+            }
+        }
+    }
+
+    function txn() {
+        return Math.random().toString(36).substring(2, 15);
+    }
+
+    // Ping Janus session to keep alive (every 30s)
+    setInterval(() => {
+        if (sessionId) {
+            reqJanus(`/${sessionId}`, { janus: "keepalive", transaction: txn() });
+        }
+    }, 30000);
+
+    // --- Subtitles Logic ---
+    let recognition = null;
+    let ccEnabled = false;
+    let subtitleTimeout;
+
+    function showSubtitle(user, text) {
+        const overlay = document.getElementById('subtitleOverlay');
+        document.getElementById('subtitleUser').innerText = user + ": ";
+        document.getElementById('subtitleText').innerText = text;
+        overlay.style.display = 'block';
+        
+        clearTimeout(subtitleTimeout);
+        subtitleTimeout = setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 4000);
+    }
+
+    function hideSubtitle() {
+        document.getElementById('subtitleOverlay').style.display = 'none';
+    }
+
+    function toggleCc() {
+        if (!ccEnabled) {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("Votre navigateur ne supporte pas la reconnaissance vocale en temps réel (Utilisez Chrome, Edge ou Safari).");
+                return;
+            }
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRec();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'fr-FR';
+
+            recognition.onresult = function(event) {
+                let text = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    text += event.results[i][0].transcript;
+                }
+                if (text.trim()) {
+                    showSubtitle(DISPLAY_NAME, text);
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: "cc", room: ROOM_ID, user: DISPLAY_NAME, text: text }));
+                    }
+                }
+            };
+            
+            recognition.onend = function() {
+                // Auto restart if cc is still enabled (to keep continuous listening active over long pauses)
+                if (ccEnabled) recognition.start();
+            };
+
+            recognition.start();
+            ccEnabled = true;
+            document.getElementById('btnCc').style.background = '#1a73e8';
+        } else {
+            ccEnabled = false;
+            if (recognition) {
+                recognition.onend = null;
+                recognition.stop();
+            }
+            document.getElementById('btnCc').style.background = 'var(--btn-bg)';
+            hideSubtitle();
+        }
+    }
+
+</script>
+
+{% if meet.meetType == 'TECHNICAL' %}
+<!-- RequireJS for Monaco Editor -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script>
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+        window.editor = monaco.editor.create(document.getElementById('editor'), {
+            value: "// L'éditeur collaboratif est prêt\n// Tapez votre code ici...\n",
+            language: 'javascript',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            minimap: { enabled: false },
+            fontSize: 14
+        });
+
+        // Language toggle sync
+        const langSelect = document.getElementById('languageSelect');
+        langSelect.addEventListener('change', function(e) {
+            monaco.editor.setModelLanguage(window.editor.getModel(), e.target.value);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "code_lang", room: ROOM_ID, language: e.target.value }));
+            }
+        });
+
+        let isApplyingRemoteChange = false;
+
+        // Capture local changes
+        window.editor.onDidChangeModelContent(function(e) {
+            if (isApplyingRemoteChange) return;
+
+            const content = window.editor.getValue();
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ 
+                    type: "code", 
+                    room: ROOM_ID, 
+                    user: DISPLAY_NAME, 
+                    content: content 
+                }));
+            }
+        });
+
+        // Process remote change
+        window.applyRemoteCodeChange = function(data) {
+            if (data.user !== DISPLAY_NAME) {
+                isApplyingRemoteChange = true;
+                const position = window.editor.getPosition();
+                window.editor.setValue(data.content);
+                window.editor.setPosition(position);
+                isApplyingRemoteChange = false;
+            }
+        };
+
+        // Process remote language change
+        window.applyRemoteLangChange = function(language) {
+            if (langSelect.value !== language) {
+                langSelect.value = language;
+                monaco.editor.setModelLanguage(window.editor.getModel(), language);
+            }
+        };
+
+        // Console Logic
+        const consoleOutput = document.getElementById('consoleOutput');
+        const btnRunCode = document.getElementById('btnRunCode');
+        const btnClearConsole = document.getElementById('btnClearConsole');
+
+        function setConsoleMessage(msg, isError = false) {
+            consoleOutput.className = isError ? 'code-console-output error' : 'code-console-output';
+            consoleOutput.innerText = msg || '';
+        }
+
+        btnClearConsole.addEventListener('click', () => {
+            setConsoleMessage("En attente d'exécution...");
+        });
+
+        window.applyRemoteOutput = function(data) {
+            if (data.user !== DISPLAY_NAME) {
+                setConsoleMessage("Résultat de " + data.user + " :\n\n" + data.text, data.isError);
+            }
+        };
+
+        btnRunCode.addEventListener('click', async () => {
+            btnRunCode.innerHTML = '<i class="spinner-border spinner-border-sm"></i> Exécution...';
+            btnRunCode.disabled = true;
+            setConsoleMessage("Compilation & Exécution en cours...");
+
+            try {
+                const response = await fetch("{{ path('api_meet_run_code', {id: meet.id}) }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        language: langSelect.value,
+                        code: window.editor.getValue()
+                    })
+                });
+                const result = await response.json();
+                
+                let finalText = "";
+                let isError = false;
+                
+                if (result.error && result.error.trim() !== '') {
+                    finalText = result.error;
+                    isError = true;
+                } else {
+                    finalText = result.output;
+                    if (!finalText || finalText.trim() === '') finalText = "Le programme a été exécuté avec succès mais n'a retourné aucune sortie.";
+                }
+                
+                setConsoleMessage(finalText, isError);
+
+                // Broadcast output to room
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: "code_output",
+                        room: ROOM_ID,
+                        user: DISPLAY_NAME,
+                        text: finalText,
+                        isError: isError
+                    }));
+                }
+                
+            } catch (err) {
+                setConsoleMessage("Une erreur interne est survenue lors de l'exécution.", true);
+            } finally {
+                btnRunCode.innerHTML = '<i class="bi bi-play-fill"></i> Exécuter';
+                btnRunCode.disabled = false;
+            }
+        });
+    });
+</script>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

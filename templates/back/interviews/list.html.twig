@@ -1,0 +1,135 @@
+{% extends 'back/_base.html.twig' %}
+
+{% block page_title %}Entretiens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-white">Vos Entretiens</h1>
+    <div>
+        <button class="bo-btn bo-btn-outline me-2" onclick="switchView('calendar')" id="bo-btn-cal"><i class="bi bi-calendar3 me-2"></i>Calendrier</button>
+        <button class="bo-btn bo-btn-primary" onclick="switchView('list')" id="bo-btn-list"><i class="bi bi-list-ul me-2"></i>Liste</button>
+    </div>
+</div>
+
+<div id="view-list">
+    <div class="bo-card mb-4">
+    <form method="get" action="{{ path('admin_interviews') }}" class="bo-form row g-3 align-items-end">
+        <div class="col-md-5">
+            <label for="q">Rechercher</label>
+            <input type="text" name="q" id="q" class="form-control" value="{{ search }}" placeholder="Nom, Email, Offre, Statut...">
+        </div>
+        <div class="col-md-4">
+            <label for="sort">Trier par</label>
+            <select name="sort" id="sort" class="form-select">
+                <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Date (Récent en premier)</option>
+                <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Date (Ancien en premier)</option>
+                <option value="status" {% if sort == 'status' %}selected{% endif %}>Statut</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="bo-btn bo-btn-primary w-100"><i class="bi bi-search me-2"></i>Filtrer</button>
+        </div>
+    </form>
+</div>
+
+<div class="bo-card">
+    <div class="table-responsive">
+        <table class="bo-table">
+            <thead>
+                <tr>
+                    <th>Candidat</th>
+                    <th>Offre</th>
+                    <th>Date Prévue</th>
+                    <th>Statut</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for interview in interviews %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ interview.application.user.email }}</div>
+                        </td>
+                        <td>{{ interview.application.offer.title }}</td>
+                        <td>{{ interview.interviewDate ? interview.interviewDate|date('Y-m-d H:i') : '-' }}</td>
+                        <td>
+                            {% if interview.status == 'SCHEDULED' %}
+                                <span class="bo-badge bo-badge-warning">Planifié</span>
+                            {% elseif interview.status == 'COMPLETED' %}
+                                <span class="bo-badge bo-badge-success">Terminé</span>
+                            {% else %}
+                                <span class="bo-badge bo-badge-neutral">{{ interview.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ path('admin_interview_detail', {'id': interview.id}) }}" class="bo-action-btn me-2" title="Gérer">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <form method="post" action="{{ path('admin_interview_delete', {'id': interview.id}) }}" class="d-inline-block" onsubmit="return confirm('Supprimer cet entretien et tous les meets ?');">
+                                <input type="hidden" name="_token" value="{{ csrf_token('delete_interview_' ~ interview.id) }}">
+                                <button type="submit" class="bo-action-btn" style="color:#ea4335" title="Supprimer">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Aucun entretien trouvé.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+<div id="view-calendar" style="display:none;">
+    <div class="bo-card">
+        <div id="calendar" style="background:#fff; color:#333; padding:16px; border-radius:8px"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script>
+    let calendar;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendar');
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'fr',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: "{{ path('api_meets_recruiter') }}",
+            eventClick: function(info) {
+                if (info.event.url) {
+                    window.location.href = info.event.url;
+                    info.jsEvent.preventDefault();
+                }
+            }
+        });
+    });
+
+    function switchView(view) {
+        let btnList = document.getElementById('bo-btn-list');
+        let btnCal = document.getElementById('bo-btn-cal');
+        
+        if (view === 'calendar') {
+            document.getElementById('view-list').style.display = 'none';
+            document.getElementById('view-calendar').style.display = 'block';
+            calendar.render();
+            btnCal.className = "bo-btn bo-btn-primary me-2";
+            btnList.className = "bo-btn bo-btn-outline";
+        } else {
+            document.getElementById('view-list').style.display = 'block';
+            document.getElementById('view-calendar').style.display = 'none';
+            btnList.className = "bo-btn bo-btn-primary";
+            btnCal.className = "bo-btn bo-btn-outline me-2";
+        }
+    }
+</script>
+{% endblock %}
