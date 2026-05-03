@@ -1,0 +1,294 @@
+# Integration Prompt — Projects & Activities Module
+
+> **Copy-paste this entire prompt to the AI that will integrate these features into the main project. Attach all the source files listed at the bottom.**
+
+---
+
+## CONTEXT
+
+I have a Symfony 6.4 web application (PHP 8.1+, Doctrine ORM 3.x, Twig). The **main project already has basic CRUD** (create, read, update, delete) for **Projects** and **Activities** — meaning the entities exist with their base fields, and there are simple forms to add/edit/delete them. **Nothing else exists beyond that basic CRUD.**
+
+I need you to integrate **all the advanced features** described below into the main project. These features come from a separate development branch. I'm providing you with all the source files. Your job is to merge them intelligently — keep the main project's existing structure and add/modify only what's needed.
+
+---
+
+## 1. DATABASE / ENTITY SCHEMAS
+
+### 1.1 `Project` Entity — Table: `project`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | INT, auto-increment | PK |
+| `name` | VARCHAR(100) | NOT NULL |
+| `description` | TEXT | NULLABLE |
+| `status` | ENUM('PLANNED','IN_PROGRESS','DONE','ON_HOLD') | DEFAULT 'PLANNED' |
+| `start_date` | DATE | NULLABLE |
+| `end_date` | DATE | NULLABLE |
+| `budget` | DECIMAL(10,2) | NULLABLE |
+| `project_manager_id` | INT (FK → `users.id`) | NULLABLE |
+| `created_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP |
+
+**Key relationships:**
+- `ManyToOne` → `User` (as `projectManager`, join column: `project_manager_id`)
+- The `getProjectManagerId()` convenience method returns `$this->projectManager?->getId()`
+
+### 1.2 `Activity` Entity — Table: `activities`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id_activity` | INT, auto-increment | PK (column name is `id_activity`) |
+| `employee_id` | INT (FK → `users.id`) | NOT NULL |
+| `activity_date` | DATE | NOT NULL |
+| `description` | TEXT | NULLABLE |
+| `hours_worked` | DECIMAL(5,2) | NULLABLE |
+| `project_id` | INT (FK → `project.id`) | NULLABLE |
+
+**Key relationships:**
+- `ManyToOne` → `User` (as `employee`, join column: `employee_id`)
+- `ManyToOne` → `Project` (as `project`, join column: `project_id`)
+
+### 1.3 Supporting Entities (already exist in main project)
+
+- **`User`** entity (table: `users`) — has `role` field with ENUM('ADMIN','HR','CANDIDATE'), `email`, `active`, `profile` (OneToOne → Profile). Method `getRole()` returns the raw string. `getRoles()` returns `['ROLE_' . $role]`.
+- **`Notification`** entity (table: `notifications`) — `user_id` FK, `type` (VARCHAR 50), `title`, `message`, `link`, `is_read` (bool), `created_at`.
+
+### 1.4 Migration Required
+
+A Doctrine migration adds the foreign key from `project.project_manager_id` → `users.id`:
+```sql
+ALTER TABLE project ADD CONSTRAINT FK_2FB3D0EE60984F51 FOREIGN KEY (project_manager_id) REFERENCES users (id);
+CREATE INDEX IDX_2FB3D0EE60984F51 ON project (project_manager_id);
+```
+
+---
+
+## 2. BACKEND — CONTROLLER ROUTES
+
+All admin routes live in `AdminDashboardController` under the `/admin` prefix. There's also one front-office controller.
+
+### 2.1 Admin Project CRUD Routes
+
+| Route Name | Method | Path | Description |
+|---|---|---|---|
+| `admin_projects` | GET | `/admin/projects` | List all projects. **ADMIN sees all**, **HR sees only own** (filtered by `projectManager = currentUser`). Sorted by `createdAt DESC`. |
+| `admin_project_new` | GET/POST | `/admin/projects/new` | Create project form. On POST: server-side validation (name ≥ 2 chars, endDate ≥ startDate, budget ≥ 0). Sets `projectManager` to current user. |
+| `admin_project_edit` | GET/POST | `/admin/projects/{id}/edit` | Edit project. On GET: also loads all activities for this project (`findBy(['project' => $project], ['activityDate' => 'DESC'])`). Access control: ADMIN can edit any, HR can only edit their own (checks `projectManagerId`). |
+| `admin_project_delete` | GET | `/admin/projects/{id}/delete` | Delete project. Same access control as edit. |
+| `admin_project_activity_new` | POST | `/admin/projects/{id}/activity/new` | **Add activity directly from the project edit page.** Creates a new Activity linked to the project, with `employee = currentUser`. Redirects back to project edit page. |
+
+**Server-side validation on project create/edit:**
+- `name` must be ≥ 2 characters
+- If both `startDate` and `endDate` are provided, `endDate` must be ≥ `startDate`
+- If `budget` is provided, it must be ≥ 0
+
+### 2.2 Admin Activity Management Routes
+
+| Route Name | Method | Path | Description |
+|---|---|---|---|
+| `admin_activities` | GET | `/admin/activities` | List all activities. **ADMIN sees all**. **HR sees only activities linked to their own projects** (DQL join on `a.project` where `p.projectManager = currentUser`). Also loads `candidates` (users with role CANDIDATE for admin; for HR: users who applied to HR's offers via DQL). Also loads `projects` for the assignment form. |
+| `admin_activity_new` | POST | `/admin/activities/new` | **Assign a new activity to a candidate.** Takes `candidateId`, `projectId` (optional), `description`, `hoursWorked`, `activityDate`. Ownership check: HR can only assign to projects they manage. **Sends a notification** to the candidate via `NotificationService`. |
+
+**Activity assignment flow:**
+1. Admin/HR selects a candidate from a dropdown (populated with CANDIDATE users)
+2. Optionally selects a project from their project list
+3. Fills in description (required), hours worked (optional), date
+4. On submit → creates Activity record, then calls `NotificationService->notify()` with type `'ACTIVITY'`, title `'Nouvelle activité assignée'`, message = description + project name, link = `'/activities'`
+
+### 2.3 Front-Office Route (Employee/Candidate view)
+
+| Route Name | Method | Path | Description |
+|---|---|---|---|
+| `app_activities` | GET | `/activities` | Shows the logged-in candidate their own activities. Requires `IS_AUTHENTICATED_FULLY`. Queries `Activity` where `employee = currentUser`, ordered by `activityDate DESC`. |
+
+This is in a separate controller: `ActivityController` (not inside AdminDashboardController).
+
+---
+
+## 3. NOTIFICATION SERVICE
+
+File: `src/Service/NotificationService.php`
+
+```php
+class NotificationService
+{
+    private EntityManagerInterface $em;
+    public function __construct(EntityManagerInterface $em) { $this->em = $em; }
+
+    public function notify(User $user, string $type, string $title, ?string $msg = null, ?string $link = null): void
+    {
+        $n = new Notification();
+        $n->setUser($user)->setType($type)->setTitle($title)->setMessage($msg)->setLink($link);
+        $this->em->persist($n);
+        $this->em->flush();
+    }
+
+    public function getUnreadCount(User $user): int
+    {
+        return $this->em->getRepository(Notification::class)->count(['user' => $user, 'isRead' => false]);
+    }
+}
+```
+
+**Used by activity assignment** (`admin_activity_new`): when an admin/HR assigns an activity to a candidate, the candidate gets an in-app notification of type `'ACTIVITY'`.
+
+---
+
+## 4. TEMPLATES (TWIG)
+
+### 4.1 Back-Office: `templates/back/projects/list.html.twig`
+- Extends `back/_base.html.twig`
+- Displays projects in a **sortable, searchable table** with columns: Name, Status (color-coded badges), Start Date, End Date, Budget
+- **Client-side search** (instant filter as you type in a search input)
+- **Client-side column sorting** (click column headers to sort ASC/DESC with arrow icons)
+- **Delete confirmation modal** (custom modal with blur backdrop, not browser `confirm()`)
+- Status badges use CSS classes: `bo-badge-success` (DONE), `bo-badge-primary` (IN_PROGRESS), `bo-badge-danger` (ON_HOLD), `bo-badge-warning` (PLANNED)
+- "Nouveau projet" button links to `admin_project_new`
+- Each row has Edit and Delete action buttons
+
+### 4.2 Back-Office: `templates/back/projects/form.html.twig`
+- Extends `back/_base.html.twig`
+- **Dual-purpose**: creates new project OR edits existing (checks `project` variable)
+- **Real-time client-side validation** with visual feedback:
+  - Name field: validates ≥ 2 chars, shows green check or red X with messages
+  - Date fields: validates endDate ≥ startDate
+  - Budget field: validates ≥ 0
+  - Submit button is **disabled until form is valid** (opacity transition)
+  - Fields get green/red borders (`field-valid` / `field-invalid` CSS classes)
+- When editing, shows an **activity panel on the right side** (col-lg-5):
+  - Lists all activities for this project
+  - Has an **inline form to add a new activity** directly from the project page (posts to `admin_project_activity_new`)
+  - Activity form has its own mini-validation (description required)
+  - Each activity shows: description, date, hours worked
+
+### 4.3 Back-Office: `templates/back/activities/list.html.twig`
+- Extends `back/_base.html.twig`
+- **Split layout**: left side = assignment form (col-lg-5), right side = activity list (col-lg-7)
+- **Assignment form** with:
+  - Candidate dropdown (from `candidates` variable — CANDIDATE role users)
+  - Project dropdown (optional, from `projects` variable)
+  - Description textarea (required, min 5 chars)
+  - Date picker (defaults to today)
+  - Hours worked input (numeric, min 0)
+  - Full client-side validation (same green/red feedback pattern)
+  - Submit button disabled until valid
+- **Activity list** with:
+  - Card-style items showing description, employee email, project name, hours, date
+  - **Client-side search** filter
+  - Real-time count update
+
+### 4.4 Front-Office: `templates/front/account/activities.html.twig`
+- Extends `front/_base.html.twig`
+- **Employee's personal activity view** (candidates see their own assigned activities)
+- **Summary stats row** with 3 cards:
+  - Total activities count
+  - Total hours worked (summed in Twig)
+  - Number of distinct projects linked
+- **Activity list**: each activity is a card showing description, project badge, hours badge, date
+- Icon changes based on whether activity has a project linked or not
+- Empty state message when no activities
+
+---
+
+## 5. CLIENT-SIDE JAVASCRIPT FEATURES
+
+### 5.1 Project List (`list.html.twig`)
+- **Instant search**: filters table rows by any text content as user types
+- **Column sorting**: click any column header to sort ASC/DESC. Handles text, dates (via `data-date` attribute), and numbers (via `data-num` attribute). Sort direction indicator with Bootstrap Icons arrows.
+- **Delete modal**: custom overlay modal with `backdrop-filter: blur(4px)`, click-outside-to-close
+
+### 5.2 Project Form (`form.html.twig`)
+- **Live validation**: each field validates on `input` event, shows inline error/success messages with icons
+- **State machine**: tracks validity of each field (`state = {name: false, dates: true, budget: true}`), submit button enables only when all valid
+- **Activity mini-form**: same validation pattern for the inline activity creation form
+
+### 5.3 Activity List (`list.html.twig`)
+- **Form validation**: validates candidate selection, description (min 5 chars), hours (≥ 0)
+- **Instant search**: filters activity cards by text content
+
+---
+
+## 6. ACCESS CONTROL LOGIC
+
+The access control pattern used throughout:
+```php
+private function isAdmin(): bool {
+    return $this->getUser()->getRole() === 'ADMIN';
+}
+```
+
+- **ADMIN**: sees all projects, all activities, can edit/delete any
+- **HR**: sees only their own projects (where `projectManager = currentUser`), sees only activities linked to their projects, can only assign activities to their own projects' candidates
+- **CANDIDATE (front-office)**: sees only their own assigned activities via `ActivityController`
+
+When checking project ownership for HR:
+```php
+if (!$this->isAdmin() && $project->getProjectManagerId() !== $this->getUser()->getId()) {
+    throw $this->createAccessDeniedException();
+}
+```
+
+---
+
+## 7. WHAT THE MAIN PROJECT ALREADY HAS (DON'T DUPLICATE)
+
+The main project already has:
+- Basic Project entity with the same fields (but may not have the `projectManager` relationship)
+- Basic Activity entity with the same fields (but may not have the `project` relationship)
+- Simple CRUD forms (create/edit/delete) for both — **without** the advanced features listed above
+- The `User` entity with roles
+- The `Notification` entity
+
+---
+
+## 8. WHAT YOU NEED TO ADD/MODIFY
+
+1. **Entity changes**:
+   - Add `projectManager` (ManyToOne → User) to Project entity if missing
+   - Add `project` (ManyToOne → Project) to Activity entity if missing
+   - Run `php bin/console doctrine:migrations:diff` then `doctrine:migrations:migrate`
+
+2. **Controller changes** (in `AdminDashboardController`):
+   - Replace/enhance the existing project CRUD routes with the ones described above (search, sort, access control, inline activity creation)
+   - Replace/enhance the existing activity routes with the assignment system
+   - Add `admin_project_activity_new` route for inline activity creation from project edit
+
+3. **New controller**: `ActivityController` for front-office `/activities` route
+
+4. **New service**: `NotificationService` (if not already present)
+
+5. **Templates**: Replace the existing simple templates with the enhanced ones provided
+
+6. **No external libraries/bundles needed** — everything is vanilla PHP/Symfony/Twig/JS. No third-party bundles like KnpPaginator, DomPDF, etc. are required for the Project/Activity module.
+
+---
+
+## 9. FILES TO INTEGRATE
+
+Here are all the files you need. I'm providing them as attachments:
+
+| File | Purpose |
+|---|---|
+| `src/Entity/Project.php` | Project entity with all fields + projectManager relationship |
+| `src/Entity/Activity.php` | Activity entity with all fields + project relationship |
+| `src/Entity/User.php` | User entity (for reference — roles, profile) |
+| `src/Entity/Notification.php` | Notification entity (for reference) |
+| `src/Service/NotificationService.php` | Service to create in-app notifications |
+| `src/Controller/ActivityController.php` | Front-office: employee views their activities |
+| `src/Controller/Admin/AdminDashboardController.php` | All admin routes (extract only the PROJECT and ACTIVITY sections, lines ~860-1075) |
+| `templates/back/projects/list.html.twig` | Project list with search, sort, delete modal |
+| `templates/back/projects/form.html.twig` | Project create/edit form with validation + activity panel |
+| `templates/back/activities/list.html.twig` | Activity assignment form + activity list with search |
+| `templates/front/account/activities.html.twig` | Employee activity view with stats |
+
+---
+
+## 10. INTEGRATION INSTRUCTIONS
+
+1. **Read all files first** to understand the complete picture
+2. **Merge entities**: add missing fields/relationships to the existing Project and Activity entities
+3. **Merge controller**: add the enhanced route methods into the existing AdminDashboardController — keep all other modules' routes intact
+4. **Add ActivityController** for the front-office
+5. **Add NotificationService** if it doesn't exist
+6. **Replace templates** for projects and activities
+7. **Generate and run migration** for any schema changes
+8. **Test**: verify all routes work, access control is correct, and forms validate properly
