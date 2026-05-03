@@ -1044,6 +1044,7 @@ class AdminDashboardController extends AbstractController
         $desc = trim($request->request->get('description', ''));
         $hours = $request->request->get('hoursWorked');
         $dateStr = $request->request->get('activityDate');
+        $deadlineStr = $request->request->get('expectedDeadline');
 
         $candidate = $em->getRepository(User::class)->find($candidateId);
         $project = $projectId ? $em->getRepository(Project::class)->find($projectId) : null;
@@ -1060,6 +1061,11 @@ class AdminDashboardController extends AbstractController
             $activity->setDescription($desc);
             if ($hours) $activity->setHoursWorked($hours);
             $activity->setActivityDate($dateStr ? new \DateTime($dateStr) : new \DateTime());
+            
+            if ($deadlineStr) {
+                $activity->setExpectedDeadline(new \DateTime($deadlineStr));
+            }
+            
             $em->persist($activity);
             $em->flush();
 
@@ -1071,6 +1077,348 @@ class AdminDashboardController extends AbstractController
             $this->addFlash('success', 'Activité assignée à ' . $candidate->getEmail());
         }
 
+        return $this->redirectToRoute('admin_activities');
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  KANBAN BOARD
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/projects/kanban', name: 'admin_projects_kanban')]
+    public function projectsKanban(EntityManagerInterface $em): Response
+    {
+        if ($this->isAdmin()) {
+            $projects = $em->getRepository(Project::class)->findBy([], ['createdAt' => 'DESC']);
+        } else {
+            $projects = $em->getRepository(Project::class)->findBy(
+                ['projectManager' => $this->getUser()], ['createdAt' => 'DESC']
+            );
+        }
+
+        $columns = ['PLANNED' => [], 'IN_PROGRESS' => [], 'DONE' => [], 'ON_HOLD' => []];
+        foreach ($projects as $p) {
+            $status = $p->getStatus() ?: 'PLANNED';
+            if (isset($columns[$status])) {
+                $columns[$status][] = $p;
+            }
+        }
+
+        return $this->render('back/projects/kanban.html.twig', [
+            'columns' => $columns,
+            'totalProjects' => count($projects),
+        ]);
+    }
+
+    #[Route('/projects/{id}/status', name: 'admin_project_status', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function projectStatus(Project $project, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $project->getProjectManagerId() !== $this->getUser()->getId()) {
+            return new JsonResponse(['error' => 'Access denied'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $newStatus = $data['status'] ?? $request->request->get('status');
+
+        if (in_array($newStatus, ['PLANNED', 'IN_PROGRESS', 'DONE', 'ON_HOLD'])) {
+            $project->setStatus($newStatus);
+            $em->flush();
+            return new JsonResponse(['success' => true, 'status' => $newStatus]);
+        }
+
+        return new JsonResponse(['error' => 'Invalid status'], 400);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  PROJECT ACTIVITY LOGS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/projects/{id}/logs', name: 'admin_project_logs', requirements: ['id' => '\d+'])]
+    public function projectLogs(Project $project, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $project->getProjectManagerId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $qb = $em->getRepository(Activity::class)->createQueryBuilder('a')
+            ->where('a.project = :project')->setParameter('project', $project)
+            ->orderBy('a.activityDate', 'DESC');
+
+        // Optional date filters
+        $from = $request->query->get('from');
+        $to = $request->query->get('to');
+        $employeeFilter = $request->query->get('employee');
+
+        if ($from) {
+            $qb->andWhere('a.activityDate >= :from')->setParameter('from', new \DateTime($from));
+        }
+        if ($to) {
+            $qb->andWhere('a.activityDate <= :to')->setParameter('to', new \DateTime($to));
+        }
+        if ($employeeFilter) {
+            $qb->andWhere('a.employee = :emp')->setParameter('emp', $employeeFilter);
+        }
+
+        $activities = $qb->getQuery()->getResult();
+
+        // Stats
+        $totalHours = 0;
+        $contributors = [];
+        foreach ($activities as $a) {
+            $totalHours += (float)($a->getHoursWorked() ?? 0);
+            $empId = $a->getEmployee()?->getId();
+            if ($empId && !in_array($empId, $contributors)) {
+                $contributors[] = $empId;
+            }
+        }
+
+        // Get employees for filter dropdown
+        $employees = $em->createQueryBuilder()
+            ->select('DISTINCT u.id, u.email')
+            ->from(Activity::class, 'a')
+            ->join('a.employee', 'u')
+            ->where('a.project = :project')->setParameter('project', $project)
+            ->getQuery()->getResult();
+
+        return $this->render('back/projects/logs.html.twig', [
+            'project' => $project,
+            'activities' => $activities,
+            'totalHours' => round($totalHours, 2),
+            'totalActivities' => count($activities),
+            'totalContributors' => count($contributors),
+            'employees' => $employees,
+            'filterFrom' => $from,
+            'filterTo' => $to,
+            'filterEmployee' => $employeeFilter,
+        ]);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  LEADERBOARD
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/leaderboard', name: 'admin_leaderboard')]
+    public function leaderboard(EntityManagerInterface $em, Request $request): Response
+    {
+        $period = $request->query->get('period', 'all');
+
+        $qb = $em->createQueryBuilder()
+            ->select('u.id, u.email, COUNT(a.id) as activityCount, SUM(a.hoursWorked) as totalHours, SUM(a.delayInHours) as totalDelay, SUM(a.revisionCount) as totalRevisions, SUM(CASE WHEN a.reportStatus = \'REVIEWED\' AND a.revisionCount = 0 THEN 1 ELSE 0 END) as firstTimeApprovals')
+            ->from(Activity::class, 'a')
+            ->join('a.employee', 'u')
+            ->groupBy('u.id, u.email');
+
+        if (!$this->isAdmin()) {
+            $qb->join('a.project', 'p')
+               ->andWhere('p.projectManager = :mgr')->setParameter('mgr', $this->getUser());
+        }
+
+        if ($period === 'week') {
+            $qb->andWhere('a.activityDate >= :since')
+               ->setParameter('since', new \DateTime('-7 days'));
+        } elseif ($period === 'month') {
+            $qb->andWhere('a.activityDate >= :since')
+               ->setParameter('since', new \DateTime('-30 days'));
+        }
+
+        $rawRankings = $qb->getQuery()->getResult();
+        
+        $rankings = [];
+        foreach ($rawRankings as $r) {
+            $actCount = (int)$r['activityCount'];
+            $totalDelay = (int)($r['totalDelay'] ?? 0);
+            $totalRevs = (int)($r['totalRevisions'] ?? 0);
+            $ftApp = (int)($r['firstTimeApprovals'] ?? 0);
+            
+            $ftar = $actCount > 0 ? round(($ftApp / $actCount) * 100) : 0;
+            
+            // Efficiency Score Algorithm
+            // Base points: 100 per activity
+            // Quality bonus: 20 per FTAR approval
+            // Late penalty: -10 per hour delayed
+            // Rework penalty: -15 per revision cycle
+            $score = ($actCount * 100) + ($ftApp * 20) - ($totalDelay * 10) - ($totalRevs * 15);
+            
+            $r['efficiencyScore'] = max(0, $score); // ensure score doesn't go below 0 for display
+            $r['ftar'] = $ftar;
+            $rankings[] = $r;
+        }
+        
+        // Sort by Efficiency Score DESC
+        usort($rankings, function($a, $b) {
+            return $b['efficiencyScore'] <=> $a['efficiencyScore'];
+        });
+
+        // Fetch profile info for top users
+        $profileMap = [];
+        foreach ($rankings as $r) {
+            $user = $em->getRepository(User::class)->find($r['id']);
+            $profile = $user?->getProfile();
+            $profileMap[$r['id']] = [
+                'firstName' => $profile?->getFirstName(),
+                'lastName' => $profile?->getLastName(),
+                'avatar' => $profile?->getProfilePicturePath(),
+            ];
+        }
+
+        return $this->render('back/leaderboard/index.html.twig', [
+            'rankings' => $rankings,
+            'profiles' => $profileMap,
+            'period' => $period,
+        ]);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  CALENDAR
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/calendar', name: 'admin_calendar')]
+    public function calendar(): Response
+    {
+        return $this->render('back/calendar/index.html.twig');
+    }
+
+    #[Route('/calendar/data', name: 'admin_calendar_data')]
+    public function calendarData(EntityManagerInterface $em): Response
+    {
+        $user = $this->getUser();
+        $events = [];
+
+        // Projects as date ranges
+        if ($this->isAdmin()) {
+            $projects = $em->getRepository(Project::class)->findAll();
+        } else {
+            $projects = $em->getRepository(Project::class)->findBy(['projectManager' => $user]);
+        }
+
+        $statusColors = [
+            'PLANNED' => '#f59e0b', 'IN_PROGRESS' => '#4f46e5',
+            'DONE' => '#10b981', 'ON_HOLD' => '#ef4444',
+        ];
+
+        foreach ($projects as $p) {
+            if ($p->getStartDate()) {
+                $events[] = [
+                    'id' => 'proj_' . $p->getId(),
+                    'title' => '📁 ' . $p->getName(),
+                    'start' => $p->getStartDate()->format('Y-m-d'),
+                    'end' => $p->getEndDate() ? $p->getEndDate()->modify('+1 day')->format('Y-m-d') : null,
+                    'color' => $statusColors[$p->getStatus()] ?? '#6366f1',
+                    'url' => '/admin/projects/' . $p->getId() . '/edit',
+                    'extendedProps' => ['type' => 'project', 'status' => $p->getStatus()],
+                ];
+            }
+        }
+
+        // Activities as single-day events
+        if ($this->isAdmin()) {
+            $activities = $em->getRepository(Activity::class)->findAll();
+        } else {
+            $activities = $em->getRepository(Activity::class)->createQueryBuilder('a')
+                ->join('a.project', 'p')
+                ->where('p.projectManager = :uid')->setParameter('uid', $user)
+                ->getQuery()->getResult();
+        }
+
+        foreach ($activities as $a) {
+            if ($a->getActivityDate()) {
+                $events[] = [
+                    'id' => 'act_' . $a->getId(),
+                    'title' => '⚡ ' . ($a->getDescription() ? mb_substr($a->getDescription(), 0, 30) : 'Activité'),
+                    'start' => $a->getActivityDate()->format('Y-m-d'),
+                    'color' => '#06b6d4',
+                    'extendedProps' => [
+                        'type' => 'activity',
+                        'hours' => $a->getHoursWorked(),
+                        'project' => $a->getProject()?->getName(),
+                    ],
+                ];
+            }
+        }
+
+        return new JsonResponse($events);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  EMPLOYEE PDF REPORT
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/reports/employee/{id}', name: 'admin_report_employee', requirements: ['id' => '\d+'])]
+    public function reportEmployee(int $id, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin()) {
+            // HR can only see reports for employees on their projects
+            $hasAccess = $em->createQueryBuilder()
+                ->select('COUNT(a.id)')
+                ->from(Activity::class, 'a')
+                ->join('a.project', 'p')
+                ->where('a.employee = :eid AND p.projectManager = :mgr')
+                ->setParameter('eid', $id)
+                ->setParameter('mgr', $this->getUser())
+                ->getQuery()->getSingleScalarResult();
+            if ($hasAccess == 0) {
+                throw $this->createAccessDeniedException();
+            }
+        }
+
+        $employee = $em->getRepository(User::class)->find($id);
+        if (!$employee) throw $this->createNotFoundException();
+
+        $activities = $em->getRepository(Activity::class)->findBy(
+            ['employee' => $employee], ['activityDate' => 'DESC']
+        );
+
+        $totalHours = 0;
+        $projectNames = [];
+        foreach ($activities as $a) {
+            $totalHours += (float)($a->getHoursWorked() ?? 0);
+            if ($a->getProject() && !in_array($a->getProject()->getName(), $projectNames)) {
+                $projectNames[] = $a->getProject()->getName();
+            }
+        }
+
+        return $this->render('back/reports/employee_pdf.html.twig', [
+            'employee' => $employee,
+            'activities' => $activities,
+            'totalHours' => round($totalHours, 2),
+            'totalProjects' => count($projectNames),
+            'projectNames' => $projectNames,
+        ]);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  ACTIVITY REPORT REVIEW
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/activities/{id}/review', name: 'admin_activity_review', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function activityReview(Activity $activity, Request $request, EntityManagerInterface $em): Response
+    {
+        $project = $activity->getProject();
+        if (!$this->isAdmin() && ($project && $project->getProjectManagerId() !== $this->getUser()->getId())) {
+            throw $this->createAccessDeniedException('Access denied');
+        }
+
+        $action = $request->request->get('reviewAction', 'approve');
+        $feedback = trim($request->request->get('adminFeedback', ''));
+
+        if ($action === 'revision' || $action === 'reject') {
+            if (empty($feedback)) {
+                $this->addFlash('danger', 'Le retour (feedback) est obligatoire pour une demande de révision ou un refus.');
+                return $this->redirect($request->headers->get('referer') ?: $this->generateUrl('admin_activities'));
+            }
+            $activity->setAdminFeedback($feedback);
+            if ($action === 'revision') {
+                $activity->setReportStatus('REVISION_REQUESTED');
+                $activity->setRevisionCount($activity->getRevisionCount() + 1);
+                $this->addFlash('warning', 'Révision demandée au candidat.');
+            } else {
+                $activity->setReportStatus('REJECTED');
+                $this->addFlash('danger', 'Le rapport a été refusé.');
+            }
+        } else {
+            // approve
+            $activity->setReportStatus('REVIEWED');
+            $this->addFlash('success', 'Rapport marqué comme révisé et approuvé.');
+        }
+
+        $em->flush();
+
+        if ($project) {
+            return $this->redirectToRoute('admin_project_logs', ['id' => $project->getId()]);
+        }
         return $this->redirectToRoute('admin_activities');
     }
 

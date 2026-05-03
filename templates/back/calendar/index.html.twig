@@ -1,0 +1,51 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Calendrier{% endblock %}
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.css" rel="stylesheet">
+<style>
+    .fc{background:var(--bo-bg-card);border:1px solid var(--bo-border);border-radius:16px;padding:16px}
+    .fc .fc-toolbar-title{font-size:1.1rem!important;font-weight:700!important;color:var(--bo-text)!important}
+    .fc .fc-button{background:rgba(79,70,229,.15)!important;border:1px solid rgba(79,70,229,.3)!important;color:var(--primary-light)!important;border-radius:8px!important;font-size:.8rem!important;font-weight:600!important;padding:6px 14px!important;transition:all .2s!important}
+    .fc .fc-button:hover{background:rgba(79,70,229,.25)!important}
+    .fc .fc-button-active{background:var(--primary)!important;color:#fff!important}
+    .fc .fc-col-header-cell{background:rgba(255,255,255,.03);color:var(--bo-text-secondary);font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+    .fc .fc-daygrid-day{border-color:var(--bo-border)!important}
+    .fc .fc-daygrid-day-number{color:var(--bo-text-secondary);font-size:.8rem;padding:6px 8px}
+    .fc .fc-day-today{background:rgba(79,70,229,.06)!important}
+    .fc .fc-event{border-radius:6px!important;padding:2px 6px!important;font-size:.75rem!important;font-weight:600!important;border:none!important;cursor:pointer}
+    .fc .fc-event:hover{opacity:.85;transform:translateY(-1px)}
+    .fc th,.fc td,.fc .fc-scrollgrid{border-color:var(--bo-border)!important}
+    .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--bo-text-secondary)}
+    .legend-dot{width:12px;height:12px;border-radius:4px}
+</style>
+<div class="d-flex align-items-center justify-content-between" style="margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <h5 style="font-weight:700;margin:0"><i class="bi bi-calendar3 me-2" style="color:var(--accent)"></i>Calendrier Projets & Activités</h5>
+</div>
+<div id="calendar"></div>
+<div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Planifié</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4f46e5"></div>En cours</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Terminé</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>En attente</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Activité</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+    var cal=new FullCalendar.Calendar(document.getElementById('calendar'),{
+        initialView:'dayGridMonth',
+        locale:'fr',
+        headerToolbar:{left:'prev,next today',center:'title',right:'dayGridMonth,timeGridWeek,listWeek'},
+        buttonText:{today:"Aujourd'hui",month:'Mois',week:'Semaine',list:'Liste'},
+        events:'{{ path("admin_calendar_data") }}',
+        eventClick:function(info){
+            if(info.event.url){info.jsEvent.preventDefault();window.location.href=info.event.url;}
+        },
+        height:'auto',
+        dayMaxEvents:3
+    });
+    cal.render();
+});
+</script>
+{% endblock %}

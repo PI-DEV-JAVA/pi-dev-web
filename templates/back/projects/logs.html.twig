@@ -1,0 +1,152 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Logs — {{ project.name }}{% endblock %}
+{% block content %}
+<style>
+    .timeline { position: relative; padding-left: 32px; }
+    .timeline::before { content: ''; position: absolute; left: 11px; top: 0; bottom: 0; width: 2px; background: linear-gradient(180deg, var(--primary) 0%, var(--accent) 100%); border-radius: 2px; }
+    .timeline-item { position: relative; margin-bottom: 20px; }
+    .timeline-dot { position: absolute; left: -32px; top: 4px; width: 22px; height: 22px; border-radius: 50%; background: var(--bo-bg-card); border: 3px solid var(--primary); display: flex; align-items: center; justify-content: center; z-index: 1; }
+    .timeline-dot i { font-size: 0.55rem; color: var(--primary-light); }
+    .timeline-card { background: var(--bo-bg-card); border: 1px solid var(--bo-border); border-radius: 12px; padding: 16px; transition: all 0.2s; }
+    .timeline-card:hover { border-color: rgba(79,70,229,0.3); transform: translateX(4px); }
+    .stat-mini { text-align: center; padding: 16px; }
+    .stat-mini-value { font-size: 1.8rem; font-weight: 800; }
+    .stat-mini-label { font-size: 0.8rem; color: var(--bo-text-secondary); margin-top: 4px; }
+</style>
+
+<div class="mb-3"><a href="{{ path('admin_project_edit', {id: project.id}) }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour au projet</a></div>
+
+{# Stats row #}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="bo-card stat-mini">
+            <div class="stat-mini-value" style="color:var(--primary-light)">{{ totalActivities }}</div>
+            <div class="stat-mini-label">Activités</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="bo-card stat-mini">
+            <div class="stat-mini-value" style="color:var(--accent)">{{ totalHours }}h</div>
+            <div class="stat-mini-label">Heures totales</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="bo-card stat-mini">
+            <div class="stat-mini-value" style="color:var(--success)">{{ totalContributors }}</div>
+            <div class="stat-mini-label">Contributeurs</div>
+        </div>
+    </div>
+</div>
+
+{# Filters #}
+<div class="bo-card mb-4">
+    <form method="get" class="d-flex align-items-end gap-3 flex-wrap">
+        <div>
+            <label style="font-size:0.8rem;color:var(--bo-text-secondary);font-weight:600;display:block;margin-bottom:4px">Du</label>
+            <input type="date" name="from" value="{{ filterFrom }}" class="form-control" style="background:var(--bo-bg-input);border:1px solid var(--bo-border);color:var(--bo-text);border-radius:8px;padding:8px 12px;font-size:0.85rem">
+        </div>
+        <div>
+            <label style="font-size:0.8rem;color:var(--bo-text-secondary);font-weight:600;display:block;margin-bottom:4px">Au</label>
+            <input type="date" name="to" value="{{ filterTo }}" class="form-control" style="background:var(--bo-bg-input);border:1px solid var(--bo-border);color:var(--bo-text);border-radius:8px;padding:8px 12px;font-size:0.85rem">
+        </div>
+        <div>
+            <label style="font-size:0.8rem;color:var(--bo-text-secondary);font-weight:600;display:block;margin-bottom:4px">Employé</label>
+            <select name="employee" class="form-select" style="background:var(--bo-bg-input);border:1px solid var(--bo-border);color:var(--bo-text);border-radius:8px;padding:8px 12px;font-size:0.85rem">
+                <option value="">Tous</option>
+                {% for e in employees %}
+                    <option value="{{ e.id }}" {{ filterEmployee == e.id ? 'selected' }}>{{ e.email }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="bo-btn bo-btn-primary" style="padding:8px 16px"><i class="bi bi-funnel me-1"></i>Filtrer</button>
+        <a href="{{ path('admin_project_logs', {id: project.id}) }}" class="bo-btn bo-btn-outline" style="padding:8px 16px">Réinitialiser</a>
+    </form>
+</div>
+
+{# Timeline #}
+<div class="bo-card">
+    <h6 style="font-weight:700;margin-bottom:20px"><i class="bi bi-clock-history me-2" style="color:var(--accent)"></i>Chronologie des activités</h6>
+
+    {% if activities|length > 0 %}
+    <div class="timeline">
+        {% set currentDate = null %}
+        {% for a in activities %}
+            {% set aDate = a.activityDate ? a.activityDate|date('d/m/Y') : '' %}
+            {% if aDate != currentDate %}
+                {% set currentDate = aDate %}
+                <div style="font-weight:700;font-size:0.8rem;color:var(--primary-light);margin-bottom:8px;margin-top:{{ loop.first ? '0' : '12px' }}">
+                    <i class="bi bi-calendar3 me-1"></i>{{ currentDate }}
+                </div>
+            {% endif %}
+            <div class="timeline-item">
+                <div class="timeline-dot"><i class="bi bi-lightning-fill"></i></div>
+                <div class="timeline-card">
+                    <div style="font-weight:600;font-size:0.9rem">{{ a.description }}</div>
+                    <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+                        <span style="font-size:0.8rem;color:var(--bo-text-secondary)"><i class="bi bi-person me-1"></i>{{ a.employee ? a.employee.email : '—' }}</span>
+                        {% if a.hoursWorked %}
+                            <span class="bo-badge bo-badge-primary"><i class="bi bi-clock me-1"></i>{{ a.hoursWorked }}h</span>
+                        {% endif %}
+                    </div>
+                    {% if a.userReport %}
+                        <div style="width:100%;margin-top:12px;background:rgba(255,255,255,0.02);border:1px solid var(--bo-border);border-radius:8px;padding:10px">
+                            <div style="font-size:0.8rem;color:var(--bo-text-secondary);margin-bottom:4px">
+                                <i class="bi bi-journal-text me-1"></i>Rapport de l'utilisateur
+                            </div>
+                            <div style="font-size:0.85rem;margin-bottom:10px">{{ a.userReport|nl2br }}</div>
+                            
+                            {% if a.isLateSubmission %}
+                                <div style="margin-bottom:8px;font-size:0.75rem;color:#ef4444;font-weight:700">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>En retard de {{ a.delayInHours }}h (Deadline: {{ a.expectedDeadline|date('d/m/Y H:i') }})
+                                </div>
+                            {% endif %}
+                            
+                            <div style="margin-bottom:12px">
+                                {% if a.reportStatus == 'REVIEWED' %}
+                                    <span class="bo-badge bo-badge-success">Révisé</span>
+                                {% elseif a.reportStatus == 'REVISION_REQUESTED' %}
+                                    <span class="bo-badge bo-badge-warning">Révision Demandée</span>
+                                    <div style="font-size:0.75rem;margin-top:4px;color:var(--bo-text-secondary)">Feedback: {{ a.adminFeedback }}</div>
+                                {% elseif a.reportStatus == 'REJECTED' %}
+                                    <span class="bo-badge bo-badge-danger" style="background:rgba(239,68,68,0.1);color:#ef4444">Rejeté</span>
+                                    <div style="font-size:0.75rem;margin-top:4px;color:var(--bo-text-secondary)">Feedback: {{ a.adminFeedback }}</div>
+                                {% else %}
+                                    <span class="bo-badge bo-badge-primary">En attente ({{ a.reportStatus }})</span>
+                                {% endif %}
+                            </div>
+                            
+                            {% if a.reportStatus == 'SUBMITTED' or a.reportStatus == 'PENDING' %}
+                                <form method="post" action="{{ path('admin_activity_review', {id: a.id}) }}" style="margin:0;background:var(--bo-bg-input);padding:10px;border-radius:8px;border:1px solid var(--bo-border)">
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-4">
+                                            <label style="font-size:0.75rem;color:var(--bo-text-secondary);display:block;margin-bottom:4px">Action</label>
+                                            <select name="reviewAction" class="form-select" style="font-size:0.8rem;padding:4px 8px" onchange="document.getElementById('fb_{{ a.id }}').style.display = (this.value == 'approve') ? 'none' : 'block'">
+                                                <option value="approve">✅ Approuver</option>
+                                                <option value="revision">🔄 Demander révision</option>
+                                                <option value="reject">❌ Rejeter</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-5" id="fb_{{ a.id }}" style="display:none">
+                                            <label style="font-size:0.75rem;color:var(--bo-text-secondary);display:block;margin-bottom:4px">Feedback</label>
+                                            <input type="text" name="adminFeedback" class="form-control" style="font-size:0.8rem;padding:4px 8px" placeholder="Raison de la révision/refus...">
+                                        </div>
+                                        <div class="col-md-3 text-end">
+                                            <button type="submit" class="bo-btn bo-btn-primary w-100" style="padding:4px 8px;font-size:0.8rem">Valider</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <div class="text-center" style="padding:40px;color:var(--bo-text-secondary)">
+            <i class="bi bi-inbox" style="font-size:2.5rem;opacity:0.4;display:block;margin-bottom:8px"></i>
+            Aucune activité trouvée pour ce projet.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

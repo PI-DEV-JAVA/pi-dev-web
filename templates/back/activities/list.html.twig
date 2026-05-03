@@ -54,11 +54,15 @@
                     <div class="field-msg" id="msgActDesc"></div>
                 </div>
                 <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label>Date</label>
-                        <input type="date" name="activityDate" class="form-control" value="{{ 'now'|date('Y-m-d') }}">
+                    <div class="col-4">
+                        <label>Date <span class="req">*</span></label>
+                        <input type="date" name="activityDate" class="form-control" value="{{ 'now'|date('Y-m-d') }}" required>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
+                        <label>Date Limite (Deadline)</label>
+                        <input type="datetime-local" name="expectedDeadline" class="form-control">
+                    </div>
+                    <div class="col-4">
                         <label>Heures</label>
                         <input type="number" step="0.5" name="hoursWorked" id="fHours" class="form-control" placeholder="Ex: 4" min="0">
                         <div class="field-msg" id="msgHours"></div>
@@ -92,9 +96,59 @@
                         <div style="font-size:0.8rem;color:var(--bo-text-secondary);margin-top:2px">
                             <i class="bi bi-person me-1"></i>{{ a.employee ? a.employee.email : '—' }}
                             {% if a.project %} · <i class="bi bi-kanban me-1"></i>{{ a.project.name }}{% endif %}
-                            {% if a.hoursWorked %} · {{ a.hoursWorked }}h{% endif %}
+                            {% if a.hoursWorked %} · <span style="color:var(--accent);font-weight:700"><i class="bi bi-clock me-1"></i>{{ a.hoursWorked }}h</span>{% endif %}
                             · {{ a.activityDate ? a.activityDate|date('d/m/Y') : '—' }}
                         </div>
+                        {% if a.userReport %}
+                            <div style="width:100%;margin-top:12px;background:rgba(255,255,255,0.02);border:1px solid var(--bo-border);border-radius:8px;padding:10px">
+                                <div style="font-size:0.8rem;color:var(--bo-text-secondary);margin-bottom:4px">
+                                    <i class="bi bi-journal-text me-1"></i>Rapport de l'utilisateur
+                                </div>
+                                <div style="font-size:0.85rem;margin-bottom:10px">{{ a.userReport|nl2br }}</div>
+                                
+                                {% if a.isLateSubmission %}
+                                    <div style="margin-bottom:8px;font-size:0.75rem;color:#ef4444;font-weight:700">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>En retard de {{ a.delayInHours }}h (Deadline: {{ a.expectedDeadline|date('d/m/Y H:i') }})
+                                    </div>
+                                {% endif %}
+                                
+                                <div style="margin-bottom:12px">
+                                    {% if a.reportStatus == 'REVIEWED' %}
+                                        <span class="bo-badge bo-badge-success" style="font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(16,185,129,0.1);color:#10b981">Révisé</span>
+                                    {% elseif a.reportStatus == 'REVISION_REQUESTED' %}
+                                        <span class="bo-badge bo-badge-warning" style="font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(245,158,11,0.1);color:#f59e0b">Révision Demandée</span>
+                                        <div style="font-size:0.75rem;margin-top:4px;color:var(--bo-text-secondary)">Feedback: {{ a.adminFeedback }}</div>
+                                    {% elseif a.reportStatus == 'REJECTED' %}
+                                        <span class="bo-badge bo-badge-danger" style="font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(239,68,68,0.1);color:#ef4444">Rejeté</span>
+                                        <div style="font-size:0.75rem;margin-top:4px;color:var(--bo-text-secondary)">Feedback: {{ a.adminFeedback }}</div>
+                                    {% else %}
+                                        <span class="bo-badge bo-badge-primary" style="font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(6,182,212,0.1);color:#06b6d4">En attente ({{ a.reportStatus }})</span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if a.reportStatus == 'SUBMITTED' or a.reportStatus == 'PENDING' %}
+                                    <form method="post" action="{{ path('admin_activity_review', {id: a.id}) }}" style="margin:0;background:var(--bo-bg-input);padding:10px;border-radius:8px;border:1px solid var(--bo-border)">
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-4">
+                                                <label style="font-size:0.75rem;color:var(--bo-text-secondary);display:block;margin-bottom:4px">Action</label>
+                                                <select name="reviewAction" class="form-select" style="font-size:0.8rem;padding:4px 8px" onchange="document.getElementById('fb_{{ a.id }}').style.display = (this.value == 'approve') ? 'none' : 'block'">
+                                                    <option value="approve">✅ Approuver</option>
+                                                    <option value="revision">🔄 Demander révision</option>
+                                                    <option value="reject">❌ Rejeter</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-5" id="fb_{{ a.id }}" style="display:none">
+                                                <label style="font-size:0.75rem;color:var(--bo-text-secondary);display:block;margin-bottom:4px">Feedback</label>
+                                                <input type="text" name="adminFeedback" class="form-control" style="font-size:0.8rem;padding:4px 8px" placeholder="Raison de la révision/refus...">
+                                            </div>
+                                            <div class="col-md-3 text-end">
+                                                <button type="submit" class="bo-btn bo-btn-primary w-100" style="padding:4px 8px;font-size:0.8rem">Valider</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             {% else %}

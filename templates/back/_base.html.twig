@@ -405,8 +405,17 @@
         <a href="{{ path('admin_projects') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_project' ? 'active' : '' }}">
             <i class="bi bi-kanban"></i> {{ 'nav.projects'|trans }}
         </a>
+        <a href="{{ path('admin_projects_kanban') }}" class="bo-nav-link {{ app.request.attributes.get('_route') == 'admin_projects_kanban' ? 'active' : '' }}" style="padding-left:42px;font-size:0.82rem">
+            <i class="bi bi-columns-gap"></i> Kanban Board
+        </a>
+        <a href="{{ path('admin_calendar') }}" class="bo-nav-link {{ app.request.attributes.get('_route') in ['admin_calendar','admin_calendar_data'] ? 'active' : '' }}" style="padding-left:42px;font-size:0.82rem">
+            <i class="bi bi-calendar3"></i> Calendrier
+        </a>
         <a href="{{ path('admin_activities') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_activit' ? 'active' : '' }}">
             <i class="bi bi-clipboard-data"></i> {{ 'nav.activities'|trans }}
+        </a>
+        <a href="{{ path('admin_leaderboard') }}" class="bo-nav-link {{ app.request.attributes.get('_route') == 'admin_leaderboard' ? 'active' : '' }}" style="padding-left:42px;font-size:0.82rem">
+            <i class="bi bi-trophy"></i> Leaderboard
         </a>
         <a href="{{ path('admin_courses') }}" class="bo-nav-link {{ app.request.attributes.get('_route') starts with 'admin_course' ? 'active' : '' }}">
             <i class="bi bi-book"></i> {{ 'nav.courses'|trans }}
