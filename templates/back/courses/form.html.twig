@@ -131,24 +131,23 @@
                 <input type="date" name="dateDebut" class="form-control" value="{{ formation and formation.dateDebut ? formation.dateDebut|date('Y-m-d') : '' }}">
             </div>
 
-            {# ── Image de couverture ── #}
+            {# ── Image de couverture (Drag & Drop) ── #}
             <div class="col-12">
                 <label><i class="bi bi-image me-1"></i>Image de couverture</label>
-                {% if formation and formation.image %}
-                <div style="margin-bottom:10px;border-radius:10px;overflow:hidden;border:1px solid var(--bo-border)">
-                    <img src="{{ asset('uploads/formations/' ~ formation.image) }}"
-                         alt="Couverture actuelle"
-                         style="width:100%;height:140px;object-fit:cover">
-                    <div style="padding:6px 10px;font-size:0.75rem;color:var(--bo-text-secondary);background:var(--bo-bg-input)">
-                        <i class="bi bi-check-circle me-1" style="color:#10b981"></i>Image actuelle — téléversez une nouvelle pour la remplacer
-                    </div>
+                <div id="dropZone" style="border:2px dashed var(--bo-border);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all 0.3s;background:rgba(79,70,229,0.02)" onclick="document.getElementById('coverInput').click()">
+                    {% if formation and formation.image %}
+                        <img id="imgPreview" src="{{ asset('uploads/formations/' ~ formation.image) }}" alt="Preview" style="max-height:180px;border-radius:10px;margin-bottom:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1)">
+                        <div id="dropPlaceholder" style="font-size:0.8rem;color:var(--bo-text-secondary)">Cliquez ou glissez pour remplacer</div>
+                    {% else %}
+                        <div id="dropPlaceholder">
+                            <i class="bi bi-cloud-arrow-up" style="font-size:2rem;color:var(--primary-light);opacity:0.6"></i>
+                            <div style="font-size:0.85rem;color:var(--bo-text-secondary);margin-top:8px">Glissez une image ici ou <span style="color:var(--primary-light);font-weight:600">parcourir</span></div>
+                            <div style="font-size:0.72rem;color:var(--bo-text-secondary);margin-top:4px">JPG, PNG, WebP — max 5 Mo</div>
+                        </div>
+                        <img id="imgPreview" style="display:none;max-height:180px;border-radius:10px;margin-bottom:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1)">
+                    {% endif %}
                 </div>
-                {% endif %}
-                <input type="file" name="image" accept="image/*" class="form-control"
-                       style="background:var(--bo-bg-input);border:1px dashed var(--bo-border);border-radius:10px;padding:10px">
-                <div style="font-size:0.75rem;color:var(--bo-text-secondary);margin-top:4px">
-                    <i class="bi bi-info-circle me-1"></i>Formats acceptés : JPG, PNG, WEBP — Max 5 Mo
-                </div>
+                <input type="file" name="image" id="coverInput" accept="image/*" style="display:none">
             </div>
 
             {# ── Type : Gratuit / Payant ── #}
@@ -544,6 +543,36 @@ document.querySelectorAll('.choix-input').forEach(function(c) { c.addEventListen
     if (titre.value) titre.dispatchEvent(new Event('input'));
     if (desc.value) desc.dispatchEvent(new Event('input'));
     duree.dispatchEvent(new Event('input'));
+})();
+
+// ═══ Image upload preview + drag-drop ═══
+(function() {
+    var dropZone = document.getElementById('dropZone');
+    var coverInput = document.getElementById('coverInput');
+    var imgPreview = document.getElementById('imgPreview');
+    var dropPlaceholder = document.getElementById('dropPlaceholder');
+    if (!dropZone || !coverInput) return;
+
+    function showPreview(file) {
+        if (!file || !file.type.startsWith('image/')) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            imgPreview.src = e.target.result;
+            imgPreview.style.display = 'block';
+            if (dropPlaceholder) dropPlaceholder.innerHTML = '<div style="font-size:0.8rem;color:var(--bo-text-secondary);margin-top:8px">Cliquez ou glissez pour remplacer</div>';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    coverInput.addEventListener('change', function() { if (this.files[0]) showPreview(this.files[0]); });
+    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.style.borderColor = 'var(--primary-light)'; this.style.background = 'rgba(79,70,229,0.06)'; });
+    dropZone.addEventListener('dragleave', function() { this.style.borderColor = 'var(--bo-border)'; this.style.background = 'rgba(79,70,229,0.02)'; });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.style.borderColor = 'var(--bo-border)';
+        this.style.background = 'rgba(79,70,229,0.02)';
+        if (e.dataTransfer.files[0]) { coverInput.files = e.dataTransfer.files; showPreview(e.dataTransfer.files[0]); }
+    });
 })();
 
 // ═══ Séance form validation ═══
