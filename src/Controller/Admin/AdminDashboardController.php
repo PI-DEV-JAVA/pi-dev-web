@@ -9,6 +9,7 @@ use App\Entity\Event;
 use App\Entity\EventFeedback;
 use App\Entity\EventParticipation;
 use App\Entity\Formation;
+use App\Entity\FormationEnrollment;
 use App\Entity\Interview;
 use App\Entity\Notification;
 use App\Entity\Offer;
@@ -16,13 +17,16 @@ use App\Entity\Profile;
 use App\Entity\Project;
 use App\Entity\Question;
 use App\Entity\Quiz;
+use App\Entity\QuizAttempt;
 use App\Entity\Seance;
 use App\Entity\SupportTicket;
 use App\Entity\Sync;
 use App\Entity\SyncMessage;
 use App\Entity\TicketReply;
 use App\Entity\User;
+use App\Service\CourseMailer;
 use App\Service\NotificationService;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -33,14 +37,19 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/admin')]
 class AdminDashboardController extends AbstractController
 {
+    public function __construct(
+        private readonly HttpClientInterface $httpClient,
+        private readonly CourseMailer        $courseMailer,
+    ) {}
+
     private function isAdmin(): bool
     {
         return $this->getUser()->getRole() === 'ADMIN';
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  DASHBOARD
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('', name: 'admin_dashboard')]
     public function dashboard(EntityManagerInterface $em): Response
     {
@@ -99,9 +108,9 @@ class AdminDashboardController extends AbstractController
         ]);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  OFFERS (HR: own only; ADMIN: all)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/offers', name: 'admin_offers')]
     public function offers(EntityManagerInterface $em): Response
     {
@@ -237,9 +246,9 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_offers');
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  EVENTS (HR: own only via organizer; ADMIN: all)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/events', name: 'admin_events')]
     public function events(EntityManagerInterface $em, Request $request): Response
     {
@@ -367,7 +376,7 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_events');
     }
 
-    // ── Calendar JSON API ──
+    // â”€â”€ Calendar JSON API â”€â”€
     #[Route('/events/calendar-data', name: 'admin_events_calendar_data')]
     public function eventsCalendarData(EntityManagerInterface $em): Response
     {
@@ -396,7 +405,7 @@ class AdminDashboardController extends AbstractController
         return new JsonResponse($data);
     }
 
-    // ── Participation Management ──
+    // â”€â”€ Participation Management â”€â”€
     #[Route('/events/{id}/participations', name: 'admin_event_participations', requirements: ['id' => '\d+'])]
     public function eventParticipations(Event $event, EntityManagerInterface $em): Response
     {
@@ -426,7 +435,7 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_event_participations', ['id' => $p->getEvent()->getId()]);
     }
 
-    // ── Presence Dashboard ──
+    // â”€â”€ Presence Dashboard â”€â”€
     #[Route('/events/presence', name: 'admin_event_presence')]
     public function eventPresence(EntityManagerInterface $em, Request $request): Response
     {
@@ -483,7 +492,7 @@ class AdminDashboardController extends AbstractController
         return $this->render('back/events/qr_show.html.twig', ['participation' => $p]);
     }
 
-    // ── QR Scanner ──
+    // â”€â”€ QR Scanner â”€â”€
     #[Route('/events/scan', name: 'admin_event_scan')]
     public function eventScan(Request $request, EntityManagerInterface $em): Response
     {
@@ -514,7 +523,7 @@ class AdminDashboardController extends AbstractController
         return $this->render('back/events/scan.html.twig');
     }
 
-    // ── Feedback Admin ──
+    // â”€â”€ Feedback Admin â”€â”€
     #[Route('/events/feedback', name: 'admin_event_feedback')]
     public function eventFeedback(EntityManagerInterface $em, Request $request): Response
     {
@@ -556,7 +565,7 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_event_feedback');
     }
 
-    // ── Statistics ──
+    // â”€â”€ Statistics â”€â”€
     #[Route('/events/stats', name: 'admin_event_stats')]
     public function eventStats(EntityManagerInterface $em): Response
     {
@@ -592,10 +601,9 @@ class AdminDashboardController extends AbstractController
             'typeDistrib' => $typeDistrib,
         ]);
     }
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  COURSES (HR: own; ADMIN: all)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/courses', name: 'admin_courses')]
     public function courses(EntityManagerInterface $em): Response
     {
@@ -603,7 +611,7 @@ class AdminDashboardController extends AbstractController
             $formations = $em->getRepository(Formation::class)->findBy([], ['dateDebut' => 'DESC']);
         } else {
             $formations = $em->getRepository(Formation::class)->findBy(
-                ['recruiter' => $this->getUser()], ['dateDebut' => 'DESC']
+                ['recruiterId' => $this->getUser()->getId()], ['dateDebut' => 'DESC']
             );
         }
         return $this->render('back/courses/list.html.twig', ['formations' => $formations]);
@@ -631,9 +639,25 @@ class AdminDashboardController extends AbstractController
             $f->setDescription($description);
             $f->setDuree($duree);
             $f->setNiveau($request->request->get('niveau'));
-            $f->setRecruiter($this->getUser());
+            $f->setRecruiterId($this->getUser()->getId());
             $dateStr = $request->request->get('dateDebut');
             if ($dateStr) $f->setDateDebut(new \DateTime($dateStr));
+
+            // Paid/Free
+            $isPaid = $request->request->get('is_paid') === '1';
+            $f->setIsPaid($isPaid);
+            if ($isPaid) {
+                $pts = $request->request->get('price_points');
+                $f->setPricePoints($pts ? (int)$pts : null);
+            }
+
+            // Image upload
+            $imageFile = $request->files->get('image');
+            if ($imageFile) {
+                $filename = uniqid() . '.' . $imageFile->guessExtension();
+                $imageFile->move($this->getParameter('kernel.project_dir') . '/public/uploads/formations', $filename);
+                $f->setImage($filename);
+            }
 
             $em->persist($f);
             $em->flush();
@@ -646,7 +670,7 @@ class AdminDashboardController extends AbstractController
     #[Route('/courses/{id}/edit', name: 'admin_course_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     public function courseEdit(Formation $formation, Request $request, EntityManagerInterface $em): Response
     {
-        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -669,6 +693,31 @@ class AdminDashboardController extends AbstractController
             $formation->setNiveau($request->request->get('niveau'));
             $dateStr = $request->request->get('dateDebut');
             if ($dateStr) $formation->setDateDebut(new \DateTime($dateStr));
+
+            // Paid/Free
+            $isPaid = $request->request->get('is_paid') === '1';
+            $formation->setIsPaid($isPaid);
+            if ($isPaid) {
+                $pts = $request->request->get('price_points');
+                $formation->setPricePoints($pts ? (int)$pts : null);
+            } else {
+                $formation->setPricePoints(null);
+            }
+
+            // Image upload
+            $imageFile = $request->files->get('image');
+            if ($imageFile) {
+                // Delete old image if exists
+                $old = $formation->getImage();
+                if ($old) {
+                    $oldPath = $this->getParameter('kernel.project_dir') . '/public/uploads/formations/' . $old;
+                    if (file_exists($oldPath)) @unlink($oldPath);
+                }
+                $filename = uniqid() . '.' . $imageFile->guessExtension();
+                $imageFile->move($this->getParameter('kernel.project_dir') . '/public/uploads/formations', $filename);
+                $formation->setImage($filename);
+            }
+
             $em->flush();
             $this->addFlash('success', 'Formation modifiée.');
             return $this->redirectToRoute('admin_course_edit', ['id' => $formation->getId()]);
@@ -679,15 +728,15 @@ class AdminDashboardController extends AbstractController
 
         return $this->render('back/courses/form.html.twig', [
             'formation' => $formation,
-            'seances' => $seances,
-            'quizzes' => $quizzes,
+            'seances'   => $seances,
+            'quizzes'   => $quizzes,
         ]);
     }
 
     #[Route('/courses/{id}/delete', name: 'admin_course_delete', requirements: ['id' => '\d+'])]
     public function courseDelete(Formation $formation, EntityManagerInterface $em): Response
     {
-        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
         $em->remove($formation);
@@ -696,11 +745,11 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_courses');
     }
 
-    // ── Séances CRUD ──
+    // â”€â”€ Séances CRUD â”€â”€
     #[Route('/courses/{id}/seance/new', name: 'admin_course_seance_new', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function courseSeanceNew(Formation $formation, Request $request, EntityManagerInterface $em): Response
     {
-        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -720,10 +769,16 @@ class AdminDashboardController extends AbstractController
         $seance = new Seance();
         $seance->setFormation($formation);
         $seance->setTitre($titre);
+        $seance->setDescription($request->request->get('description'));
         $seance->setType($request->request->get('type', 'PRESENTIEL'));
         $seance->setDateDebut(new \DateTime($dateDebut));
         $seance->setDateFin(new \DateTime($dateFin));
         $seance->setAdresse($request->request->get('adresse'));
+        // Save map coordinates if provided
+        $lat = $request->request->get('latitude');
+        $lng = $request->request->get('longitude');
+        if ($lat !== null && $lat !== '') $seance->setLatitude((float)$lat);
+        if ($lng !== null && $lng !== '') $seance->setLongitude((float)$lng);
         $videoPath = trim($request->request->get('videoPath', ''));
         if ($videoPath) $seance->setVideoPath($videoPath);
         $dm = $request->request->get('dureeMinutes');
@@ -731,6 +786,15 @@ class AdminDashboardController extends AbstractController
 
         $em->persist($seance);
         $em->flush();
+        // Notify approved enrollees by email
+        $this->courseMailer->sendNewSeance($formation, $seance);
+        // Notify all approved enrollees
+        $ns = new NotificationService($em);
+        foreach ($formation->getEnrollments() as $enrollment) {
+            if ($enrollment->isApproved()) {
+                $ns->notify($enrollment->getUser(), 'COURSE', '📅 Nouvelle séance', 'Séance "' . $seance->getTitre() . '" ajoutée à "' . $formation->getTitre() . '".', '/courses/' . $formation->getId());
+            }
+        }
         $this->addFlash('success', 'Séance ajoutée.');
         return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $formation->getId()]) . '#seances');
     }
@@ -739,7 +803,7 @@ class AdminDashboardController extends AbstractController
     public function courseSeanceDelete(int $id, int $sid, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
         $seance = $em->getRepository(Seance::class)->find($sid);
@@ -747,11 +811,11 @@ class AdminDashboardController extends AbstractController
         return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#seances');
     }
 
-    // ── Quiz CRUD ──
+    // â”€â”€ Quiz CRUD â”€â”€
     #[Route('/courses/{id}/quiz/new', name: 'admin_course_quiz_new', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function courseQuizNew(Formation $formation, Request $request, EntityManagerInterface $em): Response
     {
-        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -764,11 +828,30 @@ class AdminDashboardController extends AbstractController
         $quiz = new Quiz();
         $quiz->setFormation($formation);
         $quiz->setTitre($titre);
+        $quiz->setDescription($request->request->get('description'));
         $duree = $request->request->get('duree');
         if ($duree) $quiz->setDuree((int)$duree);
 
+        // Link to seance if provided
+        $seanceId = $request->request->get('seance_id');
+        if ($seanceId) {
+            $seance = $em->getRepository(Seance::class)->find((int)$seanceId);
+            if ($seance && $seance->getFormation() === $formation) {
+                $quiz->setSeance($seance);
+            }
+        }
+
         $em->persist($quiz);
         $em->flush();
+        // Notify approved enrollees by email
+        $this->courseMailer->sendQuizAvailable($formation, $quiz);
+        // Notify all approved enrollees
+        $ns = new NotificationService($em);
+        foreach ($formation->getEnrollments() as $enrollment) {
+            if ($enrollment->isApproved()) {
+                $ns->notify($enrollment->getUser(), 'COURSE', '📝 Nouveau quiz', 'Quiz "' . $quiz->getTitre() . '" disponible dans "' . $formation->getTitre() . '".', '/courses/' . $formation->getId());
+            }
+        }
         $this->addFlash('success', 'Quiz créé.');
         return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $formation->getId()]) . '#quizzes');
     }
@@ -777,7 +860,7 @@ class AdminDashboardController extends AbstractController
     public function courseQuizDelete(int $id, int $qid, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
         $quiz = $em->getRepository(Quiz::class)->find($qid);
@@ -789,7 +872,7 @@ class AdminDashboardController extends AbstractController
     public function courseQuizManage(int $id, int $qid, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
         $quiz = $em->getRepository(Quiz::class)->find($qid);
@@ -802,12 +885,12 @@ class AdminDashboardController extends AbstractController
         ]);
     }
 
-    // ── Question + Choix CRUD ──
+    // â”€â”€ Question + Choix CRUD â”€â”€
     #[Route('/courses/{id}/quiz/{qid}/question/new', name: 'admin_course_question_new', requirements: ['id' => '\d+', 'qid' => '\d+'], methods: ['POST'])]
     public function courseQuestionNew(int $id, int $qid, Request $request, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -849,7 +932,7 @@ class AdminDashboardController extends AbstractController
     public function courseQuestionDelete(int $id, int $qid, int $questionId, EntityManagerInterface $em): Response
     {
         $formation = $em->getRepository(Formation::class)->find($id);
-        if (!$this->isAdmin() && $formation->getRecruiter() !== $this->getUser()) {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
             throw $this->createAccessDeniedException();
         }
         $question = $em->getRepository(Question::class)->find($questionId);
@@ -857,9 +940,350 @@ class AdminDashboardController extends AbstractController
         return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#quizzes');
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”€â”€ Enrollment Management â”€â”€
+    #[Route('/courses/{id}/enrollments', name: 'admin_course_enrollments', requirements: ['id' => '\d+'])]
+    public function courseEnrollments(Formation $formation, EntityManagerInterface $em): Response
+    {
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        $enrollments = $em->getRepository(FormationEnrollment::class)->findBy(
+            ['formation' => $formation],
+            ['requestedAt' => 'DESC']
+        );
+        return $this->render('back/courses/enrollments.html.twig', [
+            'formation'   => $formation,
+            'enrollments' => $enrollments,
+        ]);
+    }
+
+    #[Route('/courses/{id}/enrollments/{eid}/approve', name: 'admin_course_enrollment_approve', requirements: ['id' => '\d+', 'eid' => '\d+'])]
+    public function courseEnrollmentApprove(int $id, int $eid, EntityManagerInterface $em): Response
+    {
+        $formation  = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        $enrollment = $em->getRepository(FormationEnrollment::class)->find($eid);
+        if ($enrollment) {
+            $enrollment->setStatus(FormationEnrollment::STATUS_APPROVED);
+            $enrollment->setRespondedAt(new \DateTime());
+            $em->flush();
+            $this->courseMailer->sendEnrollmentApproved($enrollment->getUser(), $formation);
+            // Notify candidate
+            $ns = new NotificationService($em);
+            $ns->notify($enrollment->getUser(), 'COURSE', '✅ Inscription approuvée', 'Votre inscription à "' . $formation->getTitre() . '" a été approuvée.', '/courses/' . $formation->getId());
+            $this->addFlash('success', 'Inscription approuvée.');
+        }
+        return $this->redirectToRoute('admin_course_enrollments', ['id' => $id]);
+    }
+
+    #[Route('/courses/{id}/enrollments/{eid}/reject', name: 'admin_course_enrollment_reject', requirements: ['id' => '\d+', 'eid' => '\d+'])]
+    public function courseEnrollmentReject(int $id, int $eid, EntityManagerInterface $em): Response
+    {
+        $formation  = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        $enrollment = $em->getRepository(FormationEnrollment::class)->find($eid);
+        if ($enrollment) {
+            $enrollment->setStatus(FormationEnrollment::STATUS_REJECTED);
+            $enrollment->setRespondedAt(new \DateTime());
+            $em->flush();
+            $this->courseMailer->sendEnrollmentRejected($enrollment->getUser(), $formation);
+            // Notify candidate
+            $ns = new NotificationService($em);
+            $ns->notify($enrollment->getUser(), 'COURSE', '❌ Inscription refusée', 'Votre inscription à "' . $formation->getTitre() . '" a été refusée.', '/courses/' . $formation->getId());
+            $this->addFlash('warning', 'Inscription refusée.');
+        }
+        return $this->redirectToRoute('admin_course_enrollments', ['id' => $id]);
+    }
+
+    // â”€â”€ Seance Edit â”€â”€
+    #[Route('/courses/{id}/seance/{sid}/edit', name: 'admin_course_seance_edit', requirements: ['id' => '\d+', 'sid' => '\d+'], methods: ['POST'])]
+    public function courseSeanceEdit(int $id, int $sid, Request $request, EntityManagerInterface $em): Response
+    {
+        $formation = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        $seance = $em->getRepository(Seance::class)->find($sid);
+        if (!$seance || $seance->getFormation() !== $formation) {
+            throw $this->createNotFoundException();
+        }
+
+        $titre = trim($request->request->get('titre', ''));
+        if (strlen($titre) >= 2) $seance->setTitre($titre);
+        $seance->setDescription($request->request->get('description'));
+        $seance->setType($request->request->get('type', 'PRESENTIEL'));
+        $dateDebut = $request->request->get('dateDebut');
+        $dateFin   = $request->request->get('dateFin');
+        if ($dateDebut) $seance->setDateDebut(new \DateTime($dateDebut));
+        if ($dateFin)   $seance->setDateFin(new \DateTime($dateFin));
+        $seance->setAdresse($request->request->get('adresse'));
+        $lat = $request->request->get('latitude');
+        $lng = $request->request->get('longitude');
+        if ($lat !== null && $lat !== '') $seance->setLatitude((float)$lat);
+        if ($lng !== null && $lng !== '') $seance->setLongitude((float)$lng);
+        $videoPath = trim($request->request->get('videoPath', ''));
+        $seance->setVideoPath($videoPath ?: null);
+        $dm = $request->request->get('dureeMinutes');
+        $seance->setDureeMinutes($dm ? (int)$dm : null);
+        $em->flush();
+        $this->addFlash('success', 'Séance modifiée.');
+        return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#seances');
+    }
+
+    // â”€â”€ Quiz Edit â”€â”€
+    #[Route('/courses/{id}/quiz/{qid}/edit', name: 'admin_course_quiz_edit', requirements: ['id' => '\d+', 'qid' => '\d+'], methods: ['POST'])]
+    public function courseQuizEdit(int $id, int $qid, Request $request, EntityManagerInterface $em): Response
+    {
+        $formation = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+        $quiz = $em->getRepository(Quiz::class)->find($qid);
+        if (!$quiz || $quiz->getFormation() !== $formation) {
+            throw $this->createNotFoundException();
+        }
+
+        $titre = trim($request->request->get('titre', ''));
+        if (strlen($titre) >= 2) $quiz->setTitre($titre);
+        $quiz->setDescription($request->request->get('description'));
+        $duree = $request->request->get('duree');
+        $quiz->setDuree($duree ? (int)$duree : null);
+        $seanceId = $request->request->get('seance_id');
+        if ($seanceId) {
+            $seance = $em->getRepository(Seance::class)->find((int)$seanceId);
+            if ($seance && $seance->getFormation() === $formation) $quiz->setSeance($seance);
+        } else {
+            $quiz->setSeance(null);
+        }
+        $em->flush();
+        $this->addFlash('success', 'Quiz modifié.');
+        return $this->redirect($this->generateUrl('admin_course_edit', ['id' => $id]) . '#quizzes');
+    }
+
+    // â”€â”€ AI Question Generation â”€â”€
+    #[Route('/courses/{id}/quiz/{qid}/generate', name: 'admin_course_quiz_generate', requirements: ['id' => '\d+', 'qid' => '\d+'])]
+    public function courseQuizGenerate(int $id, int $qid, EntityManagerInterface $em): JsonResponse
+    {
+        $formation = $em->getRepository(Formation::class)->find($id);
+        if (!$this->isAdmin() && $formation->getRecruiterId() !== $this->getUser()->getId()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $quiz   = $em->getRepository(Quiz::class)->find($qid);
+        $seance = $quiz?->getSeance();
+
+        $formationTitle = $formation?->getTitre()      ?? 'Formation';
+        $seanceTitle    = $seance?->getTitre()          ?? '';
+        $seanceDesc     = $seance?->getDescription()    ?? '';
+        $quizTitle      = $quiz?->getTitre()            ?? 'Quiz';
+        $quizDesc       = $quiz?->getDescription()      ?? '';
+
+        $mainSubject = trim($quizDesc ?: $seanceDesc);
+        $sessionCtx  = trim($seanceTitle ?: $quizTitle);
+        $fullCtx     = trim($formationTitle . ($sessionCtx ? ' "” ' . $sessionCtx : ''));
+
+        $subjectLine = $mainSubject
+            ? "Le sujet exact à évaluer est : \"$mainSubject\"."
+            : "Le sujet à évaluer est : \"$fullCtx\".";
+
+        $systemPrompt = <<<EOT
+Tu es un expert en création de quiz éducatifs techniques.
+Tu génères des questions QCM qui testent la compréhension TECHNIQUE et PRATIQUE du sujet.
+Tu ne parles JAMAIS de "l'objectif de la formation" ou de "bonnes pratiques pédagogiques".
+Tu génères UNIQUEMENT du JSON valide, sans markdown, sans explication, sans texte autour.
+EOT;
+
+        $userPrompt = <<<EOT
+$subjectLine
+Contexte global : $fullCtx
+
+Génère exactement 5 questions QCM en français sur des CONNAISSANCES TECHNIQUES précises.
+
+Règles :
+1. Chaque question porte sur un concept, une syntaxe ou un comportement CONCRET du sujet.
+2. 4 choix techniquement plausibles, UN SEUL correct.
+3. Niveau intermédiaire/avancé.
+
+Retourne UNIQUEMENT ce tableau JSON (sans aucun texte autour) :
+[{"enonce":"...","choix":[{"texte":"...","correct":true},{"texte":"...","correct":false},{"texte":"...","correct":false},{"texte":"...","correct":false}]},...]
+EOT;
+
+        // â”€â”€ Provider list: try each in order until one succeeds â”€â”€
+        $providers = [
+            [
+                'name'    => 'groq',
+                'key'     => trim($_ENV['GROQ_API_KEY'] ?? $_SERVER['GROQ_API_KEY'] ?? getenv('GROQ_API_KEY') ?? ''),
+                'url'     => 'https://api.groq.com/openai/v1/chat/completions',
+                'model'   => 'llama-3.3-70b-versatile',
+                'system'  => true,
+            ],
+            [
+                'name'    => 'xai',
+                'key'     => trim($_ENV['XAI_API_KEY'] ?? $_SERVER['XAI_API_KEY'] ?? getenv('XAI_API_KEY') ?? ''),
+                'url'     => 'https://api.x.ai/v1/chat/completions',
+                'model'   => 'grok-3-latest',
+                'system'  => true,
+            ],
+        ];
+
+        foreach ($providers as $provider) {
+            $apiKey = $provider['key'];
+            if (!$apiKey || $apiKey === 'your_groq_api_key_here') {
+                continue;
+            }
+
+            try {
+                $messages = [];
+                if ($provider['system']) {
+                    $messages[] = ['role' => 'system', 'content' => $systemPrompt];
+                }
+                $messages[] = ['role' => 'user', 'content' => $userPrompt];
+
+                $resp = $this->httpClient->request('POST', $provider['url'], [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $apiKey,
+                        'Content-Type'  => 'application/json',
+                    ],
+                    'json' => [
+                        'model'       => $provider['model'],
+                        'messages'    => $messages,
+                        'temperature' => 0.3,
+                        'max_tokens'  => 2000,
+                    ],
+                    'timeout' => 25,
+                ]);
+
+                // If HTTP error (e.g. 403 no credits), skip to next provider
+                $statusCode = $resp->getStatusCode();
+                if ($statusCode !== 200) {
+                    continue;
+                }
+
+                $data    = $resp->toArray();
+                $content = $data['choices'][0]['message']['content'] ?? '';
+
+                // Strip markdown fences
+                $content = preg_replace('/^```(?:json)?\s*/m', '', $content);
+                $content = preg_replace('/```\s*$/m',          '', $content);
+
+                // Extract first JSON array
+                if (preg_match('/\[.*\]/s', $content, $matches)) {
+                    $content = $matches[0];
+                }
+
+                $questions = json_decode(trim($content), true);
+                if (is_array($questions) && count($questions) > 0) {
+                    return new JsonResponse([
+                        'questions' => $questions,
+                        'source'    => 'ai',
+                        'provider'  => $provider['name'],
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // Try next provider
+                continue;
+            }
+        }
+
+        // Smart fallback (no AI available)
+        $questions = $this->generateSmartFallback($formationTitle, $sessionCtx, $mainSubject);
+        return new JsonResponse(['questions' => $questions, 'source' => 'template']);
+    }
+
+    private function generateSmartFallback(string $formation, string $session, string $desc): array
+    {
+        // Use description as the main subject; if empty fall back to session title
+        $subject = trim($desc ?: $session ?: $formation);
+        $ctx     = trim($formation . ($session ? ' "” ' . $session : ''));
+
+        // Try to detect the domain from keywords for better questions
+        $lower = strtolower($subject . ' ' . $ctx);
+
+        // Python 
+        if (str_contains($lower, 'python')) {
+            if (str_contains($lower, 'structure') || str_contains($lower, 'donné')) {
+                return [
+                    ['enonce' => 'Quelle structure de données Python est immuable et ordonnée ?',
+                     'choix'  => [['texte'=>'tuple','correct'=>true],['texte'=>'list','correct'=>false],['texte'=>'dict','correct'=>false],['texte'=>'set','correct'=>false]]],
+                    ['enonce' => 'Quel type Python représente une collection non ordonnée de paires clé-valeur ?',
+                     'choix'  => [['texte'=>'dict','correct'=>true],['texte'=>'list','correct'=>false],['texte'=>'tuple','correct'=>false],['texte'=>'str','correct'=>false]]],
+                    ['enonce' => 'Quelle méthode permet d\'ajouter un élément à une liste Python ?',
+                     'choix'  => [['texte'=>'.append()','correct'=>true],['texte'=>'.add()','correct'=>false],['texte'=>'.insert_end()','correct'=>false],['texte'=>'.push()','correct'=>false]]],
+                    ['enonce' => 'Quelle structure Python garantit l\'unicité de ses éléments ?',
+                     'choix'  => [['texte'=>'set','correct'=>true],['texte'=>'list','correct'=>false],['texte'=>'tuple','correct'=>false],['texte'=>'dict','correct'=>false]]],
+                    ['enonce' => 'Comment accéder à la valeur associée à la clé "age" dans un dictionnaire d\'un Python ?',
+                     'choix'  => [['texte'=>'d["age"]','correct'=>true],['texte'=>'d.get_key("age")','correct'=>false],['texte'=>'d->age','correct'=>false],['texte'=>'d.age()','correct'=>false]]],
+                ];
+            }
+            return [
+                ['enonce' => 'Quel mot-clé Python définit une fonction ?',
+                 'choix'  => [['texte'=>'def','correct'=>true],['texte'=>'func','correct'=>false],['texte'=>'function','correct'=>false],['texte'=>'method','correct'=>false]]],
+                ['enonce' => 'Quelle est la sortie de : type(3.14) en Python ?',
+                 'choix'  => [['texte'=>"<class 'float'>", 'correct'=>true],['texte'=>"<class 'int'>", 'correct'=>false],['texte'=>"<class 'str'>", 'correct'=>false],['texte'=>"<class 'number'>", 'correct'=>false]]],
+                ['enonce' => 'Comment créer une liste vide en Python ?',
+                 'choix'  => [['texte'=>'[]','correct'=>true],['texte'=>'{}','correct'=>false],['texte'=>'()','correct'=>false],['texte'=>'list{}','correct'=>false]]],
+                ['enonce' => 'Quel opérateur est utilisé pour la division entière en Python ?',
+                 'choix'  => [['texte'=>'//','correct'=>true],['texte'=>'/','correct'=>false],['texte'=>'%','correct'=>false],['texte'=>'**','correct'=>false]]],
+                ['enonce' => 'Quelle bibliothèque Python est standard pour les calculs numériques ?',
+                 'choix'  => [['texte'=>'NumPy','correct'=>true],['texte'=>'Pandas','correct'=>false],['texte'=>'Matplotlib','correct'=>false],['texte'=>'Scikit-learn','correct'=>false]]],
+            ];
+        }
+
+        // Web / JS / HTML
+        if (str_contains($lower, 'javascript') || str_contains($lower, 'html') || str_contains($lower, 'css') || str_contains($lower, 'web')) {
+            return [
+                ['enonce' => 'Quelle balise HTML définit un lien hypertexte ?',
+                 'choix'  => [['texte'=>'<a>','correct'=>true],['texte'=>'<link>','correct'=>false],['texte'=>'<href>','correct'=>false],['texte'=>'<nav>','correct'=>false]]],
+                ['enonce' => 'Comment sélectionner un élément par son id en JavaScript ?',
+                 'choix'  => [['texte'=>'document.getElementById()','correct'=>true],['texte'=>'document.querySelector()','correct'=>false],['texte'=>'document.getClass()','correct'=>false],['texte'=>'document.findById()','correct'=>false]]],
+                ['enonce' => 'Quelle propriété CSS centre un élément horizontalement ?',
+                 'choix'  => [['texte'=>'margin: 0 auto','correct'=>true],['texte'=>'text-align: center','correct'=>false],['texte'=>'align: center','correct'=>false],['texte'=>'position: center','correct'=>false]]],
+                ['enonce' => 'Que signifie DOM en développement web ?',
+                 'choix'  => [['texte'=>'Document Object Model','correct'=>true],['texte'=>'Data Object Method','correct'=>false],['texte'=>'Dynamic Object Module','correct'=>false],['texte'=>'Document Operation Mode','correct'=>false]]],
+                ['enonce' => 'Quel attribut HTML rend un champ obligatoire dans un formulaire ?',
+                 'choix'  => [['texte'=>'required','correct'=>true],['texte'=>'mandatory','correct'=>false],['texte'=>'needed','correct'=>false],['texte'=>'validate','correct'=>false]]],
+            ];
+        }
+
+        // Database / SQL
+        if (str_contains($lower, 'sql') || str_contains($lower, 'base de donné') || str_contains($lower, 'database')) {
+            return [
+                ['enonce' => 'Quelle clause SQL filtre les lignes résultantes ?',
+                 'choix'  => [['texte'=>'WHERE','correct'=>true],['texte'=>'HAVING','correct'=>false],['texte'=>'GROUP BY','correct'=>false],['texte'=>'ORDER BY','correct'=>false]]],
+                ['enonce' => 'Quelle commande SQL crée une nouvelle table ?',
+                 'choix'  => [['texte'=>'CREATE TABLE','correct'=>true],['texte'=>'NEW TABLE','correct'=>false],['texte'=>'ADD TABLE','correct'=>false],['texte'=>'MAKE TABLE','correct'=>false]]],
+                ['enonce' => 'Quelle jointure SQL retourne toutes les lignes des deux tables ?',
+                 'choix'  => [['texte'=>'FULL OUTER JOIN','correct'=>true],['texte'=>'INNER JOIN','correct'=>false],['texte'=>'LEFT JOIN','correct'=>false],['texte'=>'CROSS JOIN','correct'=>false]]],
+                ['enonce' => 'Quel type de clé garantit l\'unicité d\'un enregistrement ?',
+                 'choix'  => [['texte'=>'Clé primaire','correct'=>true],['texte'=>'Clé étrangère','correct'=>false],['texte'=>'Index','correct'=>false],['texte'=>'Contrainte CHECK','correct'=>false]]],
+                ['enonce' => 'Quelle fonction SQL compte le nombre de lignes ?',
+                 'choix'  => [['texte'=>'COUNT()','correct'=>true],['texte'=>'SUM()','correct'=>false],['texte'=>'AVG()','correct'=>false],['texte'=>'TOTAL()','correct'=>false]]],
+            ];
+        }
+
+        // Generic but improved fallback with actual content reference
+        $subjectDisplay = $subject ?: $ctx;
+        return [
+            ['enonce' => "Dans le cadre de \"$subjectDisplay\", quelle affirmation est correcte ?",
+             'choix'  => [['texte'=>"Le sujet comporte des concepts théoriques et pratiques", 'correct'=>true],['texte'=>"Il n'existe qu'une seule méthode valable",'correct'=>false],['texte'=>"La mémorisation suffit sans compréhension",'correct'=>false],['texte'=>"Les exemples ne sont pas utiles",'correct'=>false]]],
+            ['enonce' => "Quel est l'avantage principal de maîtriser \"$subjectDisplay\" ?",
+             'choix'  => [['texte'=>"Résoudre des problèmes concrets plus efficacement",'correct'=>true],['texte'=>"Ne pas avoir besoin de pratiquer",'correct'=>false],['texte'=>"Ignorer la documentation",'correct'=>false],['texte'=>"Travailler uniquement en théorie",'correct'=>false]]],
+            ['enonce' => "Pour \"$subjectDisplay\", laquelle de ces approches est recommandée ?",
+             'choix'  => [['texte'=>"Pratiquer sur des cas réels",'correct'=>true],['texte'=>"Lire sans expérimenter",'correct'=>false],['texte'=>"Éviter les erreurs à tout prix",'correct'=>false],['texte'=>"Copier sans comprendre",'correct'=>false]]],
+            ['enonce' => "Quel élément est central dans \"$subjectDisplay\" ?",
+             'choix'  => [['texte'=>"La compréhension des concepts fondamentaux",'correct'=>true],['texte'=>"La mémorisation de formules",'correct'=>false],['texte'=>"L'absence d'exercices",'correct'=>false],['texte'=>"La théorie sans application",'correct'=>false]]],
+            ['enonce' => "Comment progresser efficacement sur \"$subjectDisplay\" ?",
+             'choix'  => [['texte'=>"Combiner théorie, pratique et révision",'correct'=>true],['texte'=>"Étudier uniquement la nuit",'correct'=>false],['texte'=>"Ne jamais poser de questions",'correct'=>false],['texte'=>"Ignorer les retours",'correct'=>false]]],
+        ];
+    }
+
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  PROJECTS (HR: own only; ADMIN: all)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/projects', name: 'admin_projects')]
     public function projects(EntityManagerInterface $em): Response
     {
@@ -992,9 +1416,9 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_project_edit', ['id' => $project->getId()]);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  ACTIVITIES (HR assigns to own candidates)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/activities', name: 'admin_activities')]
     public function activities(EntityManagerInterface $em): Response
     {
@@ -1080,9 +1504,9 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_activities');
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  KANBAN BOARD
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/projects/kanban', name: 'admin_projects_kanban')]
     public function projectsKanban(EntityManagerInterface $em): Response
     {
@@ -1127,9 +1551,9 @@ class AdminDashboardController extends AbstractController
         return new JsonResponse(['error' => 'Invalid status'], 400);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  PROJECT ACTIVITY LOGS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/projects/{id}/logs', name: 'admin_project_logs', requirements: ['id' => '\d+'])]
     public function projectLogs(Project $project, Request $request, EntityManagerInterface $em): Response
     {
@@ -1190,9 +1614,9 @@ class AdminDashboardController extends AbstractController
         ]);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  LEADERBOARD
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/leaderboard', name: 'admin_leaderboard')]
     public function leaderboard(EntityManagerInterface $em, Request $request): Response
     {
@@ -1264,9 +1688,9 @@ class AdminDashboardController extends AbstractController
         ]);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  CALENDAR
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/calendar', name: 'admin_calendar')]
     public function calendar(): Response
     {
@@ -1295,7 +1719,7 @@ class AdminDashboardController extends AbstractController
             if ($p->getStartDate()) {
                 $events[] = [
                     'id' => 'proj_' . $p->getId(),
-                    'title' => '📁 ' . $p->getName(),
+                    'title' => 'ðŸ“ ' . $p->getName(),
                     'start' => $p->getStartDate()->format('Y-m-d'),
                     'end' => $p->getEndDate() ? $p->getEndDate()->modify('+1 day')->format('Y-m-d') : null,
                     'color' => $statusColors[$p->getStatus()] ?? '#6366f1',
@@ -1334,9 +1758,9 @@ class AdminDashboardController extends AbstractController
         return new JsonResponse($events);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  EMPLOYEE PDF REPORT
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/reports/employee/{id}', name: 'admin_report_employee', requirements: ['id' => '\d+'])]
     public function reportEmployee(int $id, EntityManagerInterface $em): Response
     {
@@ -1380,9 +1804,9 @@ class AdminDashboardController extends AbstractController
         ]);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  ACTIVITY REPORT REVIEW
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/activities/{id}/review', name: 'admin_activity_review', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function activityReview(Activity $activity, Request $request, EntityManagerInterface $em): Response
     {
@@ -1422,9 +1846,9 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_activities');
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  SUPPORT (ADMIN only)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/support', name: 'admin_support')]
     public function support(EntityManagerInterface $em): Response
     {
@@ -1493,9 +1917,9 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_support');
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  USER MANAGEMENT (ADMIN only)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/users', name: 'admin_users')]
     public function users(EntityManagerInterface $em): Response
     {
@@ -1563,9 +1987,9 @@ class AdminDashboardController extends AbstractController
 
 
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  OFFER APPLICATIONS (view & decision)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/offers/{id}/applications', name: 'admin_offer_applications', requirements: ['id' => '\d+'])]
     public function offerApplications(Offer $offer, EntityManagerInterface $em): Response
     {
@@ -1612,9 +2036,9 @@ class AdminDashboardController extends AbstractController
                 $ns = new NotificationService($em);
                 $statusLabel = match($newStatus) {
                     'Acceptée' => '✅ Candidature acceptée',
-                    'Refusée' => '❌ Candidature refusée',
-                    'Entretien' => '📅 Entretien programmé',
-                    default => '📋 Mise à jour candidature',
+                    'Refusée' => 'âŒ Candidature refusée',
+                    'Entretien' => 'ðŸ“… Entretien programmé',
+                    default => 'ðŸ“‹ Mise à jour candidature',
                 };
                 $ns->notify(
                     $candidate,
@@ -1631,9 +2055,9 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_offer_applications', ['id' => $offer->getId()]);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  NOTIFICATIONS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/notifications', name: 'admin_notifications')]
     public function notifications(EntityManagerInterface $em): Response
     {
@@ -1675,9 +2099,9 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_notifications');
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  PROFILE
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/profile', name: 'admin_profile')]
     public function profile(Request $request, EntityManagerInterface $em): Response
     {
@@ -1745,9 +2169,9 @@ class AdminDashboardController extends AbstractController
         return $this->redirectToRoute('admin_profile');
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  USER PROFILE (Admin view)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/user-profile/{id}', name: 'admin_user_profile', requirements: ['id' => '\d+'])]
     public function userProfile(int $id, EntityManagerInterface $em): Response
     {
@@ -1765,9 +2189,9 @@ class AdminDashboardController extends AbstractController
         ]);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  HR → CANDIDATE MESSAGING
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+    //  HR â†’ CANDIDATE MESSAGING
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/message-candidate/{id}', name: 'admin_message_candidate', requirements: ['id' => '\d+'])]
     public function messageCandidate(int $id, EntityManagerInterface $em): Response
     {
@@ -1898,9 +2322,9 @@ class AdminDashboardController extends AbstractController
         ]);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     //  WORKFLOW PIPELINE AUTOMATIONS (n8n like)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
     #[Route('/offers/{id}/workflow', name: 'admin_offer_workflow', requirements: ['id' => '\d+'])]
     public function offerWorkflow(Offer $offer): Response
     {

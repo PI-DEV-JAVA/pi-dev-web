@@ -54,6 +54,7 @@
                     <td>
                         <div class="d-flex gap-1">
                             <a href="{{ path('admin_course_edit', {id: f.id}) }}" class="bo-action-btn" title="Gérer"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ path('admin_course_enrollments', {id: f.id}) }}" class="bo-action-btn" title="Voir les candidats" style="background:rgba(99,102,241,0.12);color:#6366f1"><i class="bi bi-people-fill"></i></a>
                             <button type="button" class="bo-action-btn danger" title="Supprimer" onclick="confirmDelete({{ f.id }}, '{{ f.titre|e('js') }}')" style="border:none;cursor:pointer"><i class="bi bi-trash"></i></button>
                         </div>
                     </td>

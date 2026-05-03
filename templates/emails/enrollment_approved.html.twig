@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inscription approuvée — Talentos</title>
+<style>
+  body{margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  .wrap{max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+  .header{background:linear-gradient(135deg,#4f46e5,#06b6d4);padding:40px 32px;text-align:center}
+  .header h1{color:#fff;margin:0;font-size:1.6rem;font-weight:800}
+  .header p{color:rgba(255,255,255,.8);margin:6px 0 0;font-size:0.95rem}
+  .icon-wrap{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:16px}
+  .body{padding:32px}
+  .body h2{font-size:1.15rem;font-weight:700;margin:0 0 8px;color:#0f172a}
+  .body p{color:#475569;line-height:1.7;font-size:0.95rem;margin:0 0 16px}
+  .card{background:#f8fafc;border-radius:12px;padding:20px 24px;border-left:4px solid #10b981;margin:20px 0}
+  .card strong{display:block;font-size:0.8rem;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .card span{font-weight:700;color:#0f172a;font-size:1rem}
+  .btn{display:inline-block;background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:0.95rem;margin:8px 0}
+  .footer{background:#f8fafc;padding:20px 32px;text-align:center;font-size:0.8rem;color:#94a3b8;border-top:1px solid #e2e8f0}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="icon-wrap">✅</div>
+    <h1>Félicitations !</h1>
+    <p>Votre inscription a été approuvée</p>
+  </div>
+  <div class="body">
+    <h2>Bonjour {{ user.firstname ?? user.email }},</h2>
+    <p>Nous avons le plaisir de vous informer que votre candidature pour la formation ci-dessous a été <strong style="color:#10b981">approuvée</strong>. Vous pouvez maintenant accéder aux séances et aux quiz.</p>
+    <div class="card">
+      <strong>Formation</strong>
+      <span>{{ formation.titre }}</span>
+    </div>
+    {% if formation.dateDebut %}
+    <div class="card" style="border-left-color:#6366f1">
+      <strong>Date de début</strong>
+      <span>{{ formation.dateDebut|date('d/m/Y') }}</span>
+    </div>
+    {% endif %}
+    <p style="text-align:center;margin-top:24px">
+      <a href="http://localhost:8000/courses/{{ formation.id }}" class="btn">Accéder à la formation →</a>
+    </p>
+  </div>
+  <div class="footer">© 2026 Talentos — Plateforme de formation professionnelle</div>
+</div>
+</body></html>

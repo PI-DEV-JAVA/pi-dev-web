@@ -53,6 +53,19 @@
     /* Smooth section headers */
     .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
     .section-title { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+
+    /* Map picker */
+    #seanceMap { height: 220px; border-radius: 12px; border: 1.5px solid var(--bo-border); margin-top: 8px; display: none; }
+    #seanceMap.show { display: block; }
+    .map-search { display: none; }
+    .map-search.show { display: block; }
+
+    /* AI Generate button */
+    .ai-btn { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; border: none; border-radius: 10px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .ai-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,0.35); }
+    .ai-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .ai-loading { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
 
 <div class="mb-3"><a href="{{ path('admin_courses') }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem"><i class="bi bi-arrow-left me-1"></i> Retour aux formations</a></div>
@@ -76,6 +89,9 @@
     <button class="course-tab" onclick="showTab('quizzes', this)">
         <i class="bi bi-patch-question"></i> Quiz <span class="tab-count">{{ quizzes|length }}</span>
     </button>
+    <a href="{{ path('admin_course_enrollments', {id: formation.id}) }}" class="course-tab" style="text-decoration:none">
+        <i class="bi bi-people"></i> Inscriptions
+    </a>
 </div>
 {% endif %}
 
@@ -85,7 +101,7 @@
     <div class="section-header">
         <div class="section-title"><i class="bi bi-book" style="color:var(--accent)"></i> {{ formation ? 'Informations de la formation' : 'Nouvelle formation' }}</div>
     </div>
-    <form method="post" id="courseForm" novalidate>
+    <form method="post" id="courseForm" enctype="multipart/form-data" novalidate>
         <div class="row g-3">
             <div class="col-12">
                 <label>Titre <span class="req">*</span></label>
@@ -114,7 +130,66 @@
                 <label>Date de début</label>
                 <input type="date" name="dateDebut" class="form-control" value="{{ formation and formation.dateDebut ? formation.dateDebut|date('Y-m-d') : '' }}">
             </div>
+
+            {# ── Image de couverture ── #}
+            <div class="col-12">
+                <label><i class="bi bi-image me-1"></i>Image de couverture</label>
+                {% if formation and formation.image %}
+                <div style="margin-bottom:10px;border-radius:10px;overflow:hidden;border:1px solid var(--bo-border)">
+                    <img src="{{ asset('uploads/formations/' ~ formation.image) }}"
+                         alt="Couverture actuelle"
+                         style="width:100%;height:140px;object-fit:cover">
+                    <div style="padding:6px 10px;font-size:0.75rem;color:var(--bo-text-secondary);background:var(--bo-bg-input)">
+                        <i class="bi bi-check-circle me-1" style="color:#10b981"></i>Image actuelle — téléversez une nouvelle pour la remplacer
+                    </div>
+                </div>
+                {% endif %}
+                <input type="file" name="image" accept="image/*" class="form-control"
+                       style="background:var(--bo-bg-input);border:1px dashed var(--bo-border);border-radius:10px;padding:10px">
+                <div style="font-size:0.75rem;color:var(--bo-text-secondary);margin-top:4px">
+                    <i class="bi bi-info-circle me-1"></i>Formats acceptés : JPG, PNG, WEBP — Max 5 Mo
+                </div>
+            </div>
+
+            {# ── Type : Gratuit / Payant ── #}
+            <div class="col-12">
+                <label><i class="bi bi-currency-exchange me-1"></i>Accès à la formation <span class="req">*</span></label>
+                <div class="d-flex gap-3 mt-2">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--bo-bg-input);
+                                  border:1.5px solid {{ (not formation or not formation.isPaid) ? 'var(--primary-light)' : 'var(--bo-border)' }};
+                                  border-radius:10px;padding:10px 16px;flex:1;transition:all 0.2s" id="lblFree">
+                        <input type="radio" name="is_paid" value="0" id="rFree"
+                               {{ (not formation or not formation.isPaid) ? 'checked' : '' }}
+                               onchange="togglePaidField()">
+                        <div>
+                            <div style="font-weight:700;color:var(--bo-text)"><i class="bi bi-gift me-1" style="color:#10b981"></i>Gratuit</div>
+                            <div style="font-size:0.75rem;color:var(--bo-text-secondary)">Accessible à tous les candidats</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--bo-bg-input);
+                                  border:1.5px solid {{ (formation and formation.isPaid) ? '#f59e0b' : 'var(--bo-border)' }};
+                                  border-radius:10px;padding:10px 16px;flex:1;transition:all 0.2s" id="lblPaid">
+                        <input type="radio" name="is_paid" value="1" id="rPaid"
+                               {{ (formation and formation.isPaid) ? 'checked' : '' }}
+                               onchange="togglePaidField()">
+                        <div>
+                            <div style="font-weight:700;color:var(--bo-text)"><i class="bi bi-coin me-1" style="color:#f59e0b"></i>Payante</div>
+                            <div style="font-size:0.75rem;color:var(--bo-text-secondary)">Requiert des points pour s'inscrire</div>
+                        </div>
+                    </label>
+                </div>
+                <div id="pricePointsGroup" style="margin-top:12px;display:{{ (formation and formation.isPaid) ? 'block' : 'none' }}">
+                    <label>Coût en points <span class="req">*</span></label>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <input type="number" name="price_points" id="fPricePoints" class="form-control"
+                               value="{{ formation and formation.pricePoints ? formation.pricePoints : 100 }}"
+                               min="1" placeholder="Ex: 150" style="max-width:180px">
+                        <span style="color:var(--bo-text-secondary);font-size:0.85rem">points requis pour s'inscrire</span>
+                    </div>
+                </div>
+            </div>
         </div>
+
         <div class="mt-4 d-flex align-items-center gap-3">
             <button type="submit" class="bo-btn bo-btn-primary" id="submitBtn" disabled style="opacity:0.5;transition:opacity 0.3s">
                 <i class="bi bi-check-lg me-1"></i> {{ formation ? 'Enregistrer' : 'Créer la formation' }}
@@ -125,6 +200,15 @@
         </div>
     </form>
 </div>
+
+<script>
+function togglePaidField() {
+    var isPaid = document.getElementById('rPaid').checked;
+    document.getElementById('pricePointsGroup').style.display = isPaid ? 'block' : 'none';
+    document.getElementById('lblFree').style.borderColor = isPaid ? 'var(--bo-border)' : 'var(--primary-light)';
+    document.getElementById('lblPaid').style.borderColor = isPaid ? '#f59e0b' : 'var(--bo-border)';
+}
+</script>
 </div>
 
 {% if formation %}
@@ -153,8 +237,15 @@
                                 {% if s.adresse %}<span><i class="bi bi-geo-alt me-1"></i>{{ s.adresse }}</span>{% endif %}
                                 {% if s.videoPath %}<span><i class="bi bi-play-btn me-1"></i><a href="{{ s.videoPath }}" target="_blank" style="color:var(--primary-light);text-decoration:none">Vidéo</a></span>{% endif %}
                             </div>
+                            {% if s.description %}<div style="font-size:0.78rem;color:var(--bo-text-secondary);margin-top:6px;font-style:italic">{{ s.description|length > 120 ? s.description|slice(0,120) ~ '…' : s.description }}</div>{% endif %}
                         </div>
-                        <a href="{{ path('admin_course_seance_delete', {id: formation.id, sid: s.id}) }}" class="bo-action-btn danger" title="Supprimer" onclick="return confirm('Supprimer cette séance ?')" style="flex-shrink:0;margin-left:12px"><i class="bi bi-trash"></i></a>
+                        <div class="d-flex gap-1" style="flex-shrink:0;margin-left:12px">
+                            <button type="button" class="bo-action-btn" title="Modifier"
+                                onclick="openSeanceEdit({{ s.id }}, '{{ s.titre|e('js') }}', '{{ s.description|e('js') }}', '{{ s.type }}', '{{ s.dateDebut|date('Y-m-d\\TH:i') }}', '{{ s.dateFin|date('Y-m-d\\TH:i') }}', '{{ s.adresse|e('js') }}', '{{ s.videoPath|e('js') }}', {{ s.dureeMinutes ?? 'null' }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <a href="{{ path('admin_course_seance_delete', {id: formation.id, sid: s.id}) }}" class="bo-action-btn danger" title="Supprimer" onclick="return confirm('Supprimer cette séance ?')"><i class="bi bi-trash"></i></a>
+                        </div>
                     </div>
                 </div>
             {% else %}
@@ -171,6 +262,10 @@
                         <label>Titre <span class="req">*</span></label>
                         <input type="text" name="titre" id="sTitre" class="form-control" placeholder="Ex: Introduction aux bases">
                         <div class="field-msg" id="msgSTitre"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label><i class="bi bi-text-paragraph me-1"></i>Description <span style="font-size:0.75rem;color:var(--bo-text-secondary);font-weight:400">(optionnel — utilisée pour la génération de questions)</span></label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Décrivez le contenu de cette séance, les thèmes abordés..." style="font-size:0.85rem;resize:vertical"></textarea>
                     </div>
                     <div class="mb-3">
                         <label>Type</label>
@@ -192,7 +287,16 @@
                     </div>
                     <div class="mb-3">
                         <label>Adresse / Lien</label>
-                        <input type="text" name="adresse" class="form-control" placeholder="Adresse ou lien visio">
+                        <input type="text" name="adresse" id="sAdresse" class="form-control" placeholder="Adresse ou lien visio">
+                    </div>
+                    {# Hidden lat/lng filled by map #}
+                    <input type="hidden" name="latitude"  id="sLat">
+                    <input type="hidden" name="longitude" id="sLng">
+                    {# Map picker (shown for PRESENTIEL) #}
+                    <div id="mapPickerGroup" style="display:none;margin-bottom:12px">
+                        <label style="font-size:0.85rem;font-weight:600"><i class="bi bi-pin-map me-1"></i>Localisation sur la carte <span style="font-size:0.75rem;color:var(--bo-text-secondary)">— cliquez pour placer l'épingle</span></label>
+                        <input type="text" id="mapSearchInput" class="form-control" placeholder="Rechercher un lieu..." style="margin-bottom:6px;font-size:0.85rem">
+                        <div id="seanceMap"></div>
                     </div>
                     <div class="mb-3" id="videoUrlGroup" style="display:none">
                         <label><i class="bi bi-play-btn me-1"></i>URL Vidéo (YouTube, etc.)</label>
@@ -234,6 +338,10 @@
                             <span class="tab-count">{{ q.questions|length }} question(s)</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="bo-action-btn" title="Modifier" style="width:28px;height:28px"
+                                onclick="event.stopPropagation();openQuizEdit({{ q.id }}, '{{ q.titre|e('js') }}', '{{ q.description|e('js') }}', {{ q.duree ?? 'null' }}, {{ q.seance ? q.seance.id : 'null' }})">
+                                <i class="bi bi-pencil" style="font-size:0.8rem"></i>
+                            </button>
                             <a href="{{ path('admin_course_quiz_delete', {id: formation.id, qid: q.id}) }}" class="bo-action-btn danger" title="Supprimer" onclick="event.stopPropagation();return confirm('Supprimer ce quiz ?')" style="width:28px;height:28px"><i class="bi bi-trash" style="font-size:0.8rem"></i></a>
                             <i class="bi bi-chevron-down quiz-chevron"></i>
                         </div>
@@ -259,7 +367,12 @@
                         {# Inline add question form #}
                         <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--bo-border)">
                             <form method="post" action="{{ path('admin_course_question_new', {id: formation.id, qid: q.id}) }}" class="question-form" novalidate>
-                                <div style="font-weight:600;font-size:0.8rem;color:var(--accent);margin-bottom:8px"><i class="bi bi-plus-circle me-1"></i>Ajouter une question</div>
+                                <div style="font-weight:600;font-size:0.8rem;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+                                    <span><i class="bi bi-plus-circle me-1"></i>Ajouter une question</span>
+                                    <button type="button" class="ai-btn" onclick="generateQuestions(this, {{ formation.id }}, {{ q.id }})" title="Générer des questions avec l'IA">
+                                        <i class="bi bi-stars me-1"></i>✨ Générer auto
+                                    </button>
+                                </div>
                                 <div class="mb-2">
                                     <input type="text" name="enonce" class="form-control q-enonce" placeholder="Tapez l'énoncé de la question..." style="font-size:0.85rem">
                                 </div>
@@ -297,8 +410,24 @@
                         <div class="field-msg" id="msgQTitre"></div>
                     </div>
                     <div class="mb-3">
+                        <label><i class="bi bi-text-paragraph me-1"></i>Description <span style="font-size:0.75rem;color:var(--bo-text-secondary);font-weight:400">(optionnel — améliore la génération IA)</span></label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Thèmes couverts par ce quiz, compétences évaluées..." style="font-size:0.85rem;resize:vertical"></textarea>
+                    </div>
+                    <div class="mb-3">
                         <label>Durée (minutes)</label>
                         <input type="number" name="duree" class="form-control" min="1" placeholder="15">
+                    </div>
+                    <div class="mb-3">
+                        <label><i class="bi bi-calendar-check me-1"></i>Séance associée</label>
+                        <select name="seance_id" class="form-select" style="font-size:0.9rem">
+                            <option value="">— Choisir une séance —</option>
+                            {% for s in seances %}
+                                <option value="{{ s.id }}" {{ s.quiz ? 'disabled style="color:#94a3b8"' : '' }}>
+                                    {{ s.titre }} ({{ s.dateDebut|date('d/m/Y') }}){{ s.quiz ? ' ✓ Quiz existant' : '' }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div style="font-size:0.75rem;color:var(--bo-text-secondary);margin-top:4px"><i class="bi bi-info-circle me-1"></i>Chaque séance ne peut avoir qu'un seul quiz</div>
                     </div>
                     <button type="submit" class="bo-btn bo-btn-primary w-100" id="quizSubmit" disabled style="opacity:0.5;transition:opacity 0.3s"><i class="bi bi-plus me-1"></i>Créer le quiz</button>
                 </form>
@@ -308,6 +437,10 @@
 </div>
 {% endif %}
 
+{# Load Leaflet BEFORE the script block so L is defined when initLeafletMap() runs #}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
 <script>
 // ═══ Tab switching ═══
 function showTab(name, btn) {
@@ -315,6 +448,10 @@ function showTab(name, btn) {
     document.querySelectorAll('.course-tab').forEach(function(b) { b.classList.remove('active'); });
     document.getElementById('tab-' + name).classList.add('active');
     btn.classList.add('active');
+    // Fix Leaflet map size when seances tab becomes visible
+    if (name === 'seances' && _leafletMap) {
+        setTimeout(function() { _leafletMap.invalidateSize(); }, 50);
+    }
 }
 
 // Auto-open correct tab from URL hash
@@ -330,6 +467,10 @@ function showTab(name, btn) {
         });
         document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
         document.getElementById('tab-' + tabName).classList.add('active');
+        // If seances tab auto-opened, invalidate map after it's visible
+        if (tabName === 'seances') {
+            setTimeout(function() { if (_leafletMap) _leafletMap.invalidateSize(); }, 100);
+        }
     }
 })();
 {% endif %}
@@ -476,5 +617,339 @@ document.querySelectorAll('.choix-input').forEach(function(c) { c.addEventListen
         });
     }
 })();
+
+// ═══ Map toggle (show for PRESENTIEL) ═══
+// Deferred: run after DOM is ready AND Leaflet is loaded
+var _mapToggleReady = false;
+function toggleMap() {
+    var sType = document.getElementById('sType');
+    var mapGroup = document.getElementById('mapPickerGroup');
+    if (!sType || !mapGroup) return;
+    if (sType.value === 'PRESENTIEL') {
+        mapGroup.style.display = 'block';
+        if (!window._leafletMapInit && typeof L !== 'undefined') {
+            window._leafletMapInit = true;
+            initLeafletMap();
+        }
+    } else {
+        mapGroup.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var sType = document.getElementById('sType');
+    if (!sType) return;
+    sType.addEventListener('change', function() {
+        toggleMap();
+        // If map already init, invalidate size in case it was hidden
+        if (_leafletMap) setTimeout(function() { _leafletMap.invalidateSize(); }, 50);
+    });
+    toggleMap();
+});
+
+var _leafletMap = null, _leafletMarker = null;
+function initLeafletMap() {
+    var mapEl = document.getElementById('seanceMap');
+    if (!mapEl || _leafletMap) return;
+
+    // Give the div a fixed height before init (it may still be in a hidden tab)
+    mapEl.style.height = '220px';
+    mapEl.style.display = 'block';
+
+    _leafletMap = L.map('seanceMap').setView([36.737232, 3.086472], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(_leafletMap);
+
+    _leafletMap.on('click', function(e) { placeMarker(e.latlng.lat, e.latlng.lng); });
+
+    // Force correct render size after 200ms (handles hidden-tab init)
+    setTimeout(function() { _leafletMap.invalidateSize(); }, 200);
+
+    // Search box via Nominatim
+    var searchInput = document.getElementById('mapSearchInput');
+    if (searchInput) {
+        var searchTimer = null;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            var q = this.value.trim();
+            if (q.length < 3) return;
+            searchTimer = setTimeout(function() {
+                fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1')
+                    .then(function(r){ return r.json(); })
+                    .then(function(data) {
+                        if (data.length > 0) {
+                            var lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+                            _leafletMap.setView([lat, lng], 15);
+                            placeMarker(lat, lng, data[0].display_name);
+                        } else {
+                            alert('Lieu introuvable, essayez une autre recherche.');
+                        }
+                    }).catch(function() { alert('Erreur de recherche.'); });
+            }, 700);
+        });
+        // Also allow pressing Enter
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); this.dispatchEvent(new Event('input')); }
+        });
+    }
+}
+
+function placeMarker(lat, lng, address) {
+    document.getElementById('sLat').value = lat;
+    document.getElementById('sLng').value = lng;
+    if (address) document.getElementById('sAdresse').value = address;
+    if (_leafletMarker) _leafletMap.removeLayer(_leafletMarker);
+    _leafletMarker = L.marker([lat, lng]).addTo(_leafletMap);
+    // Reverse geocode if no address passed
+    if (!address) {
+        fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lng + '&format=json')
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+                if (data.display_name) document.getElementById('sAdresse').value = data.display_name;
+            });
+    }
+}
+
+// ═══ AI Question Generation ═══
+function generateQuestions(btn, formationId, quizId) {
+    btn.disabled = true;
+    var origHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat ai-loading"></i> Génération...';
+
+    fetch('/admin/courses/' + formationId + '/quiz/' + quizId + '/generate')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+
+            if (!data.questions || data.questions.length === 0) {
+                alert('Aucune question générée. Réessayez.');
+                return;
+            }
+
+            var form = btn.closest('form');
+            var sourceLabel = data.source === 'ai' ? '🤖 IA' : '📋 Modèle';
+
+            // Show generated questions in a modal-like overlay
+            showGeneratedQuestionsModal(data.questions, formationId, quizId, sourceLabel);
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            alert('Erreur lors de la génération. Vérifiez votre connexion.');
+        });
+}
+
+function showGeneratedQuestionsModal(questions, formationId, quizId, source) {
+    // Remove existing modal
+    var existing = document.getElementById('aiQModal');
+    if (existing) existing.remove();
+
+    var html = '<div id="aiQModal" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px">'
+        + '<div style="background:var(--bo-bg-card,#1e2537);border-radius:20px;padding:32px;max-width:680px;width:100%;max-height:80vh;overflow-y:auto;border:1px solid var(--bo-border)">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+        + '<h5 style="font-weight:800;margin:0;color:var(--bo-text)">✨ Questions générées <span style="font-size:0.75rem;color:#94a3b8;font-weight:400">' + source + '</span></h5>'
+        + '<button onclick="document.getElementById(\'aiQModal\').remove()" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer">✕</button>'
+        + '</div>';
+
+    questions.forEach(function(q, idx) {
+        html += '<div style="background:var(--bo-bg-input);border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid var(--bo-border)">';
+        html += '<div style="font-weight:700;font-size:0.9rem;margin-bottom:10px;color:var(--bo-text)"><span style="color:var(--primary-light)">Q' + (idx+1) + '.</span> ' + q.enonce + '</div>';
+        q.choix.forEach(function(c) {
+            html += '<div style="font-size:0.85rem;padding:4px 0;color:' + (c.correct ? '#10b981' : 'var(--bo-text-secondary)') + '">'
+                + '<i class="bi bi-' + (c.correct ? 'check-circle-fill' : 'circle') + '" style="margin-right:6px"></i>' + c.texte + '</div>';
+        });
+        html += '<button onclick="importQuestion(' + formationId + ',' + quizId + ',' + JSON.stringify(q).replace(/"/g, '&quot;') + ',this)"'
+            + ' style="margin-top:10px;background:linear-gradient(135deg,var(--primary-light),#7c3aed);color:#fff;border:none;border-radius:8px;padding:6px 16px;font-size:0.8rem;cursor:pointer;font-weight:600">'
+            + '<i class="bi bi-plus me-1"></i>Importer cette question</button>';
+        html += '</div>';
+    });
+
+    html += '<div style="text-align:center;margin-top:16px"><button onclick="importAllQuestions(' + formationId + ',' + quizId + ',' + JSON.stringify(questions).replace(/"/g, '&quot;') + ')" '
+        + 'style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:12px;padding:12px 28px;font-weight:700;cursor:pointer;font-size:0.9rem">'
+        + '⬇ Tout importer (' + questions.length + ' questions)</button></div>';
+
+    html += '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function importQuestion(formationId, quizId, question, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass"></i> Import...';
+
+    // Build form data
+    var fd = new FormData();
+    fd.append('enonce', question.enonce);
+    question.choix.forEach(function(c, i) { fd.append('choix[]', c.texte); });
+    var correctIdx = question.choix.findIndex(function(c) { return c.correct; });
+    fd.append('correct', correctIdx >= 0 ? correctIdx : 0);
+
+    fetch('/admin/courses/' + formationId + '/quiz/' + quizId + '/question/new', {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        redirect: 'manual'
+    }).then(function() {
+        btn.innerHTML = '✓ Importée';
+        btn.style.background = '#10b981';
+    }).catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = 'Réessayer';
+    });
+}
+
+function importAllQuestions(formationId, quizId, questions) {
+    var closeBtn = document.querySelector('#aiQModal button[onclick*="remove"]');
+    if (closeBtn) closeBtn.disabled = true;
+
+    var imports = questions.map(function(q) {
+        var fd = new FormData();
+        fd.append('enonce', q.enonce);
+        q.choix.forEach(function(c) { fd.append('choix[]', c.texte); });
+        var correctIdx = q.choix.findIndex(function(c) { return c.correct; });
+        fd.append('correct', correctIdx >= 0 ? correctIdx : 0);
+        return fetch('/admin/courses/' + formationId + '/quiz/' + quizId + '/question/new', {
+            method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' }, redirect: 'manual'
+        });
+    });
+
+    Promise.allSettled(imports).then(function() {
+        document.getElementById('aiQModal').remove();
+        window.location.reload();
+    });
+}
 </script>
+
+{% if formation %}
+{# ════ EDIT SEANCE MODAL ════ #}
+<div class="modal fade" id="editSeanceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="background:var(--bo-bg-card);border:1px solid var(--bo-border);border-radius:16px">
+      <div class="modal-header" style="border-color:var(--bo-border);padding:20px 24px">
+        <h5 class="modal-title" style="font-weight:700;font-size:1rem"><i class="bi bi-pencil-square me-2" style="color:var(--primary-light)"></i>Modifier la séance</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editSeanceForm" method="post" action="">
+        <div class="modal-body" style="padding:24px">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Titre <span style="color:red">*</span></label>
+              <input type="text" name="titre" id="eseTitre" class="form-control" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Description</label>
+              <textarea name="description" id="eseDesc" class="form-control" rows="2" style="resize:vertical"></textarea>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Type</label>
+              <select name="type" id="eseType" class="form-select">
+                <option value="PRESENTIEL">📍 Présentiel</option>
+                <option value="EN_LIGNE">🖥 En ligne</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Début</label>
+              <input type="datetime-local" name="dateDebut" id="eseDebut" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Fin</label>
+              <input type="datetime-local" name="dateFin" id="eseFin" class="form-control">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Adresse / Lien</label>
+              <input type="text" name="adresse" id="eseAdresse" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Durée (min)</label>
+              <input type="number" name="dureeMinutes" id="eseDuree" class="form-control" min="1">
+            </div>
+            <div class="col-12">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">URL Vidéo</label>
+              <input type="url" name="videoPath" id="eseVideo" class="form-control" placeholder="https://youtu.be/...">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-color:var(--bo-border);padding:16px 24px">
+          <button type="button" class="bo-btn" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="bo-btn bo-btn-primary"><i class="bi bi-check2 me-1"></i>Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ════ EDIT QUIZ MODAL ════ #}
+<div class="modal fade" id="editQuizModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--bo-bg-card);border:1px solid var(--bo-border);border-radius:16px">
+      <div class="modal-header" style="border-color:var(--bo-border);padding:20px 24px">
+        <h5 class="modal-title" style="font-weight:700;font-size:1rem"><i class="bi bi-pencil-square me-2" style="color:var(--primary-light)"></i>Modifier le quiz</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editQuizForm" method="post" action="">
+        <div class="modal-body" style="padding:24px">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Titre <span style="color:red">*</span></label>
+              <input type="text" name="titre" id="eqTitre" class="form-control" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Description</label>
+              <textarea name="description" id="eqDesc" class="form-control" rows="2" style="resize:vertical"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Durée (minutes)</label>
+              <input type="number" name="duree" id="eqDuree" class="form-control" min="1">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" style="font-size:0.85rem;font-weight:600">Séance associée</label>
+              <select name="seance_id" id="eqSeance" class="form-select">
+                <option value="">— Aucune —</option>
+                {% if seances is defined %}
+                  {% for s in seances %}
+                    <option value="{{ s.id }}">{{ s.titre }} ({{ s.dateDebut|date('d/m') }})</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-color:var(--bo-border);padding:16px 24px">
+          <button type="button" class="bo-btn" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="bo-btn bo-btn-primary"><i class="bi bi-check2 me-1"></i>Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+const fid = {{ formation.id }};
+
+function openSeanceEdit(sid, titre, desc, type, debut, fin, adresse, video, duree) {
+    document.getElementById('editSeanceForm').action = '/admin/courses/' + fid + '/seance/' + sid + '/edit';
+    document.getElementById('eseTitre').value   = titre;
+    document.getElementById('eseDesc').value    = desc;
+    document.getElementById('eseType').value    = type;
+    document.getElementById('eseDebut').value   = debut;
+    document.getElementById('eseFin').value     = fin;
+    document.getElementById('eseAdresse').value = adresse;
+    document.getElementById('eseVideo').value   = video;
+    document.getElementById('eseDuree').value   = duree || '';
+    new bootstrap.Modal(document.getElementById('editSeanceModal')).show();
+}
+
+function openQuizEdit(qid, titre, desc, duree, seanceId) {
+    document.getElementById('editQuizForm').action = '/admin/courses/' + fid + '/quiz/' + qid + '/edit';
+    document.getElementById('eqTitre').value  = titre;
+    document.getElementById('eqDesc').value   = desc;
+    document.getElementById('eqDuree').value  = duree || '';
+    const sel = document.getElementById('eqSeance');
+    sel.value = seanceId ? String(seanceId) : '';
+    new bootstrap.Modal(document.getElementById('editQuizModal')).show();
+}
+</script>
+{% endif %}
 {% endblock %}

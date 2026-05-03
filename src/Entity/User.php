@@ -60,6 +60,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToOne(mappedBy: 'user', targetEntity: Profile::class, cascade: ['persist', 'remove'])]
     private ?Profile $profile = null;
 
+    #[ORM\Column(name: 'points_balance', type: 'integer', options: ['default' => 0])]
+    private int $pointsBalance = 0;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -112,6 +115,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->profile = $profile;
         return $this;
     }
+
+    public function getPointsBalance(): int { return $this->pointsBalance; }
+    public function setPointsBalance(int $p): static { $this->pointsBalance = $p; return $this; }
+    public function addPoints(int $p): static { $this->pointsBalance += $p; return $this; }
+    public function deductPoints(int $p): static { $this->pointsBalance = max(0, $this->pointsBalance - $p); return $this; }
 
     // === UserInterface ===
     public function getRoles(): array

@@ -20,6 +20,9 @@ class Seance
     #[ORM\Column(length: 150)]
     private ?string $titre = null;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $description = null;
+
     #[ORM\Column(type: 'string', columnDefinition: "ENUM('PRESENTIEL','EN_LIGNE')")]
     private ?string $type = null;
 
@@ -50,6 +53,9 @@ class Seance
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_MUTABLE, options: ['default' => 'CURRENT_TIMESTAMP'])]
     private ?\DateTimeInterface $createdAt = null;
 
+    #[ORM\OneToOne(mappedBy: 'seance', targetEntity: Quiz::class, cascade: ['remove'])]
+    private ?Quiz $quiz = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -77,6 +83,9 @@ class Seance
         $this->titre = $t;
         return $this;
     }
+    public function getDescription(): ?string { return $this->description; }
+    public function setDescription(?string $d): static { $this->description = $d; return $this; }
+
     public function getType(): ?string
     {
         return $this->type;
@@ -161,5 +170,24 @@ class Seance
     public function getCreatedAt(): ?\DateTimeInterface
     {
         return $this->createdAt;
+    }
+
+    public function getQuiz(): ?Quiz { return $this->quiz; }
+    public function setQuiz(?Quiz $q): static { $this->quiz = $q; return $this; }
+
+    /** Returns true if seance has ended */
+    public function isTerminee(): bool
+    {
+        return $this->dateFin !== null && $this->dateFin < new \DateTime();
+    }
+
+    /** Returns true if quiz window is open (seance ended AND within 24h after) */
+    public function isQuizUnlocked(): bool
+    {
+        if (!$this->isTerminee() || $this->dateFin === null) return false;
+        // DateTimeInterface doesn't have modify() — create a mutable DateTime copy
+        $deadline = \DateTime::createFromInterface($this->dateFin);
+        $deadline->modify('+24 hours');
+        return new \DateTime() <= $deadline;
     }
 }

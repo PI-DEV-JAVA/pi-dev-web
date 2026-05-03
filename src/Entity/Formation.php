@@ -27,15 +27,23 @@ class Formation
     #[ORM\Column(nullable: true)]
     private ?int $duree = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $image = null;
+
+    #[ORM\Column(name: 'is_paid', type: 'boolean', options: ['default' => false])]
+    private bool $isPaid = false;
+
+    #[ORM\Column(name: 'price_points', type: 'integer', nullable: true)]
+    private ?int $pricePoints = null;
+
     #[ORM\Column(name: 'date_debut', type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $dateDebut = null;
 
     #[ORM\Column(name: 'date_fin', type: Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $dateFin = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(name: 'recruiter_id', nullable: true)]
-    private ?User $recruiter = null;
+    #[ORM\Column(name: 'recruiter_id', nullable: true)]
+    private ?int $recruiterId = null;
 
     #[ORM\OneToMany(mappedBy: 'formation', targetEntity: Seance::class, cascade: ['remove'])]
     private Collection $seances;
@@ -43,10 +51,14 @@ class Formation
     #[ORM\OneToMany(mappedBy: 'formation', targetEntity: Quiz::class, cascade: ['remove'])]
     private Collection $quizzes;
 
+    #[ORM\OneToMany(mappedBy: 'formation', targetEntity: FormationEnrollment::class, cascade: ['remove'])]
+    private Collection $enrollments;
+
     public function __construct()
     {
         $this->seances = new ArrayCollection();
         $this->quizzes = new ArrayCollection();
+        $this->enrollments = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -107,20 +119,24 @@ class Formation
         $this->dateFin = $d;
         return $this;
     }
-    public function getRecruiter(): ?User
+    public function getRecruiterId(): ?int
     {
-        return $this->recruiter;
+        return $this->recruiterId;
     }
-    public function setRecruiter(?User $user): static
+    public function setRecruiterId(?int $id): static
     {
-        $this->recruiter = $user;
+        $this->recruiterId = $id;
         return $this;
     }
 
-    public function getRecruiterId(): ?int
-    {
-        return $this->recruiter?->getId();
-    }
+    public function getImage(): ?string { return $this->image; }
+    public function setImage(?string $image): static { $this->image = $image; return $this; }
+
+    public function isPaid(): bool { return $this->isPaid; }
+    public function setIsPaid(bool $isPaid): static { $this->isPaid = $isPaid; return $this; }
+
+    public function getPricePoints(): ?int { return $this->pricePoints; }
+    public function setPricePoints(?int $p): static { $this->pricePoints = $p; return $this; }
     /** @return Collection<int, Seance> */
     public function getSeances(): Collection
     {
@@ -130,5 +146,11 @@ class Formation
     public function getQuizzes(): Collection
     {
         return $this->quizzes;
+    }
+
+    /** @return Collection<int, FormationEnrollment> */
+    public function getEnrollments(): Collection
+    {
+        return $this->enrollments;
     }
 }

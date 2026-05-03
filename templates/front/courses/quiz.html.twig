@@ -3,42 +3,133 @@
 {% block title %}{{ quiz.titre }} — Quiz{% endblock %}
 
 {% block content %}
-<div class="fo-page-header">
-    <div class="container">
-        <a href="{{ path('app_course_detail', {id: quiz.formation.id}) }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500">
-            <i class="bi bi-arrow-left me-1"></i> Retour à la formation
-        </a>
-        <h1 class="mt-2">{{ quiz.titre }}</h1>
-        <p>{{ questions|length }} question{{ questions|length > 1 ? 's' }}</p>
+<style>
+    .quiz-wrapper { max-width: 780px; margin: 0 auto; }
+    .q-card { background: #fff; border-radius: 16px; padding: 28px; margin-bottom: 20px; border: 1.5px solid var(--fo-border, #e2e8f0); box-shadow: 0 2px 12px rgba(0,0,0,0.04); transition: all 0.2s; }
+    .q-card:hover { box-shadow: 0 4px 24px rgba(79,70,229,0.08); }
+    .q-label { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; cursor: pointer; border: 2px solid var(--fo-border, #e2e8f0); transition: all 0.2s; margin-bottom: 8px; }
+    .q-label:hover { border-color: var(--primary, #4f46e5); background: rgba(79,70,229,0.03); }
+    .q-label input[type=radio]:checked + .q-label-text { color: var(--primary, #4f46e5); font-weight: 600; }
+    .q-label:has(input:checked) { border-color: var(--primary, #4f46e5); background: rgba(79,70,229,0.05); }
+    .q-number { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--primary,#4f46e5), #7c3aed); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .timer-bar { position: sticky; top: 80px; z-index: 100; background: #fff; border-bottom: 1px solid var(--fo-border,#e2e8f0); padding: 12px 0; margin-bottom: 24px; }
+    .cheat-overlay { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15,23,42,0.92); align-items: center; justify-content: center; }
+    .cheat-overlay.show { display: flex; }
+    .cheat-modal { background: #fff; border-radius: 20px; padding: 48px 40px; max-width: 500px; text-align: center; animation: bounceIn 0.4s ease; }
+    @keyframes bounceIn { from{transform:scale(0.8);opacity:0} to{transform:scale(1);opacity:1} }
+    .cheat-icon { font-size: 3.5rem; margin-bottom: 16px; }
+    .warning-modal { border-top: 5px solid #f59e0b; }
+    .zero-modal { border-top: 5px solid #ef4444; }
+</style>
+
+{# Anti-cheat overlay — WARNING (1st switch) #}
+<div class="cheat-overlay" id="warningOverlay">
+    <div class="cheat-modal warning-modal">
+        <div class="cheat-icon">⚠️</div>
+        <h3 style="font-weight:800;margin-bottom:8px;color:#b45309">Attention !</h3>
+        <p style="color:#64748b;margin-bottom:24px">Vous avez changé d'onglet ou de fenêtre. Ceci est un quiz surveillé.<br><strong>Si vous changez encore une fois, vous obtiendrez automatiquement la note de 0/20.</strong></p>
+        <button onclick="dismissWarning()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;padding:14px 32px;border-radius:12px;font-weight:700;font-size:1rem;cursor:pointer">
+            Je comprends, continuer le quiz
+        </button>
     </div>
 </div>
 
-<section class="fo-section" style="padding-top:40px">
-    <div class="container" style="max-width:750px">
-        <form method="post" action="{{ path('app_quiz_submit', {id: quiz.id}) }}" class="fo-form">
+{# Anti-cheat overlay — ZERO (2nd switch) #}
+<div class="cheat-overlay" id="zeroOverlay">
+    <div class="cheat-modal zero-modal">
+        <div class="cheat-icon">🚫</div>
+        <h3 style="font-weight:800;margin-bottom:8px;color:#dc2626">Quiz soumis — Note : 0/20</h3>
+        <p style="color:#64748b;margin-bottom:24px">Vous avez changé d'onglet une deuxième fois. Votre quiz a été automatiquement soumis avec la note de <strong>0/20</strong>.</p>
+        <div style="font-size:0.9rem;color:#94a3b8">Redirection en cours...</div>
+    </div>
+</div>
+
+<div class="fo-page-header">
+    <div class="container">
+        {% if quiz.seance %}
+            <a href="{{ path('app_course_detail', {id: quiz.seance.formation.id}) }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500">
+                <i class="bi bi-arrow-left me-1"></i> Retour à la formation
+            </a>
+        {% elseif quiz.formation %}
+            <a href="{{ path('app_course_detail', {id: quiz.formation.id}) }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500">
+                <i class="bi bi-arrow-left me-1"></i> Retour à la formation
+            </a>
+        {% endif %}
+        <h1 class="mt-2">{{ quiz.titre }}</h1>
+        <div class="d-flex gap-3 mt-2 flex-wrap">
+            <span class="fo-badge fo-badge-primary"><i class="bi bi-question-circle me-1"></i>{{ questions|length }} question{{ questions|length > 1 ? 's' }}</span>
+            {% if quiz.duree %}<span class="fo-badge fo-badge-accent"><i class="bi bi-clock me-1"></i>{{ quiz.duree }} min</span>{% endif %}
+            <span class="fo-badge" style="background:rgba(16,185,129,0.1);color:#059669"><i class="bi bi-shield-check me-1"></i>Quiz surveillé</span>
+        </div>
+    </div>
+</div>
+
+<section class="fo-section" style="padding-top:32px">
+    <div class="container quiz-wrapper">
+        <form method="post" action="{{ path('app_quiz_submit', {id: quiz.id}) }}" id="quizForm" class="fo-form">
+            <input type="hidden" name="cheated" id="cheatedField" value="0">
+            <input type="hidden" name="tab_switches" id="tabSwitchesField" value="0">
+
             {% for question in questions %}
-                <div class="fo-card mb-3">
-                    <h6 style="font-weight:700;margin-bottom:12px">
-                        <span style="color:var(--primary);margin-right:8px">Q{{ loop.index }}.</span>
-                        {{ question.texte }}
-                    </h6>
-                    <div class="d-flex flex-column gap-2">
-                        {% for choix in question.loadedChoices %}
-                            <label class="d-flex align-items-center gap-3 p-3 rounded-3" style="cursor:pointer;border:1.5px solid var(--fo-border);transition:all 0.2s"
-                                   onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(79,70,229,0.03)'"
-                                   onmouseout="this.style.borderColor='var(--fo-border)';this.style.background='transparent'">
-                                <input type="radio" name="q_{{ question.id }}" value="{{ choix.id }}" required class="form-check-input" style="margin:0">
-                                <span style="font-size:0.9rem">{{ choix.texte }}</span>
+                <div class="q-card">
+                    <div class="d-flex align-items-start gap-3 mb-4">
+                        <div class="q-number">{{ loop.index }}</div>
+                        <h6 style="font-weight:700;margin:0;line-height:1.5;padding-top:4px">{{ question.enonce }}</h6>
+                    </div>
+                    <div>
+                        {% for choix in question.choix %}
+                            <label class="q-label">
+                                <input type="radio" name="q_{{ question.id }}" value="{{ choix.id }}" required style="flex-shrink:0;accent-color:var(--primary,#4f46e5)">
+                                <span class="q-label-text" style="font-size:0.9rem">{{ choix.texte }}</span>
                             </label>
                         {% endfor %}
                     </div>
                 </div>
             {% endfor %}
 
-            <div class="text-center mt-4">
-                <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:14px 48px"><i class="bi bi-send me-2"></i>Soumettre</button>
+            <div class="text-center mt-4 mb-5">
+                <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:16px 52px;font-size:1.05rem;font-weight:700">
+                    <i class="bi bi-send me-2"></i>Soumettre le quiz
+                </button>
+                <div style="margin-top:12px;font-size:0.8rem;color:#94a3b8"><i class="bi bi-info-circle me-1"></i>Cette action est irréversible</div>
             </div>
         </form>
     </div>
 </section>
+
+<script>
+var tabSwitches = 0;
+var warningShown = false;
+
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden') {
+        tabSwitches++;
+        document.getElementById('tabSwitchesField').value = tabSwitches;
+
+        if (tabSwitches === 1 && !warningShown) {
+            warningShown = true;
+            // show warning when they come back
+        }
+    } else {
+        // User returned to the page
+        if (tabSwitches === 1 && warningShown) {
+            document.getElementById('warningOverlay').classList.add('show');
+        } else if (tabSwitches >= 2) {
+            // Auto-submit with score 0
+            document.getElementById('zeroOverlay').classList.add('show');
+            document.getElementById('cheatedField').value = '1';
+            setTimeout(function() {
+                document.getElementById('quizForm').submit();
+            }, 2000);
+        }
+    }
+});
+
+function dismissWarning() {
+    document.getElementById('warningOverlay').classList.remove('show');
+}
+
+// Prevent right-click context menu on quiz page
+document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+</script>
 {% endblock %}

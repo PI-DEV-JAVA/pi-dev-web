@@ -15,14 +15,21 @@ class Quiz
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Formation::class, inversedBy: 'quizzes')]
-    #[ORM\JoinColumn(name: 'formation_id', nullable: false)]
+    #[ORM\JoinColumn(name: 'formation_id', nullable: true)]
     private ?Formation $formation = null;
+
+    #[ORM\OneToOne(targetEntity: Seance::class, inversedBy: 'quiz')]
+    #[ORM\JoinColumn(name: 'seance_id', nullable: true)]
+    private ?Seance $seance = null;
 
     #[ORM\Column(length: 255)]
     private ?string $titre = null;
 
     #[ORM\Column(nullable: true)]
     private ?int $duree = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $description = null;
 
     #[ORM\OneToMany(mappedBy: 'quiz', targetEntity: Question::class, cascade: ['persist', 'remove'])]
     private Collection $questions;
@@ -45,6 +52,8 @@ class Quiz
         $this->formation = $f;
         return $this;
     }
+    public function getSeance(): ?Seance { return $this->seance; }
+    public function setSeance(?Seance $s): static { $this->seance = $s; return $this; }
     public function getTitre(): ?string
     {
         return $this->titre;
@@ -63,6 +72,9 @@ class Quiz
         $this->duree = $d;
         return $this;
     }
+    public function getDescription(): ?string { return $this->description; }
+    public function setDescription(?string $d): static { $this->description = $d; return $this; }
+
     /** @return Collection<int, Question> */
     public function getQuestions(): Collection
     {

@@ -1,0 +1,109 @@
+{% extends 'back/_base.html.twig' %}
+{% block page_title %}Inscriptions — {{ formation.titre }}{% endblock %}
+{% block content %}
+<style>
+    .status-badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; font-weight: 700; }
+    .s-pending  { background: rgba(251,191,36,0.15); color: #d97706; }
+    .s-approved { background: rgba(34,197,94,0.15);  color: #16a34a; }
+    .s-rejected { background: rgba(239,68,68,0.15);  color: #dc2626; }
+    .enroll-row { background: var(--bo-bg-input); border-radius: 12px; padding: 18px; margin-bottom: 10px; border: 1.5px solid var(--bo-border); display: flex; align-items: center; gap: 16px; }
+    .enroll-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-light), #7c3aed); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 1.1rem; flex-shrink: 0; }
+</style>
+
+<div class="mb-3">
+    <a href="{{ path('admin_course_edit', {id: formation.id}) }}" style="color:var(--primary-light);text-decoration:none;font-size:0.9rem">
+        <i class="bi bi-arrow-left me-1"></i> Retour à la formation
+    </a>
+</div>
+
+{% for message in app.flashes('success') %}
+    <div class="alert" style="background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
+{% endfor %}
+{% for message in app.flashes('warning') %}
+    <div class="alert" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:16px"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}</div>
+{% endfor %}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <div>
+        <h5 style="font-weight:800;margin:0">Demandes d'inscription</h5>
+        <div style="font-size:0.85rem;color:var(--bo-text-secondary)">Formation : {{ formation.titre }}</div>
+    </div>
+    <span class="ms-auto" style="background:rgba(79,70,229,0.15);color:var(--primary-light);padding:6px 16px;border-radius:20px;font-weight:700;font-size:0.85rem">
+        {{ enrollments|length }} demande(s)
+    </span>
+</div>
+
+{% if enrollments|length == 0 %}
+    <div style="text-align:center;padding:60px;color:var(--bo-text-secondary)">
+        <i class="bi bi-people" style="font-size:3rem;opacity:0.3;display:block;margin-bottom:12px"></i>
+        Aucune demande d'inscription pour cette formation
+    </div>
+{% else %}
+    {% set pending  = enrollments|filter(e => e.status == 'PENDING') %}
+    {% set approved = enrollments|filter(e => e.status == 'APPROVED') %}
+    {% set rejected = enrollments|filter(e => e.status == 'REJECTED') %}
+
+    {# Pending first #}
+    {% if pending|length > 0 %}
+    <h6 style="font-weight:700;margin-bottom:12px;color:#d97706"><i class="bi bi-hourglass-split me-2"></i>En attente ({{ pending|length }})</h6>
+    {% for e in pending %}
+        <div class="enroll-row">
+            <div class="enroll-avatar">{{ e.user.email|first|upper }}</div>
+            <div style="flex:1;min-width:0">
+                <div style="font-weight:700">{{ e.user.profile ? (e.user.profile.firstName ~ ' ' ~ e.user.profile.lastName) : e.user.email }}</div>
+                <div style="font-size:0.8rem;color:var(--bo-text-secondary)">{{ e.user.email }}</div>
+                <div style="font-size:0.75rem;color:var(--bo-text-secondary);margin-top:2px"><i class="bi bi-calendar3 me-1"></i>Soumis le {{ e.requestedAt|date('d/m/Y à H:i') }}</div>
+            </div>
+            <span class="status-badge s-pending">⏳ En attente</span>
+            <div class="d-flex gap-2 ms-2">
+                <a href="{{ path('admin_course_enrollment_approve', {id: formation.id, eid: e.id}) }}"
+                   class="bo-btn bo-btn-primary" style="padding:6px 16px;font-size:0.8rem"
+                   onclick="return confirm('Approuver l\'inscription de {{ e.user.email }} ?')">
+                    <i class="bi bi-check-lg me-1"></i>Approuver
+                </a>
+                <a href="{{ path('admin_course_enrollment_reject', {id: formation.id, eid: e.id}) }}"
+                   class="bo-btn" style="padding:6px 16px;font-size:0.8rem;background:rgba(239,68,68,0.1);color:#ef4444;border:none"
+                   onclick="return confirm('Refuser l\'inscription de {{ e.user.email }} ?')">
+                    <i class="bi bi-x-lg me-1"></i>Refuser
+                </a>
+            </div>
+        </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if approved|length > 0 %}
+    <h6 style="font-weight:700;margin:24px 0 12px;color:#16a34a"><i class="bi bi-patch-check-fill me-2"></i>Approuvés ({{ approved|length }})</h6>
+    {% for e in approved %}
+        <div class="enroll-row" style="opacity:0.85">
+            <div class="enroll-avatar" style="background:linear-gradient(135deg,#22c55e,#16a34a)">{{ e.user.email|first|upper }}</div>
+            <div style="flex:1">
+                <div style="font-weight:700">{{ e.user.profile ? (e.user.profile.firstName ~ ' ' ~ e.user.profile.lastName) : e.user.email }}</div>
+                <div style="font-size:0.8rem;color:var(--bo-text-secondary)">{{ e.user.email }}</div>
+                <div style="font-size:0.75rem;color:var(--bo-text-secondary);margin-top:2px"><i class="bi bi-check-circle me-1"></i>Approuvé le {{ e.respondedAt ? e.respondedAt|date('d/m/Y') : '—' }}</div>
+            </div>
+            <span class="status-badge s-approved">✓ Inscrit</span>
+            <a href="{{ path('admin_course_enrollment_reject', {id: formation.id, eid: e.id}) }}"
+               class="bo-btn ms-2" style="padding:4px 12px;font-size:0.75rem;background:rgba(239,68,68,0.1);color:#ef4444;border:none"
+               onclick="return confirm('Révoquer l\'inscription ?')">Révoquer</a>
+        </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if rejected|length > 0 %}
+    <h6 style="font-weight:700;margin:24px 0 12px;color:#dc2626"><i class="bi bi-x-circle-fill me-2"></i>Refusés ({{ rejected|length }})</h6>
+    {% for e in rejected %}
+        <div class="enroll-row" style="opacity:0.65">
+            <div class="enroll-avatar" style="background:linear-gradient(135deg,#f87171,#ef4444)">{{ e.user.email|first|upper }}</div>
+            <div style="flex:1">
+                <div style="font-weight:700">{{ e.user.profile ? (e.user.profile.firstName ~ ' ' ~ e.user.profile.lastName) : e.user.email }}</div>
+                <div style="font-size:0.8rem;color:var(--bo-text-secondary)">{{ e.user.email }}</div>
+            </div>
+            <span class="status-badge s-rejected">✗ Refusé</span>
+            <a href="{{ path('admin_course_enrollment_approve', {id: formation.id, eid: e.id}) }}"
+               class="bo-btn ms-2" style="padding:4px 12px;font-size:0.75rem;background:rgba(34,197,94,0.1);color:#16a34a;border:none"
+               onclick="return confirm('Approuver quand même ?')">Approuver</a>
+        </div>
+    {% endfor %}
+    {% endif %}
+{% endif %}
+{% endblock %}
