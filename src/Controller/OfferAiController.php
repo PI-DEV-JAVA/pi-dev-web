@@ -92,36 +92,26 @@ Réponds UNIQUEMENT avec un objet JSON valide (pas de texte avant/après, pas de
         // Add randomness to force the LLM to generate different questions on every refresh
         $randomSeed = time() . rand(1000, 9999);
 
-        $prompt = "You are an HR salary expert specializing in the Tunisian job market.
+        $prompt = "Analyze this job posting and produce TWO things: a salary estimate for Tunisia, and 3 interview questions.
 
-TASK: Estimate a realistic monthly salary range in TND (Tunisian Dinar) for this position, then suggest 3 likely interview questions.
+JOB POSTING:
+Title: $title | Level: $level | Location: $location | Sector: $dept | Contract: $contract
+Description: $desc
+$salaryHint
 
-JOB DETAILS:
-- Title: $title
-- Level: $level
-- Location: $location
-- Sector: $dept
-- Contract: $contract
-- Description: $desc
-{$salaryHint}
+SALARY GUIDELINES (Tunisia, monthly net TND):
+Junior(0-2yr): 800-2000 | Mid(2-5yr): 1500-3500 | Senior(5+yr): 2500-6000 | Manager: 3500-7000 | Stage: 300-800
 
-TUNISIAN SALARY REFERENCE (monthly net, 2024-2025):
-- Junior (0-2 yrs): 800-1500 TND for most sectors, 1200-2000 TND for IT/engineering
-- Mid (2-5 yrs): 1500-2500 TND general, 2000-3500 TND IT/engineering
-- Senior (5+ yrs): 2500-4000 TND general, 3000-6000 TND IT/engineering
-- Manager: 3500-7000+ TND
-- Internship (Stage): 300-800 TND
+INSTRUCTIONS:
+1. Pick a realistic salary range in TND/mois based on the job details above.
+2. Write exactly 3 interview questions that a recruiter would ask for THIS SPECIFIC job. Each question must reference concrete skills, tools, or scenarios from the job description. Never use generic questions.
+3. Vary your output using seed=$randomSeed
+4. Use the same language as the job description.
 
-RULES:
-- ALWAYS provide a concrete salary range in TND/mois. NEVER say 'non applicable' or refuse.
-- Adapt the range based on the job title, experience level, location, and sector.
-- Generate completely UNIQUE, UNEXPECTED, and HIGHLY SPECIFIC interview questions based on the exact job description details.
-- DO NOT use generic questions like \"Where do you see yourself in 3 years?\". Invent scenarios or technical challenges related to the text.
-- Since the user might refresh the page, here is a random seed to force different questions every time: RAND_{$randomSeed}
-- Reply in the SAME LANGUAGE as the job description.
+OUTPUT FORMAT (respond with ONLY this JSON, nothing else):
+{\"salary_estimation\": \"1500 - 2500 TND / mois\", \"interview_questions\": [\"Si un client signale un problème réseau critique en production, décrivez votre processus de diagnostic étape par étape.\", \"Quelle expérience avez-vous avec la configuration de VLANs et le routage inter-VLAN dans un environnement Cisco?\", \"Comment géreriez-vous la migration d'une infrastructure on-premise vers le cloud pour notre département?\"]}
 
-Respond ONLY with a valid JSON object (no text before/after, no markdown):
-{\"salary_estimation\": \"X - Y TND / mois\", \"interview_questions\": [\"Unique technical challenge?\", \"Unique behavioral scenario?\", \"Unique situational problem?\"]}";
+IMPORTANT: The example above is for a DIFFERENT job. You MUST generate NEW questions specific to: $title";
 
         return $this->callAi($prompt, [
             'salary_estimation' => $this->estimateFallbackSalary($level, $contract),
