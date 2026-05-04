@@ -55,8 +55,8 @@ class OfferAiController extends AbstractController
                     $parser = new PdfParser();
                     $pdf = $parser->parseFile($fullPath);
                     $cvText = $pdf->getText();
-                    // Limit to ~1500 chars to fit in prompt
-                    $cvText = mb_substr(trim(preg_replace('/\s+/', ' ', $cvText)), 0, 1500);
+                    // Limit to ~800 chars for faster AI processing
+                    $cvText = mb_substr(trim(preg_replace('/\s+/', ' ', $cvText)), 0, 800);
                 } catch (\Exception $e) {
                     $cvText = '[Erreur de lecture du CV]';
                 }
@@ -323,50 +323,53 @@ IMPORTANT: The example above is for a DIFFERENT job. You MUST generate NEW quest
 
     private function callOpenRouter(string $prompt): ?array
     {
-        // Rotate through multiple free models to avoid rate limits
+        // Fire requests to multiple free models IN PARALLEL — first valid response wins
         $freeModels = [
-            'nvidia/nemotron-3-super-120b-a12b:free',
-            'nvidia/nemotron-3-nano-30b-a3b:free',
-            'openai/gpt-oss-20b:free',
-            'meta-llama/llama-3.3-70b-instruct:free',
-            'google/gemma-3-27b-it:free',
+            'nvidia/nemotron-3-nano-30b-a3b:free',     // fastest
+            'openai/gpt-oss-20b:free',                  // fast
+            'nvidia/nemotron-3-super-120b-a12b:free',   // best quality
         ];
 
-        // Shuffle so we don't always hit the same model first
-        shuffle($freeModels);
-
+        $responses = [];
         foreach ($freeModels as $model) {
+            // Symfony HttpClient is async by default — requests fire immediately
+            $responses[$model] = $this->httpClient->request('POST', 'https://openrouter.ai/api/v1/chat/completions', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type'  => 'application/json',
+                    'HTTP-Referer'  => 'http://localhost:8000',
+                    'X-Title'       => 'Talentos',
+                ],
+                'json' => [
+                    'model'       => $model,
+                    'messages'    => [
+                        ['role' => 'system', 'content' => 'You ALWAYS respond with pure valid JSON. No text, no markdown, no explanation.'],
+                        ['role' => 'user', 'content' => $prompt],
+                    ],
+                    'temperature' => 0.85,
+                    'max_tokens'  => 400,
+                ],
+                'timeout' => 12,
+            ]);
+        }
+
+        // Stream responses — whichever completes first with valid data wins
+        foreach ($this->httpClient->stream($responses, 12) as $response => $chunk) {
             try {
-                $response = $this->httpClient->request('POST', 'https://openrouter.ai/api/v1/chat/completions', [
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $this->apiKey,
-                        'Content-Type'  => 'application/json',
-                        'HTTP-Referer'  => 'http://localhost:8000',
-                        'X-Title'       => 'Talentos',
-                    ],
-                    'json' => [
-                        'model'       => $model,
-                        'messages'    => [
-                            ['role' => 'system', 'content' => 'You ALWAYS respond with pure valid JSON. No text, no markdown, no explanation.'],
-                            ['role' => 'user', 'content' => $prompt],
-                        ],
-                        'temperature' => 0.85,
-                        'max_tokens'  => 500,
-                    ],
-                    'timeout' => 18,
-                ]);
-                $body = $response->toArray(false);
-                if (isset($body['choices'][0]['message']['content'])) {
-                    $result = $this->parseJsonFromRaw($body['choices'][0]['message']['content']);
-                    if ($result !== null) {
-                        return $result;
+                if ($chunk->isLast()) {
+                    $body = $response->toArray(false);
+                    if (isset($body['choices'][0]['message']['content'])) {
+                        $result = $this->parseJsonFromRaw($body['choices'][0]['message']['content']);
+                        if ($result !== null) {
+                            return $result;
+                        }
                     }
                 }
             } catch (\Exception $e) {
-                // This model failed (rate-limited/timeout), try next
                 continue;
             }
         }
+
         return null;
     }
 
