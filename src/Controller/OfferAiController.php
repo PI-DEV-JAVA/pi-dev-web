@@ -277,30 +277,50 @@ Respond ONLY with a valid JSON object (no text before/after, no markdown):
 
     private function callOpenRouter(string $prompt): ?array
     {
-        try {
-            $response = $this->httpClient->request('POST', 'https://openrouter.ai/api/v1/chat/completions', [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                    'Content-Type'  => 'application/json',
-                    'HTTP-Referer'  => 'http://localhost:8000',
-                    'X-Title'       => 'Talentos',
-                ],
-                'json' => [
-                    'model'       => 'meta-llama/llama-3.3-70b-instruct:free',
-                    'messages'    => [
-                        ['role' => 'system', 'content' => 'You ALWAYS respond with pure valid JSON. No text, no markdown, no explanation.'],
-                        ['role' => 'user', 'content' => $prompt],
+        // Rotate through multiple free models to avoid rate limits
+        $freeModels = [
+            'nvidia/nemotron-3-super-120b-a12b:free',
+            'nvidia/nemotron-3-nano-30b-a3b:free',
+            'openai/gpt-oss-20b:free',
+            'meta-llama/llama-3.3-70b-instruct:free',
+            'google/gemma-3-27b-it:free',
+        ];
+
+        // Shuffle so we don't always hit the same model first
+        shuffle($freeModels);
+
+        foreach ($freeModels as $model) {
+            try {
+                $response = $this->httpClient->request('POST', 'https://openrouter.ai/api/v1/chat/completions', [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->apiKey,
+                        'Content-Type'  => 'application/json',
+                        'HTTP-Referer'  => 'http://localhost:8000',
+                        'X-Title'       => 'Talentos',
                     ],
-                    'temperature' => 0.8,
-                    'max_tokens'  => 500,
-                ],
-                'timeout' => 15,
-            ]);
-            $body = $response->toArray(false);
-            if (isset($body['choices'][0]['message']['content'])) {
-                return $this->parseJsonFromRaw($body['choices'][0]['message']['content']);
+                    'json' => [
+                        'model'       => $model,
+                        'messages'    => [
+                            ['role' => 'system', 'content' => 'You ALWAYS respond with pure valid JSON. No text, no markdown, no explanation.'],
+                            ['role' => 'user', 'content' => $prompt],
+                        ],
+                        'temperature' => 0.85,
+                        'max_tokens'  => 500,
+                    ],
+                    'timeout' => 18,
+                ]);
+                $body = $response->toArray(false);
+                if (isset($body['choices'][0]['message']['content'])) {
+                    $result = $this->parseJsonFromRaw($body['choices'][0]['message']['content']);
+                    if ($result !== null) {
+                        return $result;
+                    }
+                }
+            } catch (\Exception $e) {
+                // This model failed (rate-limited/timeout), try next
+                continue;
             }
-        } catch (\Exception $e) {}
+        }
         return null;
     }
 
