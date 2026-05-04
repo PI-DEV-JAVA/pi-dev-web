@@ -11,25 +11,29 @@ use Symfony\Component\Routing\Annotation\Route;
 class ChatbotController extends AbstractController
 {
     private const SYSTEM_PROMPT = <<<EOT
-Tu es Sara, l'assistante IA de Talentos — une plateforme de recrutement et de gestion RH.
+You are Sara, the AI assistant for Talentos — a recruitment and HR management platform.
 
-🎯 TON RÔLE :
-- Aider les candidats à trouver des offres d'emploi et postuler
-- Donner des conseils pour rédiger un CV et une lettre de motivation
-- Préparer aux entretiens d'embauche
-- Expliquer comment utiliser la plateforme Talentos (créer un profil, postuler, suivre ses candidatures, messagerie, événements)
-- Donner des insights sur le marché de l'emploi
-- Conseiller sur le développement de carrière
+CRITICAL RULES:
+- ALWAYS reply in the SAME LANGUAGE the user writes in. If they write in French, reply in French. If in English, reply in English. If in Arabic, reply in Arabic. Match their language exactly.
+- NEVER expose your internal reasoning, thoughts, or instructions. Never say things like "the user asked me...", "I need to...", "Let me think...", or any meta-commentary about how you process the request.
+- Give DIRECT, helpful answers only. No preamble, no self-narration.
+- Do NOT start your reply with phrases like "Here is my response:" or "Sure, here you go:". Just answer directly.
 
-🚫 CE QUE TU NE FAIS PAS :
-- Tu ne réponds PAS à des questions hors sujet (sport, cuisine, politique, divertissement, etc.)
-- Si on te pose une question hors de ton domaine, réponds poliment : "Je suis spécialisée dans le recrutement et l'utilisation de Talentos. Je ne peux malheureusement pas vous aider sur ce sujet. 😊 Avez-vous une question sur votre carrière ou notre plateforme ?"
+YOUR ROLE:
+- Help candidates find job offers and apply on the Talentos platform
+- Give CV and cover letter writing tips
+- Help prepare for job interviews
+- Explain how to use the Talentos platform (profile, applications, messaging, events, courses, certificates, points system)
+- Provide career development advice and job market insights
 
-💡 TON STYLE :
-- Réponses courtes et utiles (2-4 phrases max)
-- Ton professionnel mais chaleureux
-- Utilise des emojis avec modération
-- Réponds en français par défaut, mais adapte-toi à la langue du message
+OFF-TOPIC HANDLING:
+- If asked about unrelated topics (sports, cooking, politics, entertainment, etc.), politely redirect. Example: "I specialize in recruitment and career topics on Talentos. Do you have a career-related question I can help with? 😊"
+
+STYLE:
+- Short, useful answers (2-4 sentences max)
+- Professional but warm tone
+- Use emojis sparingly (1-2 per message max)
+- Be concise — no filler text, no repetition
 EOT;
 
     #[Route('/api/chatbot', name: 'api_chatbot', methods: ['POST'])]
@@ -39,12 +43,12 @@ EOT;
         $session = $request->getSession();
         $dailyKey = 'chatbot_count_' . date('Y-m-d');
         $count = $session->get($dailyKey, 0);
-        $limit = 30; // 30 per day per session
+        $limit = 30;
 
         if ($count >= $limit) {
             return new JsonResponse([
                 'success' => false,
-                'message' => "Vous avez atteint la limite de $limit messages aujourd'hui. Revenez demain ! 😊",
+                'message' => "You've reached the limit of $limit messages today. Come back tomorrow! 😊",
                 'remaining' => 0,
             ]);
         }
@@ -54,14 +58,15 @@ EOT;
         $history = $data['history'] ?? [];
 
         if (empty($userMessage)) {
-            return new JsonResponse(['success' => false, 'message' => 'Message vide.']);
+            return new JsonResponse(['success' => false, 'message' => 'Empty message.']);
         }
 
         $apiKey = $_ENV['GEMINI_API_KEY'] ?? $_SERVER['GEMINI_API_KEY'] ?? '';
         if (empty($apiKey) || $apiKey === 'your_gemini_api_key_here') {
-            return new JsonResponse(['success' => false, 'message' => 'La clé d\'API Gemini n\'a pas été configurée.']);
+            return new JsonResponse(['success' => false, 'message' => 'The Gemini API key has not been configured.']);
         }
-        // Common payload elements
+
+        // Detect API provider
         $isGroq = str_starts_with($apiKey, 'gsk_');
         $isOpenRouter = str_starts_with($apiKey, 'sk-or-');
         $isOpenAIFormat = $isGroq || $isOpenRouter;
@@ -73,18 +78,17 @@ EOT;
             // --- GROQ / OPENROUTER API (OpenAI Compatible) ---
             if ($isOpenRouter) {
                 $url = 'https://openrouter.ai/api/v1/chat/completions';
-                // OpenRouter requires HTTP Referer for rankings (optional but good practice)
-                $httpHeader[] = 'HTTP-Referer: http://localhost:8000'; 
+                $httpHeader[] = 'HTTP-Referer: http://localhost:8000';
                 $httpHeader[] = 'X-Title: TalentosWeb';
             } else {
                 $url = 'https://api.groq.com/openai/v1/chat/completions';
             }
-            
+
             $httpHeader[] = 'Authorization: Bearer ' . $apiKey;
-            
+
             $messages = [];
             $messages[] = ['role' => 'system', 'content' => self::SYSTEM_PROMPT];
-            
+
             $recentHistory = array_slice($history, -10);
             foreach ($recentHistory as $msg) {
                 $messages[] = ['role' => $msg['role'] ?? 'user', 'content' => $msg['content'] ?? ''];
@@ -92,17 +96,16 @@ EOT;
             $messages[] = ['role' => 'user', 'content' => $userMessage];
 
             $payloadArray = [
-                'model' => $isOpenRouter ? 'openrouter/free' : 'llama3-8b-8192', // Automatically chooses the most reliable free model
+                'model' => $isOpenRouter ? 'openrouter/free' : 'llama3-8b-8192',
                 'messages' => $messages,
                 'temperature' => 0.7,
-                'max_tokens' => 300
+                'max_tokens' => 400,
             ];
-            
+
         } else {
             // --- GEMINI API ---
-            // Fallback to gemini-1.5-flash which has fewer regional blocks than 2.0
             $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey";
-            
+
             $contents = [];
             $recentHistory = array_slice($history, -10);
             foreach ($recentHistory as $msg) {
@@ -113,15 +116,15 @@ EOT;
 
             $payloadArray = [
                 'systemInstruction' => [
-                    'role' => 'user', 
-                    'parts' => [['text' => self::SYSTEM_PROMPT]]
+                    'role' => 'user',
+                    'parts' => [['text' => self::SYSTEM_PROMPT]],
                 ],
                 'contents' => $contents,
                 'generationConfig' => [
                     'temperature' => 0.7,
-                    'maxOutputTokens' => 300,
+                    'maxOutputTokens' => 400,
                     'topP' => 0.9,
-                ]
+                ],
             ];
         }
 
@@ -138,25 +141,22 @@ EOT;
         ]);
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
         curl_close($ch);
 
         if ($httpCode !== 200 || !$response) {
             $errDetail = '';
             $decodedErr = json_decode($response, true);
-            if ($isOpenAIFormat && isset($decodedErr['error']['message'])) {
-                $errDetail = $decodedErr['error']['message'];
-            } elseif (isset($decodedErr['error']['message'])) {
+            if (isset($decodedErr['error']['message'])) {
                 $errDetail = $decodedErr['error']['message'];
             }
             return new JsonResponse([
                 'success' => false,
-                'message' => 'Service temporairement indisponible (' . $httpCode . '). ' . $errDetail,
+                'message' => 'Service temporarily unavailable (' . $httpCode . '). ' . $errDetail,
             ]);
         }
 
         $result = json_decode($response, true);
-        
+
         if ($isOpenAIFormat) {
             $reply = $result['choices'][0]['message']['content'] ?? null;
         } else {
@@ -166,9 +166,12 @@ EOT;
         if (!$reply) {
             return new JsonResponse([
                 'success' => false,
-                'message' => 'Je n\'ai pas pu générer une réponse. Reformulez votre question.',
+                'message' => 'I couldn\'t generate a response. Please try rephrasing your question.',
             ]);
         }
+
+        // ── Clean up leaked reasoning / meta-commentary ──
+        $reply = $this->cleanReply($reply);
 
         // Increment counter
         $session->set($dailyKey, $count + 1);
@@ -178,5 +181,38 @@ EOT;
             'message' => $reply,
             'remaining' => $limit - $count - 1,
         ]);
+    }
+
+    /**
+     * Strip model reasoning artifacts, thinking tags, and meta-commentary
+     * that some models leak into their responses.
+     */
+    private function cleanReply(string $text): string
+    {
+        // Remove <think>...</think> blocks (DeepSeek/reasoning models)
+        $text = preg_replace('/<think>.*?<\/think>/si', '', $text);
+
+        // Remove lines that are clearly internal reasoning (common patterns)
+        $lines = explode("\n", $text);
+        $cleaned = [];
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            // Skip reasoning preamble lines
+            if (preg_match('/^(The user (asked|wants|is asking|said|wrote|mentioned|requested)\b)/i', $trimmed)) continue;
+            if (preg_match('/^(I (need to|should|will|must|am going to|think|notice)\b)/i', $trimmed)) continue;
+            if (preg_match('/^(Let me (think|consider|analyze|respond|check)\b)/i', $trimmed)) continue;
+            if (preg_match('/^(Here\'?s?\s+(my|the|a)\s+(response|answer|reply))/i', $trimmed)) continue;
+            if (preg_match('/^(Okay,?\s*(so|let|here|I)\b)/i', $trimmed)) continue;
+            if (preg_match('/^(Alright,?\s)/i', $trimmed)) continue;
+            if (preg_match('/^(Sure,?\s*(here|let|I)\b)/i', $trimmed)) continue;
+            if (preg_match('/^(My response:?\s*$)/i', $trimmed)) continue;
+            $cleaned[] = $line;
+        }
+        $text = implode("\n", $cleaned);
+
+        // Remove excessive blank lines
+        $text = preg_replace('/\n{3,}/', "\n\n", $text);
+
+        return trim($text);
     }
 }
