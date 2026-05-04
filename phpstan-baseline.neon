@@ -1,0 +1,223 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to an undefined method DateTimeInterface\:\:modify\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/Admin/AdminDashboardController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getId\(\)\.$#'
+			identifier: method.notFound
+			count: 29
+			path: src/Controller/Admin/AdminDashboardController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getProfile\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Controller/Admin/AdminDashboardController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getRole\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Controller/Admin/AdminDashboardController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getId\(\)\.$#'
+			identifier: method.notFound
+			count: 12
+			path: src/Controller/Admin/AdminInterviewController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getRole\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/Admin/AdminInterviewController.php
+
+		-
+			message: '#^Access to constant High on an unknown class Endroid\\QrCode\\ErrorCorrectionLevel\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Call to method loadHtml\(\) on an unknown class Dompdf\\Dompdf\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Call to method output\(\) on an unknown class Dompdf\\Dompdf\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Call to method render\(\) on an unknown class Dompdf\\Dompdf\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Call to method set\(\) on an unknown class Dompdf\\Options\.$#'
+			identifier: class.notFound
+			count: 5
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Call to method setPaper\(\) on an unknown class Dompdf\\Dompdf\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Call to static method create\(\) on an unknown class Endroid\\QrCode\\Builder\\Builder\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Instantiated class Dompdf\\Dompdf not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Instantiated class Dompdf\\Options not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Instantiated class Endroid\\QrCode\\Encoding\\Encoding not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Instantiated class Endroid\\QrCode\\Writer\\SvgWriter not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Controller/CertificateController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getRole\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Controller/DashboardController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getId\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/EventController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getId\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/HomeController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getRole\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/HomeController.php
+
+		-
+			message: '#^Access to an undefined property App\\Controller\\InterviewController\:\:\$js\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Controller/InterviewController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getEmail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/InterviewController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getProfile\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: src/Controller/InterviewController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getRole\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Controller/InterviewController.php
+
+		-
+			message: '#^Function on not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: src/Controller/InterviewController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getProfile\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Controller/OfferAiController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getEmail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/OfferController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getId\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/OfferController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getId\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: src/Controller/ProfileController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getProfile\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: src/Controller/ProfileController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\HttpFoundation\\Session\\SessionInterface\:\:getFlashBag\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/RegistrationController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getRole\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/SecurityController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getRole\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: src/Controller/SupportController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getId\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/SyncController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\HttpFoundation\\Session\\SessionInterface\:\:getFlashBag\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/EventSubscriber/LoginSubscriber.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\PasswordAuthenticatedUserInterface\:\:setPassword\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Repository/UserRepository.php

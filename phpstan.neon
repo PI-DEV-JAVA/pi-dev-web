@@ -1,0 +1,10 @@
+includes:
+    - phpstan-baseline.neon
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+
+parameters:
+    level: 2
+    paths:
+        - src
+    excludePaths:
+        - src/Kernel.php
