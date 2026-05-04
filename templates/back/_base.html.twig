@@ -557,63 +557,99 @@ document.addEventListener("DOMContentLoaded", function() {
                 steps: [
                     {
                         popover: {
-                            title: 'Bienvenue dans votre Espace RH ! 🏢',
-                            description: 'C\'est ici que vous gérez l\'ensemble du processus de recrutement. Nous allons vous montrer les fonctionnalités clés en quelques secondes.',
-                            side: "bottom",
+                            title: 'Bienvenue dans l\'Administration ! 🏢',
+                            description: 'Gérez l\'ensemble de la plateforme Talentos depuis ce panneau. Tour rapide des modules clés.',
+                            side: 'bottom',
                             align: 'center'
                         }
                     },
                     {
-                        element: '.bo-sidebar',
+                        element: '.bo-nav-link[href*="admin/dashboard"]',
                         popover: {
-                            title: 'Votre panneau de navigation',
-                            description: 'La barre latérale regroupe tous les modules : offres, événements, projets, formations, et plus encore. Tout est accessible en un clic.',
-                            side: "right",
+                            title: '📊 Tableau de bord',
+                            description: 'Vue d\'ensemble en temps réel : statistiques, nouvelles candidatures, événements à venir et activité récente.',
+                            side: 'right',
                             align: 'start'
                         }
                     },
                     {
                         element: '.bo-nav-link[href*="offers"]',
                         popover: {
-                            title: 'Gestion des Offres d\'Emploi 💼',
-                            description: 'Créez, modifiez et publiez vos offres d\'emploi. Vous pouvez également consulter les candidatures reçues et changer leur statut (acceptée / refusée).',
-                            side: "right",
+                            title: '💼 Offres d\'emploi',
+                            description: 'Créez et publiez des offres avec image de couverture. Gérez les candidatures reçues (accepter/refuser) et suivez le pipeline.',
+                            side: 'right',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '.bo-nav-link[href*="interviews"]',
+                        popover: {
+                            title: '🎥 Entretiens',
+                            description: 'Planifiez des entretiens pour les candidats retenus. Définissez la date, le lien de visio et suivez leur statut.',
+                            side: 'right',
                             align: 'start'
                         }
                     },
                     {
                         element: '.bo-nav-link[href*="events"]',
                         popover: {
-                            title: 'Organisation d\'Événements 📅',
-                            description: 'Planifiez des job fairs, des workshops ou des webinaires. Gérez les participations, les présences et consultez les feedbacks des participants.',
-                            side: "right",
+                            title: '📅 Événements',
+                            description: 'Organisez des workshops, salons et webinaires avec images de couverture. Gérez participations, présences, feedbacks et statistiques.',
+                            side: 'right',
                             align: 'start'
                         }
                     },
                     {
-                        element: '.bo-nav-link[href*="messages"]',
+                        element: '.bo-nav-link[href*="courses"]',
                         popover: {
-                            title: 'Messagerie Candidats 💬',
-                            description: 'Échangez directement avec les candidats qui ont postulé à vos offres. La communication directe améliore l\'expérience candidat.',
-                            side: "right",
+                            title: '🎓 Formations & Quiz',
+                            description: 'Créez des cours avec séances, quiz IA auto-générés et système anti-triche. Gérez les inscriptions (gratuites ou payantes par points Stripe).',
+                            side: 'right',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '.bo-nav-link[href*="projects"]',
+                        popover: {
+                            title: '📋 Projets & Kanban',
+                            description: 'Gérez vos projets internes avec un tableau Kanban drag-and-drop. Assignez des tâches et suivez leur progression visuellement.',
+                            side: 'right',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '.bo-nav-link[href*="activities"]',
+                        popover: {
+                            title: '🏆 Activités & Leaderboard',
+                            description: 'Suivez les activités des candidats et consultez le classement. Gamification pour encourager l\'engagement sur la plateforme.',
+                            side: 'right',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '.bo-nav-link[href*="calendar"]',
+                        popover: {
+                            title: '🗓️ Calendrier unifié',
+                            description: 'Visualisez entretiens, événements et séances de formation sur un seul calendrier. Vue mensuelle, hebdo ou journalière.',
+                            side: 'right',
                             align: 'start'
                         }
                     },
                     {
                         element: '#notifToggle',
                         popover: {
-                            title: 'Centre de Notifications 🔔',
-                            description: 'Recevez des alertes en temps réel : nouvelle candidature, message d\'un candidat, événement à venir... Ne manquez rien !',
-                            side: "bottom",
+                            title: '🔔 Notifications',
+                            description: 'Candidatures, inscriptions aux formations, messages... Tout arrive ici en temps réel. Ne manquez rien !',
+                            side: 'bottom',
                             align: 'end'
                         }
                     },
                     {
                         element: '.bo-sidebar-user',
                         popover: {
-                            title: 'Votre Profil',
-                            description: 'Cliquez ici pour modifier vos informations personnelles ou vous déconnecter. Bon recrutement ! 🌟',
-                            side: "top",
+                            title: '👤 Votre Profil',
+                            description: 'Modifiez vos informations, changez de mot de passe ou déconnectez-vous. Bonne gestion ! 🌟',
+                            side: 'top',
                             align: 'start'
                         }
                     }
