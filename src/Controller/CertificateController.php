@@ -111,6 +111,13 @@ class CertificateController extends AbstractController
         $qrSvg = preg_replace('/<svg\b/', '<svg width="90" height="90"', $qrSvg, 1);
         $qrSvg = str_replace('fill="currentColor"', 'fill="#000000"', $qrSvg);
 
+        // ── Encode logo as base64 for embedding ──
+        $logoPath = $this->getParameter('kernel.project_dir') . '/public/images/logo.png';
+        $logoBase64 = '';
+        if (file_exists($logoPath)) {
+            $logoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath));
+        }
+
         // ── Render certificate HTML ──
         $html = $this->twig->render('certificate/course_certificate.html.twig', [
             'user'       => $user,
@@ -122,14 +129,16 @@ class CertificateController extends AbstractController
             'date'       => new \DateTime(),
             'qrSvg'      => $qrSvg,
             'verifyUrl'  => $verifyUrl,
+            'logoBase64' => $logoBase64,
         ]);
 
         // ── Generate PDF ──
         $options = new Options();
         $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', false);
+        $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('isFontSubsettingEnabled', true);
+        $options->set('chroot', $this->getParameter('kernel.project_dir') . '/public');
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html);
