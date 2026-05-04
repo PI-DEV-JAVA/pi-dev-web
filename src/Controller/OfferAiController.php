@@ -89,6 +89,9 @@ Réponds UNIQUEMENT avec un objet JSON valide (pas de texte avant/après, pas de
             $salaryHint = 'Le recruteur propose: ' . $offer->getSalaryMin() . ' - ' . $offer->getSalaryMax() . ' TND/mois. ';
         }
 
+        // Add randomness to force the LLM to generate different questions on every refresh
+        $randomSeed = time() . rand(1000, 9999);
+
         $prompt = "You are an HR salary expert specializing in the Tunisian job market.
 
 TASK: Estimate a realistic monthly salary range in TND (Tunisian Dinar) for this position, then suggest 3 likely interview questions.
@@ -112,11 +115,13 @@ TUNISIAN SALARY REFERENCE (monthly net, 2024-2025):
 RULES:
 - ALWAYS provide a concrete salary range in TND/mois. NEVER say 'non applicable' or refuse.
 - Adapt the range based on the job title, experience level, location, and sector.
-- Interview questions should be specific to this role (1 technical, 1 behavioral, 1 situational).
+- Generate completely UNIQUE, UNEXPECTED, and HIGHLY SPECIFIC interview questions based on the exact job description details.
+- DO NOT use generic questions like "Where do you see yourself in 3 years?". Invent scenarios or technical challenges related to the text.
+- Since the user might refresh the page, here is a random seed to force different questions every time: RAND_{$randomSeed}
 - Reply in the SAME LANGUAGE as the job description.
 
 Respond ONLY with a valid JSON object (no text before/after, no markdown):
-{\"salary_estimation\": \"X - Y TND / mois\", \"interview_questions\": [\"Technical question?\", \"Behavioral question?\", \"Situational question?\"]}";
+{\"salary_estimation\": \"X - Y TND / mois\", \"interview_questions\": [\"Unique technical challenge?\", \"Unique behavioral scenario?\", \"Unique situational problem?\"]}";
 
         return $this->callAi($prompt, [
             'salary_estimation' => $this->estimateFallbackSalary($level, $contract),
@@ -286,7 +291,7 @@ Respond ONLY with a valid JSON object (no text before/after, no markdown):
                         ['role' => 'system', 'content' => 'You ALWAYS respond with pure valid JSON. No text, no markdown, no explanation.'],
                         ['role' => 'user', 'content' => $prompt],
                     ],
-                    'temperature' => 0.4,
+                    'temperature' => 0.8,
                     'max_tokens'  => 500,
                 ],
                 'timeout' => 15,
@@ -306,7 +311,7 @@ Respond ONLY with a valid JSON object (no text before/after, no markdown):
             $response = $this->httpClient->request('POST', $url, [
                 'json' => [
                     'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
-                    'generationConfig' => ['temperature' => 0.4, 'maxOutputTokens' => 500],
+                    'generationConfig' => ['temperature' => 0.8, 'maxOutputTokens' => 500],
                 ],
                 'timeout' => 15,
             ]);
