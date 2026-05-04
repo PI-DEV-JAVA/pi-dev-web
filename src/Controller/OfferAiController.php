@@ -118,6 +118,108 @@ Respond with ONLY valid JSON:
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  FEATURE 1B: Recruiter-side AI Applicant Analyzer
+    //  Analyzes a specific application's CV + profile against the job offer
+    //  Persists the AI score to the Application entity
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    #[Route('/api/admin/applications/{id}/analyze', name: 'api_admin_analyze_applicant', methods: ['POST'])]
+    public function analyzeApplicant(
+        int $id,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        $application = $em->getRepository(\App\Entity\Application::class)->find($id);
+        if (!$application) {
+            return $this->json(['error' => 'Application non trouvée.'], 404);
+        }
+
+        $offer = $application->getOffer();
+        $user = $application->getUser();
+        if (!$offer || !$user) {
+            return $this->json(['error' => 'Données incomplètes.'], 400);
+        }
+
+        // ── Extract CV text ──
+        $cvText = '';
+        // Try application-level CV first, then profile CV
+        $cvFile = $application->getCvFilePath();
+        if ($cvFile) {
+            $fullPath = $this->projectDir . '/public' . $cvFile;
+            if (!file_exists($fullPath)) {
+                $fullPath = $this->projectDir . '/public/uploads/cvs/' . basename($cvFile);
+            }
+        } elseif ($user->getProfile() && $user->getProfile()->getCvPath()) {
+            $cvPath = $user->getProfile()->getCvPath();
+            $fullPath = $this->projectDir . '/public' . $cvPath;
+            if (!file_exists($fullPath)) {
+                $fullPath = $this->projectDir . '/public/uploads/cvs/' . basename($cvPath);
+            }
+        } else {
+            $fullPath = null;
+        }
+
+        if ($fullPath && file_exists($fullPath)) {
+            try {
+                $parser = new PdfParser();
+                $pdf = $parser->parseFile($fullPath);
+                $cvText = mb_substr(trim(preg_replace('/\s+/', ' ', $pdf->getText())), 0, 800);
+            } catch (\Exception $e) {
+                $cvText = '';
+            }
+        }
+
+        // ── Build profile text ──
+        $profile = $user->getProfile();
+        $profileText = '';
+        if ($profile) {
+            $profileText = 'Titre: ' . ($profile->getProfessionalTitle() ?? 'N/A')
+                . ' | Exp: ' . ($profile->getYearsOfExperience() ?? 0) . ' ans'
+                . ' | Lieu: ' . ($profile->getLocation() ?? 'N/A');
+            $skills = $profile->getSkills();
+            if (!empty($skills)) {
+                $profileText .= ' | Skills: ' . implode(', ', $skills);
+            }
+        }
+
+        // ── Build offer text ──
+        $offerText = $offer->getTitle()
+            . ' (' . ($offer->getContractType() ?? '') . ', ' . ($offer->getExperienceLevel() ?? '') . ')'
+            . ' | ' . mb_substr(strip_tags($offer->getDescription() ?? ''), 0, 600);
+
+        $cvSection = $cvText ? "\nCV (PDF extracted):\n$cvText" : "\n[No CV uploaded]";
+
+        $prompt = "You are an expert HR recruiter. Score this applicant 0-100 against the job offer.
+
+JOB OFFER: $offerText
+
+APPLICANT PROFILE: $profileText
+$cvSection
+
+Motivation letter: " . mb_substr($application->getMotivationLetter() ?? 'None provided', 0, 300) . "
+
+SCORING: 0-30=poor, 30-50=weak, 50-70=decent, 70-85=strong, 85-100=excellent.
+Base your analysis on the CV content primarily.
+Reply in the same language as the job description.
+
+Respond with ONLY valid JSON:
+{\"score\": 65, \"strengths\": [\"Specific match 1\", \"Specific match 2\"], \"weaknesses\": [\"Gap 1\", \"Gap 2\"]}";
+
+        $aiResponse = $this->callAi($prompt, [
+            'score' => $cvText ? 40 : 25,
+            'strengths' => $cvText ? ['CV disponible'] : ['Pas de CV'],
+            'weaknesses' => ['Analyse IA indisponible']
+        ]);
+
+        // Persist score to DB
+        $responseData = json_decode($aiResponse->getContent(), true);
+        $score = intval($responseData['score'] ?? 0);
+        $application->setScore($score);
+        $em->flush();
+
+        return $aiResponse;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  FEATURE 2: AI Salary Estimator
     //  Source: OpenRouter API (free-tier LLM)
     //  Logic: Reads the offer's title, experience level, and location
