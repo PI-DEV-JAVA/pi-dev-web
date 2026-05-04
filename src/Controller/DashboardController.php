@@ -50,7 +50,13 @@ class DashboardController extends AbstractController
         $pendingApps   = $appCount - $acceptedApps - $rejectedApps;
         $actCount      = count($activities);
         $unreadNotifs  = $em->getRepository(Notification::class)->count(['user' => $user, 'isRead' => false]);
-        $interviewCount = $em->getRepository(Interview::class)->count(['candidate' => $user]);
+        $interviewCount = (int)$em->createQueryBuilder()
+            ->select('COUNT(i.id)')
+            ->from(\App\Entity\Interview::class, 'i')
+            ->join('i.application', 'a')
+            ->where('a.user = :user')
+            ->setParameter('user', $user)
+            ->getQuery()->getSingleScalarResult();
         $enrolledCourses = $em->getRepository(FormationEnrollment::class)->count(['user' => $user, 'status' => FormationEnrollment::STATUS_APPROVED]);
         $quizzesPassed = $em->getRepository(QuizAttempt::class)->count(['user' => $user]);
 
