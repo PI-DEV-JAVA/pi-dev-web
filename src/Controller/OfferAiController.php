@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Offer;
 use Doctrine\ORM\EntityManagerInterface;
+use Smalot\PdfParser\Parser as PdfParser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,11 +16,13 @@ class OfferAiController extends AbstractController
 {
     private HttpClientInterface $httpClient;
     private string $apiKey;
+    private string $projectDir;
 
-    public function __construct(HttpClientInterface $httpClient)
+    public function __construct(HttpClientInterface $httpClient, string $projectDir)
     {
         $this->httpClient = $httpClient;
         $this->apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
+        $this->projectDir = $projectDir;
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -37,27 +40,80 @@ class OfferAiController extends AbstractController
         }
 
         $profile = $user->getProfile();
-        $profileText = ($profile->getProfessionalTitle() ?? 'Non renseigné')
-            . '. Expérience: ' . ($profile->getYearsOfExperience() ?? 0) . ' ans. '
-            . ($profile->getSummary() ?? '');
 
+        // ── Extract CV text from uploaded PDF ──
+        $cvText = '';
+        $cvPath = $profile->getCvPath();
+        if ($cvPath) {
+            // cvPath may be stored as relative path or just filename
+            $fullPath = $this->projectDir . '/public' . $cvPath;
+            if (!file_exists($fullPath)) {
+                $fullPath = $this->projectDir . '/public/uploads/cvs/' . basename($cvPath);
+            }
+            if (file_exists($fullPath)) {
+                try {
+                    $parser = new PdfParser();
+                    $pdf = $parser->parseFile($fullPath);
+                    $cvText = $pdf->getText();
+                    // Limit to ~1500 chars to fit in prompt
+                    $cvText = mb_substr(trim(preg_replace('/\s+/', ' ', $cvText)), 0, 1500);
+                } catch (\Exception $e) {
+                    $cvText = '[Erreur de lecture du CV]';
+                }
+            }
+        }
+
+        // ── Build candidate profile text ──
+        $profileText = 'Titre: ' . ($profile->getProfessionalTitle() ?? 'Non renseigné')
+            . ' | Expérience: ' . ($profile->getYearsOfExperience() ?? 0) . ' ans'
+            . ' | Localisation: ' . ($profile->getLocation() ?? 'Non renseigné');
+
+        $skills = $profile->getSkills();
+        if (!empty($skills)) {
+            $profileText .= ' | Compétences: ' . implode(', ', $skills);
+        }
+
+        if ($profile->getSummary()) {
+            $profileText .= ' | Résumé: ' . mb_substr($profile->getSummary(), 0, 300);
+        }
+
+        // ── Build offer text ──
         $offerText = $offer->getTitle()
-            . ' (' . ($offer->getContractType() ?? '') . ', ' . ($offer->getExperienceLevel() ?? '') . '). '
-            . mb_substr(strip_tags($offer->getDescription() ?? ''), 0, 600);
+            . ' (' . ($offer->getContractType() ?? '') . ', ' . ($offer->getExperienceLevel() ?? '') . ')'
+            . ' | Lieu: ' . ($offer->getLocation() ?? '')
+            . ' | Dept: ' . ($offer->getDepartment() ?? '')
+            . ' | Description: ' . mb_substr(strip_tags($offer->getDescription() ?? ''), 0, 800);
 
-        $prompt = "Tu es un expert RH. Compare ce profil candidat avec cette offre d'emploi et donne un score de compatibilité réaliste de 0 à 100.
+        // ── Build prompt ──
+        $cvSection = $cvText ? "\nCV DU CANDIDAT (extrait du PDF):\n$cvText" : '\n[Aucun CV uploadé]';
 
-OFFRE: $offerText
+        $prompt = "You are an expert HR recruiter. Analyze the candidate's CV and profile against this job offer. Give a realistic compatibility score from 0 to 100.
 
-CANDIDAT: $profileText
+JOB OFFER:
+$offerText
 
-Réponds UNIQUEMENT avec un objet JSON valide (pas de texte avant/après, pas de ```json):
-{\"score\": 75, \"strengths\": [\"Atout 1\", \"Atout 2\"], \"weaknesses\": [\"Lacune 1\", \"Lacune 2\"]}";
+CANDIDATE PROFILE:
+$profileText
+$cvSection
+
+INSTRUCTIONS:
+- Score 0-30: Very poor match (missing most requirements)
+- Score 30-50: Weak match (some relevant experience)
+- Score 50-70: Decent match (meets several requirements)
+- Score 70-85: Strong match (meets most requirements)
+- Score 85-100: Excellent match (exceeds requirements)
+- Base your analysis primarily on the CV content if available, then on the profile data.
+- Strengths: list 2-3 specific matches between CV/profile and job requirements.
+- Weaknesses: list 2-3 specific gaps or missing skills.
+- Reply in the same language as the job description.
+
+Respond with ONLY valid JSON:
+{\"score\": 65, \"strengths\": [\"3 ans d'expérience en développement Java comme requis\", \"Maîtrise de Spring Boot mentionné dans le CV\"], \"weaknesses\": [\"Pas d'expérience avec Kubernetes demandé dans l'offre\", \"Niveau d'anglais non mentionné\"]}";
 
         return $this->callAi($prompt, [
-            'score' => 50,
-            'strengths' => ['Profil en cours d\'évaluation'],
-            'weaknesses' => ['Complétez votre profil pour une meilleure analyse']
+            'score' => $cvText ? 45 : 30,
+            'strengths' => $cvText ? ['CV analysé - profil en cours d\'évaluation'] : ['Aucun CV uploadé - analyse limitée au profil'],
+            'weaknesses' => $cvText ? ['Analyse IA temporairement indisponible'] : ['Uploadez votre CV pour une analyse complète']
         ]);
     }
 
