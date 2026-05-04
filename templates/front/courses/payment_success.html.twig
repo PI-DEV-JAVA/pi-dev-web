@@ -1,0 +1,49 @@
+{% extends 'front/_base.html.twig' %}
+{% block title %}Paiement réussi — Talentos{% endblock %}
+
+{% block content %}
+<section class="fo-section" style="padding-top:60px;padding-bottom:60px">
+    <div class="container" style="max-width:560px;text-align:center">
+
+        <div style="background:white;border:1.5px solid var(--fo-border);border-radius:24px;padding:48px 40px;box-shadow:0 20px 60px rgba(0,0,0,0.08)">
+
+            {# Animated success icon #}
+            <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);display:inline-flex;align-items:center;justify-content:center;margin-bottom:20px;animation:successPop 0.5s ease">
+                <i class="bi bi-check-lg" style="font-size:2.5rem;color:white"></i>
+            </div>
+
+            <h2 style="font-weight:800;margin-bottom:8px;color:var(--fo-text)">Paiement réussi ! 🎉</h2>
+            <p style="color:var(--fo-text-secondary);font-size:1rem;margin-bottom:28px">
+                <strong style="color:#10b981">{{ points }} points</strong> ont été ajoutés à votre compte
+            </p>
+
+            {# Balance display #}
+            <div style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(249,115,22,0.08));border:1.5px solid rgba(245,158,11,0.2);border-radius:14px;padding:14px 28px;margin-bottom:28px">
+                <i class="bi bi-coin" style="font-size:1.5rem;color:#f59e0b"></i>
+                <div style="text-align:left">
+                    <div style="font-size:0.7rem;color:var(--fo-text-secondary);text-transform:uppercase;font-weight:600">Nouveau solde</div>
+                    <div style="font-size:1.6rem;font-weight:800;color:var(--fo-text);line-height:1">{{ balance }} pts</div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2" style="max-width:300px;margin:0 auto">
+                <a href="{{ path('app_courses') }}" class="btn btn-primary-custom" style="padding:14px;border-radius:12px;font-weight:700">
+                    <i class="bi bi-book me-2"></i>Explorer les formations
+                </a>
+                <a href="{{ path('app_points_buy') }}" style="color:var(--fo-text-secondary);font-size:0.85rem;text-decoration:none">
+                    <i class="bi bi-plus-circle me-1"></i>Acheter plus de points
+                </a>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<style>
+@keyframes successPop {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+}
+</style>
+{% endblock %}

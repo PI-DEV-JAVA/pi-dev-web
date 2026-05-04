@@ -81,6 +81,17 @@
         display: flex; align-items: center; justify-content: center;
         font-weight: 700; font-size: 0.8rem; color: white;
     }
+    .fo-navbar .points-pill {
+        display: flex; align-items: center; gap: 5px;
+        border: 1.5px solid rgba(245,158,11,0.25); border-radius: 50px;
+        padding: 5px 14px 5px 10px; background: rgba(245,158,11,0.06);
+        text-decoration: none; color: var(--fo-text); transition: all 0.2s;
+    }
+    .fo-navbar .points-pill:hover {
+        border-color: #f59e0b; background: rgba(245,158,11,0.12);
+        box-shadow: 0 2px 12px rgba(245,158,11,0.2);
+        transform: translateY(-1px);
+    }
 
     /* ── Content ── */
     .fo-content { padding-top: 80px; }
@@ -619,6 +630,15 @@
                         </div>
                     </div>
 
+                    {% if app.user.role == 'CANDIDATE' %}
+                    {# Points Pill #}
+                    <a href="{{ path('app_points_buy') }}" class="points-pill" id="navPointsPill" title="Vos points Talentos — Cliquez pour acheter">
+                        <i class="bi bi-coin" style="font-size:0.85rem;color:#f59e0b"></i>
+                        <span style="font-weight:700;font-size:0.82rem">{{ app.user.pointsBalance }}</span>
+                        <span style="font-size:0.72rem;color:var(--fo-text-secondary);font-weight:500">pts</span>
+                    </a>
+                    {% endif %}
+
                     <div class="dropdown">
                         <a href="#" class="user-menu-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none">
                             {% if app.user.profile and app.user.profile.profilePicturePath %}
@@ -630,7 +650,16 @@
                                 {% if app.user.profile and app.user.profile.firstName %}{{ app.user.profile.firstName }}{% else %}{{ 'nav.my_account'|trans }}{% endif %}
                             </span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end" style="border-radius:12px;border:1px solid var(--fo-border);box-shadow:var(--fo-card-shadow-hover);padding:8px;min-width:200px">
+                        <ul class="dropdown-menu dropdown-menu-end" style="border-radius:12px;border:1px solid var(--fo-border);box-shadow:var(--fo-card-shadow-hover);padding:8px;min-width:220px">
+                            {% if app.user.role == 'CANDIDATE' %}
+                            <li>
+                                <a class="dropdown-item" href="{{ path('app_points_buy') }}" style="border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+                                    <span><i class="bi bi-coin me-2" style="color:#f59e0b"></i>Mes points</span>
+                                    <span style="background:linear-gradient(135deg,#f59e0b,#f97316);color:white;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:8px">{{ app.user.pointsBalance }}</span>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% endif %}
                             <li><a class="dropdown-item" href="{{ path('app_account') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-grid me-2"></i>{{ 'nav.dashboard'|trans }}</a></li>
                             <li><a class="dropdown-item" href="{{ path('app_candidate_calendar') }}" style="border-radius:8px;padding:10px 16px;color:var(--primary)"><i class="bi bi-calendar3 me-2"></i>Mon Calendrier</a></li>
                             <li><a class="dropdown-item" href="{{ path('app_interviews') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-camera-video me-2"></i>Mes Entretiens</a></li>

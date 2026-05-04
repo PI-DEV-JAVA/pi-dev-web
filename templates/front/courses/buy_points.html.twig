@@ -1,5 +1,4 @@
 {% extends 'front/_base.html.twig' %}
-
 {% block title %}Acheter des points — Talentos{% endblock %}
 
 {% block content %}
@@ -8,93 +7,109 @@
         <a href="{{ path('app_courses') }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500">
             <i class="bi bi-arrow-left me-1"></i> Retour aux formations
         </a>
-        <h1 class="mt-2">💰 Acheter des points</h1>
-        <p>Utilisez vos points pour accéder aux formations payantes</p>
+        <h1 class="mt-2"><i class="bi bi-coin me-2" style="color:#f59e0b"></i>Acheter des points</h1>
+        <p>Utilisez vos points pour accéder aux formations payantes de Talentos</p>
     </div>
 </div>
 
 <section class="fo-section" style="padding-top:40px">
-    <div class="container" style="max-width:520px">
+    <div class="container" style="max-width:900px">
 
-        {% for msg in app.flashes('success') %}
-            <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:12px;
-                        padding:12px 18px;margin-bottom:20px;color:#047857;font-size:0.88rem">
-                <i class="bi bi-check-circle-fill me-2"></i>{{ msg }}
-            </div>
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success mb-3"><i class="bi bi-check-circle-fill me-2"></i>{{ message }}</div>
         {% endfor %}
-        {% for msg in app.flashes('danger') %}
-            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:12px;
-                        padding:12px 18px;margin-bottom:20px;color:#dc2626;font-size:0.88rem">
-                <i class="bi bi-exclamation-circle-fill me-2"></i>{{ msg }}
-            </div>
+        {% for message in app.flashes('danger') %}
+            <div class="alert alert-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}</div>
+        {% endfor %}
+        {% for message in app.flashes('info') %}
+            <div class="alert alert-info mb-3"><i class="bi bi-info-circle-fill me-2"></i>{{ message }}</div>
         {% endfor %}
 
-        <div class="fo-card" style="text-align:center">
-
-            {# Balance display #}
-            <div style="width:110px;height:110px;border-radius:50%;margin:0 auto 20px;
-                        background:linear-gradient(135deg,#f59e0b,#d97706);
-                        display:flex;align-items:center;justify-content:center;
-                        box-shadow:0 10px 30px rgba(245,158,11,0.35)">
-                <i class="bi bi-coin" style="font-size:2.8rem;color:#fff"></i>
-            </div>
-
-            <h3 style="font-weight:800;margin-bottom:4px">Mon solde actuel</h3>
-            <div style="font-size:3.2rem;font-weight:900;color:#f59e0b;line-height:1;margin-bottom:4px">
-                {{ app.user.pointsBalance }}
-            </div>
-            <div style="color:var(--fo-text-secondary);font-size:0.9rem;margin-bottom:28px">points disponibles</div>
-
-            {# Info box #}
-            <div style="background:#f8fafc;border:1px solid var(--fo-border);border-radius:12px;padding:16px;
-                        margin-bottom:28px;text-align:left">
-                <div style="font-weight:700;font-size:0.88rem;color:var(--primary);margin-bottom:10px">
-                    <i class="bi bi-lightning-charge-fill me-2"></i>Comment gagner des points ?
+        {# ── Current Balance ── #}
+        <div style="text-align:center;margin-bottom:40px">
+            <div style="display:inline-flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(79,70,229,0.06),rgba(139,92,246,0.06));border:1.5px solid rgba(79,70,229,0.15);border-radius:16px;padding:16px 32px">
+                <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#f97316);display:flex;align-items:center;justify-content:center">
+                    <i class="bi bi-coin" style="font-size:1.4rem;color:white"></i>
                 </div>
-                <div style="font-size:0.82rem;color:var(--fo-text-secondary);line-height:1.8">
-                    <div><i class="bi bi-patch-check me-2" style="color:#10b981"></i>Réussir un quiz avec <strong style="color:var(--fo-text)">plus de 15/20</strong> → score ajouté en points</div>
-                    <div><i class="bi bi-cart me-2" style="color:#f59e0b"></i>Acheter des points ci-dessous pour accéder aux formations payantes</div>
+                <div style="text-align:left">
+                    <div style="font-size:0.75rem;color:var(--fo-text-secondary);text-transform:uppercase;font-weight:600;letter-spacing:0.5px">Solde actuel</div>
+                    <div style="font-size:1.8rem;font-weight:800;line-height:1;color:var(--fo-text)">{{ app.user.pointsBalance }} <span style="font-size:0.9rem;font-weight:600;color:var(--fo-text-secondary)">pts</span></div>
                 </div>
             </div>
+        </div>
 
-            {# Amount presets #}
-            <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:16px">
-                {% for preset in [50, 100, 200, 500] %}
-                <button type="button"
-                        onclick="document.getElementById('amount').value={{ preset }}"
-                        style="border:1.5px solid var(--fo-border);background:white;color:var(--fo-text);
-                               border-radius:10px;padding:8px 20px;font-size:0.85rem;font-weight:600;
-                               cursor:pointer;transition:all 0.2s"
-                        onmouseover="this.style.borderColor='#f59e0b';this.style.color='#d97706';this.style.background='rgba(245,158,11,0.05)'"
-                        onmouseout="this.style.borderColor='var(--fo-border)';this.style.color='var(--fo-text)';this.style.background='white'">
-                    {{ preset }} pts
-                </button>
-                {% endfor %}
+        {# ── Pricing Cards ── #}
+        <div class="row g-4 justify-content-center mb-5">
+            {% for points, pack in packs %}
+            <div class="col-md-4">
+                <div style="position:relative;background:white;border:{{ pack.popular ? '2px solid var(--primary)' : '1.5px solid var(--fo-border)' }};border-radius:20px;padding:32px 24px;text-align:center;transition:all 0.3s;{{ pack.popular ? 'box-shadow:0 8px 40px rgba(79,70,229,0.15);transform:scale(1.04)' : '' }}" onmouseover="this.style.transform='translateY(-6px) {{ pack.popular ? 'scale(1.04)' : '' }}';this.style.boxShadow='0 20px 50px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='{{ pack.popular ? 'scale(1.04)' : 'none' }}';this.style.boxShadow='{{ pack.popular ? '0 8px 40px rgba(79,70,229,0.15)' : 'var(--fo-card-shadow)' }}'">
+
+                    {% if pack.popular %}
+                    <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--primary),#7c3aed);color:white;padding:4px 18px;border-radius:20px;font-size:0.72rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase">
+                        ⭐ Populaire
+                    </div>
+                    {% endif %}
+
+                    {% if pack.save %}
+                    <div style="position:absolute;top:16px;right:16px;background:rgba(16,185,129,0.1);color:#10b981;padding:3px 10px;border-radius:8px;font-size:0.7rem;font-weight:700">
+                        -{{ pack.save }}
+                    </div>
+                    {% endif %}
+
+                    <div style="font-size:2.5rem;margin-bottom:8px">{{ pack.icon }}</div>
+
+                    <div style="font-size:2rem;font-weight:800;color:{{ pack.color }};margin-bottom:4px">{{ points }}</div>
+                    <div style="font-size:0.85rem;color:var(--fo-text-secondary);margin-bottom:20px">points</div>
+
+                    <div style="font-size:2.2rem;font-weight:800;color:var(--fo-text);margin-bottom:4px">{{ pack.priceLabel }}</div>
+                    <div style="font-size:0.78rem;color:var(--fo-text-secondary);margin-bottom:24px">
+                        {{ (pack.price / points * 100)|round(1) }} centimes / point
+                    </div>
+
+                    <form method="POST" action="{{ path('app_points_checkout') }}">
+                        <input type="hidden" name="points" value="{{ points }}">
+                        <button type="submit" style="width:100%;padding:14px;border:none;border-radius:12px;font-weight:700;font-size:0.95rem;cursor:pointer;transition:all 0.2s;{{ pack.popular ? 'background:linear-gradient(135deg,' ~ pack.color ~ ',#7c3aed);color:white;box-shadow:0 4px 16px rgba(79,70,229,0.3)' : 'background:var(--fo-bg-section);color:var(--fo-text);border:1.5px solid var(--fo-border)' }}" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                            <i class="bi bi-credit-card me-2"></i>Acheter
+                        </button>
+                    </form>
+                </div>
             </div>
+            {% endfor %}
+        </div>
 
-            {# Form #}
-            <form method="POST" action="{{ path('app_points_buy') }}" class="fo-form">
-                <label style="display:block;text-align:left;font-size:0.85rem;font-weight:600;margin-bottom:8px;color:var(--fo-text)">
-                    Montant personnalisé (10 – 1 000 pts)
-                </label>
-                <input type="number" id="amount" name="amount" min="10" max="1000" value="100" required
-                       class="form-control"
-                       style="text-align:center;font-size:1.2rem;font-weight:800;margin-bottom:16px">
+        {# ── How It Works ── #}
+        <div style="background:var(--fo-bg-section);border-radius:20px;padding:32px;margin-bottom:32px">
+            <h5 style="font-weight:800;margin-bottom:20px;text-align:center"><i class="bi bi-lightbulb me-2" style="color:#f59e0b"></i>Comment ça marche ?</h5>
+            <div class="row g-4">
+                <div class="col-md-4 text-center">
+                    <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px">
+                        <i class="bi bi-cart-check" style="font-size:1.3rem;color:white"></i>
+                    </div>
+                    <h6 style="font-weight:700;font-size:0.9rem">1. Achetez un pack</h6>
+                    <p style="font-size:0.82rem;color:var(--fo-text-secondary);margin:0">Choisissez un pack et payez en toute sécurité via Stripe</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#06b6d4,#0ea5e9);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px">
+                        <i class="bi bi-book" style="font-size:1.3rem;color:white"></i>
+                    </div>
+                    <h6 style="font-weight:700;font-size:0.9rem">2. Inscrivez-vous</h6>
+                    <p style="font-size:0.82rem;color:var(--fo-text-secondary);margin:0">Utilisez vos points pour accéder aux formations payantes</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#10b981,#059669);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px">
+                        <i class="bi bi-trophy" style="font-size:1.3rem;color:white"></i>
+                    </div>
+                    <h6 style="font-weight:700;font-size:0.9rem">3. Gagnez des points</h6>
+                    <p style="font-size:0.82rem;color:var(--fo-text-secondary);margin:0">Score > 15/20 au quiz = vous gagnez des points bonus !</p>
+                </div>
+            </div>
+        </div>
 
-                <button type="submit"
-                        style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706);
-                               color:#fff;border:none;border-radius:12px;padding:14px;
-                               font-size:1rem;font-weight:700;cursor:pointer;transition:opacity 0.2s;
-                               box-shadow:0 6px 20px rgba(245,158,11,0.3)"
-                        onmouseover="this.style.opacity='.85'"
-                        onmouseout="this.style.opacity='1'">
-                    <i class="bi bi-cart-check me-2"></i>Confirmer l'achat
-                </button>
-
-                <p style="margin-top:14px;font-size:0.75rem;color:#94a3b8;text-align:center">
-                    <i class="bi bi-shield-check me-1"></i>Simulation de paiement — aucune transaction réelle
-                </p>
-            </form>
+        {# ── Secure badge ── #}
+        <div style="text-align:center;color:var(--fo-text-secondary);font-size:0.8rem">
+            <i class="bi bi-shield-lock me-1"></i> Paiement sécurisé par
+            <span style="font-weight:700;color:#635bff">Stripe</span>
+            — Vos données bancaires ne sont jamais stockées sur nos serveurs
         </div>
     </div>
 </section>

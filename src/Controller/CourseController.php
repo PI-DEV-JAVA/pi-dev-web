@@ -272,31 +272,99 @@ class CourseController extends AbstractController
     }
 
     // ─────────────────────────────────────────────
-    //  BUY POINTS (candidate)
+    //  BUY POINTS — display packs page
     // ─────────────────────────────────────────────
-    #[Route('/points/buy', name: 'app_points_buy', methods: ['GET', 'POST'])]
-    public function buyPoints(Request $request, EntityManagerInterface $em): Response
+    #[Route('/points/buy', name: 'app_points_buy', methods: ['GET'])]
+    public function buyPoints(): Response
     {
         $user = $this->getUser();
         if (!$user instanceof User || $user->getRole() !== 'CANDIDATE') {
             return $this->redirectToRoute('app_login');
         }
 
-        if ($request->isMethod('POST')) {
-            $amount = (int)$request->request->get('amount', 0);
-            if ($amount < 10 || $amount > 1000) {
-                $this->addFlash('danger', 'Le montant doit être entre 10 et 1000 points.');
-            } else {
-                $user->addPoints($amount);
-                $em->flush();
-                $this->addFlash('success', sprintf('%d points ont été ajoutés à votre solde ! Nouveau solde : %d pts.', $amount, $user->getPointsBalance()));
-                return $this->redirectToRoute('app_courses');
-            }
+        return $this->render('front/courses/buy_points.html.twig', [
+            'user'  => $user,
+            'packs' => \App\Service\StripeService::PACKS,
+        ]);
+    }
+
+    // ─────────────────────────────────────────────
+    //  STRIPE — create checkout session
+    // ─────────────────────────────────────────────
+    #[Route('/points/checkout', name: 'app_points_checkout', methods: ['POST'])]
+    public function stripeCheckout(Request $request, \App\Service\StripeService $stripe): Response
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User || $user->getRole() !== 'CANDIDATE') {
+            return $this->redirectToRoute('app_login');
         }
 
-        return $this->render('front/courses/buy_points.html.twig', [
-            'user' => $user,
+        $points = (int)$request->request->get('points', 0);
+        if (!isset(\App\Service\StripeService::PACKS[$points])) {
+            $this->addFlash('danger', 'Pack de points invalide.');
+            return $this->redirectToRoute('app_points_buy');
+        }
+
+        try {
+            $successUrl = $this->generateUrl('app_points_success', [], \Symfony\Component\Routing\Generator\UrlGeneratorInterface::ABSOLUTE_URL) . '?session_id={CHECKOUT_SESSION_ID}';
+            $cancelUrl  = $this->generateUrl('app_points_cancel', [], \Symfony\Component\Routing\Generator\UrlGeneratorInterface::ABSOLUTE_URL);
+
+            $checkoutUrl = $stripe->createCheckoutSession(
+                $user->getId(),
+                $points,
+                $successUrl,
+                $cancelUrl
+            );
+
+            return $this->redirect($checkoutUrl);
+        } catch (\Exception $e) {
+            $this->addFlash('danger', 'Erreur de paiement : ' . $e->getMessage());
+            return $this->redirectToRoute('app_points_buy');
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  STRIPE — success callback
+    // ─────────────────────────────────────────────
+    #[Route('/points/success', name: 'app_points_success', methods: ['GET'])]
+    public function stripeSuccess(Request $request, \App\Service\StripeService $stripe, EntityManagerInterface $em): Response
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        $sessionId = $request->query->get('session_id');
+        if (!$sessionId) {
+            return $this->redirectToRoute('app_points_buy');
+        }
+
+        $session = $stripe->retrieveSession($sessionId);
+        if (!$session) {
+            $this->addFlash('danger', 'Le paiement n\'a pas pu être vérifié. Contactez le support si vous avez été débité.');
+            return $this->redirectToRoute('app_points_buy');
+        }
+
+        $points = (int)($session->metadata->points ?? 0);
+        if ($points > 0) {
+            $user->addPoints($points);
+            $em->flush();
+        }
+
+        return $this->render('front/courses/payment_success.html.twig', [
+            'points'  => $points,
+            'balance' => $user->getPointsBalance(),
         ]);
+    }
+
+    // ─────────────────────────────────────────────
+    //  STRIPE — cancel callback
+    // ─────────────────────────────────────────────
+    #[Route('/points/cancel', name: 'app_points_cancel', methods: ['GET'])]
+    public function stripeCancel(): Response
+    {
+        $this->addFlash('info', 'Le paiement a été annulé. Aucun montant n\'a été débité.');
+        return $this->redirectToRoute('app_points_buy');
     }
 
     // ─────────────────────────────────────────────
