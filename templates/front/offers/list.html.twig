@@ -53,21 +53,49 @@
                 {% for offer in offers %}
                     <div class="col-md-6 col-lg-4">
                         <a href="{{ path('app_offer_detail', {id: offer.id}) }}" class="text-decoration-none">
-                            <div class="fo-card h-100" style="cursor:pointer">
+                            <div class="fo-card h-100" style="cursor:pointer;transition:transform 0.2s,box-shadow 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
                                 <div class="d-flex justify-content-between align-items-start mb-3">
                                     <div class="offer-icon"><i class="bi bi-briefcase"></i></div>
-                                    {% if offer.contractType %}
-                                        <span class="fo-badge fo-badge-primary">{{ offer.contractType }}</span>
-                                    {% endif %}
+                                    <div class="d-flex gap-2">
+                                        {% if offer.contractType %}
+                                            <span class="fo-badge fo-badge-primary">{{ offer.contractType }}</span>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                                <h5 style="font-weight:700;color:var(--fo-text);margin-bottom:8px;font-size:1.05rem">{{ offer.title }}</h5>
-                                <p style="color:var(--fo-text-secondary);font-size:0.85rem;line-height:1.6;
-                                   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:16px">
-                                    {{ offer.description|default('Pas de description')|striptags|slice(0,120) }}
+                                <h5 style="font-weight:700;color:var(--fo-text);margin-bottom:6px;font-size:1.02rem">{{ offer.title }}</h5>
+                                <p style="color:var(--fo-text-secondary);font-size:0.82rem;line-height:1.5;
+                                   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:12px">
+                                    {{ offer.description|default('Pas de description')|striptags|slice(0,100) }}
                                 </p>
-                                <div style="font-size:0.8rem;color:var(--fo-text-secondary)">
-                                    {% if offer.location %}<span class="me-3"><i class="bi bi-geo-alt me-1"></i>{{ offer.location }}</span>{% endif %}
+
+                                {# Meta info #}
+                                <div style="font-size:0.78rem;color:var(--fo-text-secondary);display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+                                    {% if offer.location %}<span><i class="bi bi-geo-alt me-1"></i>{{ offer.location }}</span>{% endif %}
                                     {% if offer.experienceLevel %}<span><i class="bi bi-bar-chart me-1"></i>{{ offer.experienceLevel }}</span>{% endif %}
+                                    {% if offer.salaryMin and offer.salaryMax %}<span style="color:#10b981;font-weight:600"><i class="bi bi-cash me-1"></i>{{ offer.salaryMin|number_format(0,',',' ') }}-{{ offer.salaryMax|number_format(0,',',' ') }} DT</span>{% endif %}
+                                </div>
+
+                                {# Recruiter + Date footer #}
+                                <div class="d-flex justify-content-between align-items-center" style="padding-top:10px;border-top:1px solid var(--fo-border,#f1f5f9)">
+                                    {% if offer.recruiter %}
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% if offer.recruiter.profile and offer.recruiter.profile.profilePicturePath %}
+                                            <img src="{{ offer.recruiter.profile.profilePicturePath }}" style="width:22px;height:22px;border-radius:50%;object-fit:cover" alt="">
+                                        {% else %}
+                                            <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:0.55rem">
+                                                {{ offer.recruiter.email|first|upper }}
+                                            </div>
+                                        {% endif %}
+                                        <span style="font-size:0.72rem;color:var(--fo-text-secondary);font-weight:500">
+                                            {% if offer.recruiter.profile and offer.recruiter.profile.firstName %}{{ offer.recruiter.profile.firstName }} {{ offer.recruiter.profile.lastName|default('')|first }}.{% else %}{{ offer.recruiter.email|split('@')[0] }}{% endif %}
+                                        </span>
+                                    </div>
+                                    {% else %}
+                                        <span></span>
+                                    {% endif %}
+                                    {% if offer.publishDate %}
+                                    <span style="font-size:0.68rem;color:var(--fo-text-secondary)">{{ offer.publishDate|date('d/m/Y') }}</span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </a>
