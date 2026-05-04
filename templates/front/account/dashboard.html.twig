@@ -1,262 +1,271 @@
 {% extends 'front/_base.html.twig' %}
 {% block title %}Mon espace — Talentos{% endblock %}
 {% block content %}
-<div class="fo-page-header">
+{% set pct = app.user.profile ? app.user.profile.completionPercent : 0 %}
+{% set profile = app.user.profile %}
+
+<style>
+    .dash-header { padding:40px 0 32px; }
+    .dash-avatar-ring { position:relative; width:80px; height:80px; flex-shrink:0; }
+    .dash-avatar-ring svg { position:absolute; inset:-4px; width:88px; height:88px; transform:rotate(-90deg); }
+    .dash-avatar-ring .ring-bg { fill:none; stroke:#e2e8f0; stroke-width:3; }
+    .dash-avatar-ring .ring-fill { fill:none; stroke-width:3; stroke-linecap:round; transition:stroke-dasharray 1.2s ease; }
+    .dash-avatar-img { width:80px; height:80px; border-radius:50%; object-fit:cover; }
+    .dash-avatar-initials { width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--accent)); display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:800; color:white; }
+    .dash-pct-badge { position:absolute; bottom:-2px; right:-2px; width:26px; height:26px; border-radius:50%; font-size:0.55rem; font-weight:800; display:flex; align-items:center; justify-content:center; border:2px solid white; z-index:2; }
+
+    .dash-stat { text-align:center; padding:16px 12px; }
+    .dash-stat-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin:0 auto 8px; font-size:1rem; }
+    .dash-stat-val { font-size:1.5rem; font-weight:800; line-height:1; }
+    .dash-stat-label { font-size:0.7rem; color:var(--fo-text-secondary); font-weight:600; margin-top:3px; }
+
+    .dash-quick { display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:12px; text-decoration:none; transition:all 0.2s; color:var(--fo-text); }
+    .dash-quick:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.06); color:var(--fo-text); }
+    .dash-quick-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+
+    .dash-section-title { font-weight:800; font-size:0.9rem; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+    .dash-section-title i { font-size:1rem; }
+    .dash-section-link { font-size:0.75rem; color:var(--primary); font-weight:600; text-decoration:none; margin-left:auto; }
+
+    .viewer-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--fo-border,#f1f5f9); }
+    .viewer-item:last-child { border:none; }
+    .viewer-avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+    .viewer-initials { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,#e0e7ff,#c7d2fe); display:flex; align-items:center; justify-content:center; color:var(--primary); font-weight:700; font-size:0.7rem; flex-shrink:0; }
+</style>
+
+{# ════════════════ HEADER ════════════════ #}
+<div class="dash-header" style="background:linear-gradient(135deg,rgba(79,70,229,0.03),rgba(6,182,212,0.03))">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-3">
-                {# ── Profile Completion Ring ── #}
-                {% set pct = app.user.profile ? app.user.profile.completionPercent : 0 %}
-                <div style="position:relative;width:64px;height:64px;flex-shrink:0">
-                    <svg width="64" height="64" viewBox="0 0 64 64">
-                        <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" stroke-width="4"/>
-                        <circle cx="32" cy="32" r="28" fill="none"
-                                stroke="{{ pct >= 100 ? '#10b981' : (pct >= 60 ? '#4f46e5' : '#f59e0b') }}"
-                                stroke-width="4" stroke-linecap="round"
-                                stroke-dasharray="{{ (pct / 100 * 175.9)|round(1) }} 175.9"
-                                transform="rotate(-90 32 32)"
-                                style="transition:stroke-dasharray 1s ease"/>
-                    </svg>
-                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;color:{{ pct >= 100 ? '#10b981' : 'var(--fo-text)' }}">
-                        {% if pct >= 100 %}<i class="bi bi-check-lg" style="font-size:1.2rem"></i>{% else %}{{ pct }}%{% endif %}
-                    </div>
-                </div>
-                <div>
-                    <h1 style="margin-bottom:2px">Bonjour {{ app.user.profile and app.user.profile.firstName ? app.user.profile.firstName : app.user.email|split('@')[0] }} 👋</h1>
-                    <p style="margin:0">
-                        {% if pct < 100 %}
-                            <a href="{{ path('app_profile_edit') }}" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:0.88rem">
-                                <i class="bi bi-pencil me-1"></i>Complétez votre profil ({{ pct }}%)
-                            </a>
-                        {% else %}
-                            Bienvenue dans votre espace personnel
-                        {% endif %}
-                    </p>
+        <div class="d-flex align-items-center gap-4 flex-wrap">
+            {# Avatar with completion ring #}
+            <div class="dash-avatar-ring">
+                <svg viewBox="0 0 88 88">
+                    <circle class="ring-bg" cx="44" cy="44" r="41"/>
+                    <circle class="ring-fill" cx="44" cy="44" r="41"
+                            stroke="{{ pct >= 100 ? '#10b981' : (pct >= 60 ? '#4f46e5' : '#f59e0b') }}"
+                            stroke-dasharray="{{ (pct / 100 * 257.6)|round(1) }} 257.6"/>
+                </svg>
+                {% if profile and profile.profilePicturePath %}
+                    <img src="{{ profile.profilePicturePath }}" class="dash-avatar-img" alt="">
+                {% else %}
+                    <div class="dash-avatar-initials">{{ profile and profile.firstName ? profile.firstName|first|upper : app.user.email|first|upper }}</div>
+                {% endif %}
+                <div class="dash-pct-badge" style="background:{{ pct >= 100 ? '#10b981' : (pct >= 60 ? '#4f46e5' : '#f59e0b') }};color:white">
+                    {% if pct >= 100 %}✓{% else %}{{ pct }}%{% endif %}
                 </div>
             </div>
-            <a href="{{ path('app_profile') }}" class="btn btn-primary-custom" style="padding:10px 24px;border-radius:12px;font-weight:600"><i class="bi bi-pencil me-1"></i>Modifier le profil</a>
+            <div style="flex:1">
+                <h1 style="font-size:1.4rem;margin:0 0 4px">Bonjour {{ profile and profile.firstName ? profile.firstName : app.user.email|split('@')[0] }} 👋</h1>
+                {% if pct < 100 %}
+                    <a href="{{ path('app_profile_edit') }}" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:0.85rem">
+                        <i class="bi bi-pencil-square me-1"></i>Complétez votre profil — {{ pct }}%
+                    </a>
+                {% else %}
+                    <p style="margin:0;color:var(--fo-text-secondary);font-size:0.88rem">Bienvenue dans votre espace personnel</p>
+                {% endif %}
+            </div>
+            <a href="{{ path('app_profile') }}" class="btn btn-primary-custom" style="padding:10px 24px;border-radius:12px;font-weight:600;font-size:0.85rem"><i class="bi bi-person me-1"></i>Mon profil</a>
         </div>
     </div>
 </div>
 
-<section class="fo-section" style="padding-top:32px;padding-bottom:32px">
-    <div class="container">
+<section class="fo-section" style="padding-top:24px;padding-bottom:40px">
+<div class="container">
 
-        {# ── Analytics Cards Row ── #}
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-lg-3">
-                <div class="fo-card" style="padding:20px;border-left:3px solid var(--primary)">
-                    <div class="d-flex align-items-center gap-3">
-                        <div style="width:42px;height:42px;border-radius:10px;background:rgba(79,70,229,0.08);display:flex;align-items:center;justify-content:center"><i class="bi bi-file-text" style="font-size:1.1rem;color:var(--primary)"></i></div>
-                        <div>
-                            <div style="font-size:1.6rem;font-weight:800;color:var(--primary);line-height:1">{{ appCount }}</div>
-                            <div style="font-size:0.75rem;color:var(--fo-text-secondary);font-weight:600">Candidatures</div>
-                        </div>
-                    </div>
+    {# ════════════════ STATS ROW ════════════════ #}
+    <div class="fo-card" style="padding:8px 0;margin-bottom:24px">
+        <div class="row g-0 text-center" style="border-radius:14px;overflow:hidden">
+            <div class="col-6 col-md-3" style="border-right:1px solid var(--fo-border,#f1f5f9)">
+                <div class="dash-stat">
+                    <div class="dash-stat-val" style="color:var(--primary)">{{ appCount }}</div>
+                    <div class="dash-stat-label">Candidatures</div>
                     {% if appCount > 0 %}
-                    <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-                        <span style="font-size:0.65rem;padding:2px 7px;border-radius:6px;background:rgba(16,185,129,0.1);color:#10b981;font-weight:600">{{ acceptedApps }} acceptées</span>
-                        <span style="font-size:0.65rem;padding:2px 7px;border-radius:6px;background:rgba(245,158,11,0.1);color:#f59e0b;font-weight:600">{{ pendingApps }} en cours</span>
+                    <div style="margin-top:6px;display:flex;justify-content:center;gap:4px">
+                        <span style="font-size:0.6rem;padding:1px 6px;border-radius:4px;background:rgba(16,185,129,0.1);color:#10b981;font-weight:600">{{ acceptedApps }}✓</span>
+                        <span style="font-size:0.6rem;padding:1px 6px;border-radius:4px;background:rgba(245,158,11,0.1);color:#f59e0b;font-weight:600">{{ pendingApps }}⏳</span>
                     </div>
                     {% endif %}
                 </div>
             </div>
-            <div class="col-6 col-lg-3">
-                <div class="fo-card" style="padding:20px;border-left:3px solid #06b6d4">
-                    <div class="d-flex align-items-center gap-3">
-                        <div style="width:42px;height:42px;border-radius:10px;background:rgba(6,182,212,0.08);display:flex;align-items:center;justify-content:center"><i class="bi bi-eye" style="font-size:1.1rem;color:#06b6d4"></i></div>
-                        <div>
-                            <div style="font-size:1.6rem;font-weight:800;color:#06b6d4;line-height:1">{{ profileViews }}</div>
-                            <div style="font-size:0.75rem;color:var(--fo-text-secondary);font-weight:600">Vues du profil</div>
-                        </div>
-                    </div>
-                    <div style="font-size:0.65rem;color:var(--fo-text-secondary);margin-top:10px"><i class="bi bi-calendar3 me-1"></i>30 derniers jours</div>
+            <div class="col-6 col-md-3" style="border-right:1px solid var(--fo-border,#f1f5f9)">
+                <div class="dash-stat">
+                    <div class="dash-stat-val" style="color:#06b6d4">{{ profileViews }}</div>
+                    <div class="dash-stat-label">Vues du profil</div>
+                    <div style="font-size:0.58rem;color:var(--fo-text-secondary);margin-top:4px">30 derniers jours</div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3">
-                <div class="fo-card" style="padding:20px;border-left:3px solid #f59e0b">
-                    <div class="d-flex align-items-center gap-3">
-                        <div style="width:42px;height:42px;border-radius:10px;background:rgba(245,158,11,0.08);display:flex;align-items:center;justify-content:center"><i class="bi bi-coin" style="font-size:1.1rem;color:#f59e0b"></i></div>
-                        <div>
-                            <div style="font-size:1.6rem;font-weight:800;color:#f59e0b;line-height:1">{{ app.user.pointsBalance }}</div>
-                            <div style="font-size:0.75rem;color:var(--fo-text-secondary);font-weight:600">Points</div>
-                        </div>
-                    </div>
-                    <a href="{{ path('app_points_buy') }}" style="font-size:0.65rem;color:var(--primary);font-weight:700;text-decoration:none;display:block;margin-top:10px">+ Acheter des points</a>
+            <div class="col-6 col-md-3" style="border-right:1px solid var(--fo-border,#f1f5f9)">
+                <div class="dash-stat">
+                    <div class="dash-stat-val" style="color:#f59e0b">{{ app.user.pointsBalance }}</div>
+                    <div class="dash-stat-label">Points</div>
+                    <a href="{{ path('app_points_buy') }}" style="font-size:0.6rem;color:var(--primary);font-weight:700;text-decoration:none;display:block;margin-top:4px">+ Acheter</a>
                 </div>
             </div>
-            <div class="col-6 col-lg-3">
-                <div class="fo-card" style="padding:20px;border-left:3px solid #10b981">
-                    <div class="d-flex align-items-center gap-3">
-                        <div style="width:42px;height:42px;border-radius:10px;background:rgba(16,185,129,0.08);display:flex;align-items:center;justify-content:center"><i class="bi bi-mortarboard" style="font-size:1.1rem;color:#10b981"></i></div>
-                        <div>
-                            <div style="font-size:1.6rem;font-weight:800;color:#10b981;line-height:1">{{ enrolledCourses }}</div>
-                            <div style="font-size:0.75rem;color:var(--fo-text-secondary);font-weight:600">Formations</div>
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-                        <span style="font-size:0.65rem;padding:2px 7px;border-radius:6px;background:rgba(79,70,229,0.1);color:var(--primary);font-weight:600">{{ quizzesPassed }} quiz</span>
-                        <span style="font-size:0.65rem;padding:2px 7px;border-radius:6px;background:rgba(6,182,212,0.1);color:#06b6d4;font-weight:600">{{ interviewCount }} entretiens</span>
+            <div class="col-6 col-md-3">
+                <div class="dash-stat">
+                    <div class="dash-stat-val" style="color:#10b981">{{ enrolledCourses }}</div>
+                    <div class="dash-stat-label">Formations</div>
+                    <div style="margin-top:4px;display:flex;justify-content:center;gap:4px">
+                        <span style="font-size:0.6rem;padding:1px 6px;border-radius:4px;background:rgba(79,70,229,0.08);color:var(--primary);font-weight:600">{{ quizzesPassed }} quiz</span>
+                        <span style="font-size:0.6rem;padding:1px 6px;border-radius:4px;background:rgba(6,182,212,0.08);color:#06b6d4;font-weight:600">{{ interviewCount }} entretiens</span>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        {# ── Quick Actions ── #}
-        <div class="row g-3 mb-4">
-            <div class="col-md-4 col-6">
-                <a href="{{ path('app_my_applications') }}" class="fo-card d-flex align-items-center gap-3 text-decoration-none" style="padding:16px">
-                    <div style="width:44px;height:44px;border-radius:12px;background:rgba(79,70,229,0.08);display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--primary);flex-shrink:0"><i class="bi bi-file-text"></i></div>
-                    <div><div style="font-weight:700;color:var(--fo-text);font-size:0.9rem">Candidatures</div><div style="color:var(--fo-text-secondary);font-size:0.75rem">Suivre mes candidatures</div></div>
-                </a>
-            </div>
-            <div class="col-md-4 col-6">
-                <a href="{{ path('app_interviews') }}" class="fo-card d-flex align-items-center gap-3 text-decoration-none" style="padding:16px">
-                    <div style="width:44px;height:44px;border-radius:12px;background:rgba(16,185,129,0.08);display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--success);flex-shrink:0"><i class="bi bi-camera-video"></i></div>
-                    <div><div style="font-weight:700;color:var(--fo-text);font-size:0.9rem">Entretiens</div><div style="color:var(--fo-text-secondary);font-size:0.75rem">Sessions planifiées</div></div>
-                </a>
-            </div>
-            <div class="col-md-4 col-6">
-                <a href="{{ path('app_courses') }}" class="fo-card d-flex align-items-center gap-3 text-decoration-none" style="padding:16px">
-                    <div style="width:44px;height:44px;border-radius:12px;background:rgba(245,158,11,0.08);display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--warning);flex-shrink:0"><i class="bi bi-book"></i></div>
-                    <div><div style="font-weight:700;color:var(--fo-text);font-size:0.9rem">Formations</div><div style="color:var(--fo-text-secondary);font-size:0.75rem">Cours & certifications</div></div>
-                </a>
-            </div>
-        </div>
+    {# ════════════════ MAIN GRID ════════════════ #}
+    <div class="row g-4">
 
-        {# ── Two-Column: Activities + Who Viewed ── #}
-        <div class="row g-4">
-            {# Activities Column #}
-            <div class="col-lg-7">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 style="font-weight:800;margin:0"><i class="bi bi-clipboard-data me-2" style="color:var(--accent)"></i>Mes Activités</h6>
-                    <a href="{{ path('app_activities') }}" style="font-size:0.8rem;color:var(--primary);font-weight:600;text-decoration:none">Voir tout →</a>
-                </div>
-                {% for a in activities %}
-                    <div class="fo-card mb-2 d-flex align-items-start gap-3" style="padding:16px">
-                        <div style="width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-                            {% if a.project %}background:rgba(79,70,229,0.08);color:var(--primary)
-                            {% else %}background:rgba(6,182,212,0.08);color:var(--accent){% endif %}">
-                            <i class="bi bi-{% if a.project %}kanban{% else %}activity{% endif %}"></i>
-                        </div>
-                        <div style="flex:1;min-width:0">
-                            <div style="font-weight:600;font-size:0.88rem">{{ a.description|slice(0,80) }}</div>
-                            <div style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                                {% if a.project %}<span style="font-size:0.72rem;background:rgba(79,70,229,0.08);color:var(--primary);padding:2px 8px;border-radius:6px;font-weight:600">{{ a.project.name }}</span>{% endif %}
-                                {% if a.hoursWorked %}<span style="font-size:0.72rem;color:var(--fo-text-secondary)"><i class="bi bi-clock me-1"></i>{{ a.hoursWorked }}h</span>{% endif %}
-                                <span style="font-size:0.72rem;color:var(--fo-text-secondary)">{{ a.activityDate ? a.activityDate|date('d/m/Y') : '' }}</span>
-                            </div>
-                        </div>
-                    </div>
-                {% else %}
-                    <div class="fo-card text-center" style="padding:40px">
-                        <i class="bi bi-clipboard-x" style="font-size:2rem;color:var(--fo-text-secondary);opacity:0.3"></i>
-                        <p style="color:var(--fo-text-secondary);font-size:0.85rem;margin:12px 0 0">Aucune activité assignée pour le moment</p>
-                    </div>
-                {% endfor %}
-            </div>
+        {# ── LEFT COLUMN ── #}
+        <div class="col-lg-8">
 
-            {# Who Viewed My Profile + Notifications #}
-            <div class="col-lg-5">
-                {# Who Viewed My Profile #}
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 style="font-weight:800;margin:0"><i class="bi bi-eye me-2" style="color:#06b6d4"></i>Qui a vu mon profil</h6>
-                    <span style="font-size:0.75rem;color:var(--fo-text-secondary)">{{ profileViews }} vues ce mois</span>
-                </div>
-                {% if recentViewers|length > 0 %}
-                    {% for rv in recentViewers %}
-                    <div class="fo-card mb-2 d-flex align-items-center gap-3" style="padding:12px 16px">
-                        {% if rv.user.profile and rv.user.profile.profilePicturePath %}
-                            <img src="{{ rv.user.profile.profilePicturePath }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="">
-                        {% else %}
-                            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:0.8rem;flex-shrink:0">
-                                {{ rv.user.email|first|upper }}
-                            </div>
-                        {% endif %}
-                        <div style="flex:1;min-width:0">
-                            <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                                {% if rv.user.profile and rv.user.profile.firstName %}{{ rv.user.profile.fullName }}{% else %}{{ rv.user.email|split('@')[0] }}{% endif %}
-                            </div>
-                            {% if rv.user.profile and rv.user.profile.professionalTitle %}
-                                <div style="font-size:0.72rem;color:var(--fo-text-secondary)">{{ rv.user.profile.professionalTitle }}</div>
-                            {% endif %}
-                        </div>
-                        <div style="font-size:0.65rem;color:var(--fo-text-secondary);white-space:nowrap">{{ rv.viewedAt|date('d/m') }}</div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="fo-card text-center" style="padding:30px">
-                        <i class="bi bi-eye-slash" style="font-size:1.5rem;color:var(--fo-text-secondary);opacity:0.3"></i>
-                        <p style="color:var(--fo-text-secondary);font-size:0.82rem;margin:10px 0 0">Aucune visite récente</p>
-                    </div>
-                {% endif %}
-
-                {# Notifications #}
-                <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
-                    <h6 style="font-weight:800;margin:0"><i class="bi bi-bell me-2" style="color:var(--warning)"></i>Notifications</h6>
-                    <a href="{{ path('app_notifications') }}" style="font-size:0.8rem;color:var(--primary);font-weight:600;text-decoration:none">Voir tout →</a>
-                </div>
-                {% for n in notifications %}
-                    <a href="{{ path('app_notification_read', {id: n.id}) }}" class="fo-card mb-2 d-flex align-items-start gap-3 text-decoration-none" style="padding:14px;{{ not n.read ? 'border-left:3px solid var(--primary);background:rgba(79,70,229,0.02)' : '' }}">
-                        <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-                            {% if n.type == 'OFFER_DECISION' %}background:rgba(16,185,129,0.1);color:var(--success)
-                            {% elseif n.type == 'REPLY' %}background:rgba(6,182,212,0.1);color:var(--accent)
-                            {% elseif n.type == 'ACTIVITY' %}background:rgba(99,102,241,0.1);color:#818cf8
-                            {% else %}background:rgba(79,70,229,0.1);color:var(--primary){% endif %}">
-                            <i class="bi bi-{% if n.type == 'OFFER_DECISION' %}briefcase{% elseif n.type == 'REPLY' %}chat-dots{% elseif n.type == 'ACTIVITY' %}clipboard-data{% else %}bell{% endif %}" style="font-size:0.85rem"></i>
-                        </div>
-                        <div style="flex:1;min-width:0">
-                            <div style="font-weight:{{ not n.read ? '700' : '500' }};font-size:0.82rem;color:var(--fo-text)">{{ n.title }}</div>
-                            {% if n.message %}<div style="font-size:0.75rem;color:var(--fo-text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.message|slice(0,60) }}</div>{% endif %}
-                            <div style="font-size:0.7rem;color:var(--fo-text-secondary);margin-top:3px">{{ n.createdAt|date('d/m H:i') }}</div>
-                        </div>
+            {# Quick Actions #}
+            <div class="row g-3 mb-4">
+                <div class="col-4">
+                    <a href="{{ path('app_my_applications') }}" class="fo-card dash-quick">
+                        <div class="dash-quick-icon" style="background:rgba(79,70,229,0.08);color:var(--primary)"><i class="bi bi-file-text"></i></div>
+                        <div><div style="font-weight:700;font-size:0.82rem">Candidatures</div></div>
                     </a>
-                {% else %}
-                    <div class="fo-card text-center" style="padding:40px">
-                        <i class="bi bi-bell-slash" style="font-size:2rem;color:var(--fo-text-secondary);opacity:0.3"></i>
-                        <p style="color:var(--fo-text-secondary);font-size:0.85rem;margin:12px 0 0">Aucune notification</p>
-                    </div>
-                {% endfor %}
+                </div>
+                <div class="col-4">
+                    <a href="{{ path('app_interviews') }}" class="fo-card dash-quick">
+                        <div class="dash-quick-icon" style="background:rgba(16,185,129,0.08);color:#10b981"><i class="bi bi-camera-video"></i></div>
+                        <div><div style="font-weight:700;font-size:0.82rem">Entretiens</div></div>
+                    </a>
+                </div>
+                <div class="col-4">
+                    <a href="{{ path('app_courses') }}" class="fo-card dash-quick">
+                        <div class="dash-quick-icon" style="background:rgba(245,158,11,0.08);color:#f59e0b"><i class="bi bi-book"></i></div>
+                        <div><div style="font-weight:700;font-size:0.82rem">Formations</div></div>
+                    </a>
+                </div>
             </div>
-        </div>
 
-        {# ── Recent Applications ── #}
-        {% if applications|length > 0 %}
-        <div class="mt-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 style="font-weight:800;margin:0"><i class="bi bi-file-text me-2" style="color:var(--primary)"></i>Dernières Candidatures</h6>
-                <a href="{{ path('app_my_applications') }}" style="font-size:0.8rem;color:var(--primary);font-weight:600;text-decoration:none">Voir tout →</a>
-            </div>
-            <div class="fo-card" style="overflow:hidden">
-                <table style="width:100%;border-collapse:collapse">
+            {# Recent Applications #}
+            {% if applications|length > 0 %}
+            <div class="fo-card" style="margin-bottom:20px;overflow:hidden">
+                <div class="dash-section-title" style="padding:16px 20px 0">
+                    <i class="bi bi-file-text" style="color:var(--primary)"></i>Dernières Candidatures
+                    <a href="{{ path('app_my_applications') }}" class="dash-section-link">Voir tout →</a>
+                </div>
+                <table style="width:100%;border-collapse:collapse;margin-top:8px">
                     {% for app in applications %}
-                    <tr style="border-bottom:1px solid var(--fo-border)">
-                        <td style="padding:14px 16px;font-weight:600;font-size:0.88rem">{{ app.offer ? app.offer.title : '—' }}</td>
-                        <td style="padding:14px 16px;color:var(--fo-text-secondary);font-size:0.82rem">{{ app.applicationDate ? app.applicationDate|date('d/m/Y') : '' }}</td>
-                        <td style="padding:14px 16px;text-align:right">
+                    <tr style="border-top:1px solid var(--fo-border,#f1f5f9)">
+                        <td style="padding:12px 20px;font-weight:600;font-size:0.85rem">{{ app.offer ? app.offer.title : '—' }}</td>
+                        <td style="padding:12px 16px;color:var(--fo-text-secondary);font-size:0.78rem;white-space:nowrap">{{ app.applicationDate ? app.applicationDate|date('d/m/Y') : '' }}</td>
+                        <td style="padding:12px 20px;text-align:right">
                             <span class="fo-badge fo-badge-{{ app.status == 'Acceptée' ? 'success' : (app.status == 'Refusée' ? 'warning' : (app.status == 'Entretien' ? 'accent' : 'primary')) }}">{{ app.status }}</span>
                         </td>
                     </tr>
                     {% endfor %}
                 </table>
             </div>
-        </div>
-        {% endif %}
+            {% endif %}
 
-        {# ── Skills Section ── #}
-        {% if app.user.profile and app.user.profile.skills|length > 0 %}
-        <div class="mt-4">
-            <h6 style="font-weight:800;margin-bottom:12px"><i class="bi bi-award me-2" style="color:#7c3aed"></i>Mes Compétences</h6>
+            {# Activities #}
             <div class="fo-card" style="padding:20px">
-                <div style="display:flex;flex-wrap:wrap;gap:8px">
-                    {% for skill in app.user.profile.skills %}
-                    <span style="padding:6px 14px;border-radius:20px;font-size:0.8rem;font-weight:600;background:linear-gradient(135deg,rgba(79,70,229,0.08),rgba(124,58,237,0.08));color:var(--primary);border:1px solid rgba(79,70,229,0.15)">{{ skill }}</span>
-                    {% endfor %}
+                <div class="dash-section-title">
+                    <i class="bi bi-clipboard-data" style="color:var(--accent)"></i>Mes Activités
+                    <a href="{{ path('app_activities') }}" class="dash-section-link">Voir tout →</a>
                 </div>
-                <a href="{{ path('app_profile_edit') }}" style="display:inline-block;margin-top:12px;font-size:0.78rem;color:var(--primary);font-weight:600;text-decoration:none"><i class="bi bi-pencil me-1"></i>Modifier mes compétences</a>
+                {% for a in activities %}
+                <div class="d-flex align-items-start gap-3" style="padding:10px 0;{{ not loop.last ? 'border-bottom:1px solid var(--fo-border,#f1f5f9)' : '' }}">
+                    <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.85rem;
+                        {% if a.project %}background:rgba(79,70,229,0.06);color:var(--primary){% else %}background:rgba(6,182,212,0.06);color:var(--accent){% endif %}">
+                        <i class="bi bi-{% if a.project %}kanban{% else %}activity{% endif %}"></i>
+                    </div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:600;font-size:0.82rem;line-height:1.3">{{ a.description|slice(0,80) }}</div>
+                        <div style="font-size:0.7rem;color:var(--fo-text-secondary);margin-top:2px">
+                            {% if a.project %}<span style="color:var(--primary);font-weight:600">{{ a.project.name }}</span> · {% endif %}
+                            {{ a.activityDate ? a.activityDate|date('d/m/Y') : '' }}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center" style="padding:24px 0;color:var(--fo-text-secondary);font-size:0.82rem">
+                    <i class="bi bi-clipboard-x" style="font-size:1.3rem;opacity:0.3;display:block;margin-bottom:6px"></i>
+                    Aucune activité assignée
+                </div>
+                {% endfor %}
             </div>
         </div>
-        {% endif %}
+
+        {# ── RIGHT COLUMN ── #}
+        <div class="col-lg-4">
+
+            {# Who Viewed My Profile #}
+            <div class="fo-card" style="padding:20px;margin-bottom:20px">
+                <div class="dash-section-title">
+                    <i class="bi bi-eye" style="color:#06b6d4"></i>Qui a vu mon profil
+                </div>
+                {% if recentViewers|length > 0 %}
+                    {% for rv in recentViewers %}
+                    <div class="viewer-item">
+                        {% if rv.user.profile and rv.user.profile.profilePicturePath %}
+                            <img src="{{ rv.user.profile.profilePicturePath }}" class="viewer-avatar" alt="">
+                        {% else %}
+                            <div class="viewer-initials">{{ rv.user.email|first|upper }}</div>
+                        {% endif %}
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:600;font-size:0.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                {% if rv.user.profile and rv.user.profile.firstName %}{{ rv.user.profile.fullName }}{% else %}{{ rv.user.email|split('@')[0] }}{% endif %}
+                            </div>
+                            {% if rv.user.profile and rv.user.profile.professionalTitle %}
+                                <div style="font-size:0.68rem;color:var(--fo-text-secondary)">{{ rv.user.profile.professionalTitle }}</div>
+                            {% endif %}
+                        </div>
+                        <span style="font-size:0.62rem;color:var(--fo-text-secondary)">{{ rv.viewedAt|date('d/m') }}</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center" style="padding:20px 0;color:var(--fo-text-secondary)">
+                        <i class="bi bi-eye-slash" style="font-size:1.2rem;opacity:0.3;display:block;margin-bottom:4px"></i>
+                        <span style="font-size:0.78rem">Aucune visite récente</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            {# Notifications #}
+            <div class="fo-card" style="padding:20px;margin-bottom:20px">
+                <div class="dash-section-title">
+                    <i class="bi bi-bell" style="color:var(--warning)"></i>Notifications
+                    <a href="{{ path('app_notifications') }}" class="dash-section-link">Tout →</a>
+                </div>
+                {% for n in notifications|slice(0,4) %}
+                <a href="{{ path('app_notification_read', {id: n.id}) }}" class="d-flex align-items-start gap-2 text-decoration-none" style="padding:8px 0;{{ not loop.last ? 'border-bottom:1px solid var(--fo-border,#f1f5f9)' : '' }}">
+                    <div style="width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:6px;background:{{ not n.read ? 'var(--primary)' : 'transparent' }}"></div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:{{ not n.read ? '700' : '500' }};font-size:0.78rem;color:var(--fo-text);line-height:1.3">{{ n.title }}</div>
+                        <div style="font-size:0.65rem;color:var(--fo-text-secondary);margin-top:2px">{{ n.createdAt|date('d/m H:i') }}</div>
+                    </div>
+                </a>
+                {% else %}
+                <div class="text-center" style="padding:20px 0;color:var(--fo-text-secondary)">
+                    <i class="bi bi-bell-slash" style="font-size:1.2rem;opacity:0.3;display:block;margin-bottom:4px"></i>
+                    <span style="font-size:0.78rem">Aucune notification</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            {# Skills #}
+            {% if profile and profile.skills|length > 0 %}
+            <div class="fo-card" style="padding:20px">
+                <div class="dash-section-title">
+                    <i class="bi bi-award" style="color:#7c3aed"></i>Compétences
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    {% for skill in profile.skills %}
+                    <span style="padding:4px 12px;border-radius:16px;font-size:0.72rem;font-weight:600;background:rgba(79,70,229,0.06);color:var(--primary);border:1px solid rgba(79,70,229,0.1)">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+                <a href="{{ path('app_profile_edit') }}" style="display:block;margin-top:10px;font-size:0.7rem;color:var(--primary);font-weight:600;text-decoration:none"><i class="bi bi-pencil me-1"></i>Modifier</a>
+            </div>
+            {% endif %}
+        </div>
     </div>
+
+</div>
 </section>
 {% endblock %}
