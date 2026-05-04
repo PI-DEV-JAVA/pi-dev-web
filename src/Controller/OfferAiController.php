@@ -116,7 +116,7 @@ RULES:
 - ALWAYS provide a concrete salary range in TND/mois. NEVER say 'non applicable' or refuse.
 - Adapt the range based on the job title, experience level, location, and sector.
 - Generate completely UNIQUE, UNEXPECTED, and HIGHLY SPECIFIC interview questions based on the exact job description details.
-- DO NOT use generic questions like "Where do you see yourself in 3 years?". Invent scenarios or technical challenges related to the text.
+- DO NOT use generic questions like \"Where do you see yourself in 3 years?\". Invent scenarios or technical challenges related to the text.
 - Since the user might refresh the page, here is a random seed to force different questions every time: RAND_{$randomSeed}
 - Reply in the SAME LANGUAGE as the job description.
 
