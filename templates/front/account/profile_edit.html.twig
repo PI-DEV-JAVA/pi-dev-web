@@ -108,6 +108,20 @@
                         <div class="col-12"><label class="form-label">À propos de moi</label>{{ form_widget(form.summary, {'attr': {'class': 'form-control'}}) }}</div>
                     </div>
                 </div>
+                {# ── Skills Autocomplete ── #}
+                <div class="fo-card fo-form" style="margin-bottom:16px">
+                    <h5 style="font-weight:700;margin-bottom:20px"><i class="bi bi-award me-2" style="color:#7c3aed"></i>Compétences</h5>
+                    <input type="hidden" name="skills_json" id="skillsJson" value='{{ profile.skills|json_encode|e('html_attr') }}'>
+                    <div style="position:relative">
+                        <div id="skillsContainer" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1.5px solid var(--fo-border,#e2e8f0);border-radius:12px;min-height:48px;cursor:text;transition:border-color 0.2s;background:white" onclick="document.getElementById('skillInput').focus()">
+                            {# Tags will be inserted here by JS #}
+                            <input type="text" id="skillInput" placeholder="Tapez une compétence..." autocomplete="off"
+                                   style="border:none;outline:none;flex:1;min-width:120px;font-size:0.88rem;padding:4px 0;background:transparent">
+                        </div>
+                        <div id="skillDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:white;border:1px solid var(--fo-border,#e2e8f0);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);margin-top:4px;max-height:240px;overflow-y:auto"></div>
+                    </div>
+                    <div style="font-size:0.72rem;color:var(--fo-text-secondary);margin-top:8px"><i class="bi bi-info-circle me-1"></i>Tapez pour rechercher, cliquez ou appuyez Entrée pour ajouter</div>
+                </div>
                 <div class="d-flex gap-3">
                     <button type="submit" class="btn btn-primary-custom" style="width:auto;padding:12px 32px"><i class="bi bi-check-lg me-2"></i>Enregistrer</button>
                     {% if profile.profileCompleted %}
@@ -241,6 +255,130 @@ zone.addEventListener('drop',function(e){if(e.dataTransfer.files.length>0)openCr
 
 // Close modal on bg click
 document.getElementById('cropModal').addEventListener('click',function(e){if(e.target===this)closeCropModal();});
+
+// ═══════════════════════════════════════════
+//  SKILLS AUTOCOMPLETE
+// ═══════════════════════════════════════════
+(function() {
+    var skills = JSON.parse(document.getElementById('skillsJson').value || '[]');
+    var container = document.getElementById('skillsContainer');
+    var input = document.getElementById('skillInput');
+    var dropdown = document.getElementById('skillDropdown');
+    var debounceTimer = null;
+    var highlightIdx = -1;
+
+    function syncHidden() {
+        document.getElementById('skillsJson').value = JSON.stringify(skills);
+    }
+
+    function renderTags() {
+        // Remove old tags
+        container.querySelectorAll('.skill-tag').forEach(function(t){ t.remove(); });
+        skills.forEach(function(skill, idx) {
+            var tag = document.createElement('span');
+            tag.className = 'skill-tag';
+            tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:5px 10px 5px 12px;border-radius:20px;font-size:0.78rem;font-weight:600;background:linear-gradient(135deg,rgba(79,70,229,0.08),rgba(124,58,237,0.08));color:#4f46e5;border:1px solid rgba(79,70,229,0.15);animation:tagIn 0.2s ease';
+            tag.innerHTML = skill + '<i class="bi bi-x" style="cursor:pointer;font-size:0.85rem;opacity:0.6;margin-left:2px" data-idx="'+idx+'"></i>';
+            tag.querySelector('i').addEventListener('click', function(e) {
+                e.stopPropagation();
+                skills.splice(this.getAttribute('data-idx'), 1);
+                syncHidden(); renderTags();
+            });
+            container.insertBefore(tag, input);
+        });
+        input.placeholder = skills.length > 0 ? '' : 'Tapez une compétence...';
+    }
+
+    function addSkill(name) {
+        name = name.trim();
+        if (!name || skills.indexOf(name) !== -1) return;
+        skills.push(name);
+        syncHidden(); renderTags();
+        input.value = '';
+        closeDropdown();
+    }
+
+    function closeDropdown() {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+        highlightIdx = -1;
+    }
+
+    function renderDropdown(results) {
+        if (results.length === 0) { closeDropdown(); return; }
+        dropdown.innerHTML = '';
+        highlightIdx = -1;
+        results.forEach(function(r, i) {
+            var opt = document.createElement('div');
+            opt.style.cssText = 'padding:10px 16px;font-size:0.85rem;cursor:pointer;transition:background 0.15s;display:flex;align-items:center;gap:8px;font-weight:500';
+            opt.innerHTML = '<i class="bi bi-plus-circle" style="color:var(--primary,#4f46e5);font-size:0.9rem;opacity:0.5"></i>' + r;
+            opt.setAttribute('data-skill', r);
+            opt.addEventListener('mouseenter', function() {
+                dropdown.querySelectorAll('div').forEach(function(d){ d.style.background=''; });
+                this.style.background = 'rgba(79,70,229,0.06)';
+                highlightIdx = i;
+            });
+            opt.addEventListener('mouseleave', function() { this.style.background = ''; });
+            opt.addEventListener('click', function(e) {
+                e.stopPropagation();
+                addSkill(this.getAttribute('data-skill'));
+            });
+            dropdown.appendChild(opt);
+        });
+        dropdown.style.display = 'block';
+    }
+
+    input.addEventListener('input', function() {
+        var q = this.value.trim();
+        clearTimeout(debounceTimer);
+        if (q.length < 1) { closeDropdown(); return; }
+        debounceTimer = setTimeout(function() {
+            fetch('/api/skills/search?q=' + encodeURIComponent(q))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    // Filter out already selected
+                    var filtered = data.filter(function(s) { return skills.indexOf(s) === -1; });
+                    renderDropdown(filtered);
+                })
+                .catch(function() { closeDropdown(); });
+        }, 150);
+    });
+
+    input.addEventListener('keydown', function(e) {
+        var items = dropdown.querySelectorAll('div[data-skill]');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightIdx = Math.min(highlightIdx + 1, items.length - 1);
+            items.forEach(function(d,i){ d.style.background = i === highlightIdx ? 'rgba(79,70,229,0.06)' : ''; });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightIdx = Math.max(highlightIdx - 1, 0);
+            items.forEach(function(d,i){ d.style.background = i === highlightIdx ? 'rgba(79,70,229,0.06)' : ''; });
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightIdx >= 0 && items[highlightIdx]) {
+                addSkill(items[highlightIdx].getAttribute('data-skill'));
+            } else if (this.value.trim()) {
+                addSkill(this.value);
+            }
+        } else if (e.key === 'Backspace' && this.value === '' && skills.length > 0) {
+            skills.pop();
+            syncHidden(); renderTags();
+        }
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', function(e) {
+        if (!container.contains(e.target) && !dropdown.contains(e.target)) closeDropdown();
+    });
+
+    // Focus style
+    input.addEventListener('focus', function(){ container.style.borderColor='var(--primary,#4f46e5)'; container.style.boxShadow='0 0 0 3px rgba(79,70,229,0.1)'; });
+    input.addEventListener('blur', function(){ container.style.borderColor=''; container.style.boxShadow=''; });
+
+    // Init
+    renderTags();
+})();
 </script>
 {% endblock %}
 

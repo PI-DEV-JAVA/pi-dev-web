@@ -163,6 +163,21 @@
   .verify-note { font-size: 8px; color: #64748b; line-height: 1.5; margin-top: 14px; }
   .verify-url { font-size: 7px; color: #1a3a6e; font-weight: 700; word-break: break-all; margin-top: 2px; }
 
+  /* Mention badge */
+  .mention-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+  .mention-felicitations { background: #fef3c7; color: #92400e; border: 1px solid #fbbf24; }
+  .mention-tres-bien { background: #ecfdf5; color: #065f46; border: 1px solid #6ee7b7; }
+  .mention-bien { background: #eff6ff; color: #1e40af; border: 1px solid #93c5fd; }
+
   /* Bottom legal strip */
   .legal-strip {
     position: absolute;
@@ -213,6 +228,15 @@
         {% if formation.duree %}Durée : {{ formation.duree }} heures.{% endif %}
         {% if formation.niveau %}Niveau : {{ formation.niveau }}.{% endif %}
       </div>
+
+      {# Mention badge #}
+      {% if avgPercent >= 90 %}
+        <div class="mention-badge mention-felicitations">★ Avec Félicitations du Jury</div>
+      {% elseif avgPercent >= 80 %}
+        <div class="mention-badge mention-tres-bien">Mention Très Bien</div>
+      {% elseif avgPercent >= 70 %}
+        <div class="mention-badge mention-bien">Mention Bien</div>
+      {% endif %}
 
       {# Stats as table #}
       <table class="stats-table">

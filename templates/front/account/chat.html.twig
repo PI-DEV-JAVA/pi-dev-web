@@ -1,20 +1,65 @@
 {% extends 'front/_base.html.twig' %}
 {% block title %}Chat — {{ otherUser.email }}{% endblock %}
 {% block content %}
+<style>
+    .chat-wrapper { min-height:400px; display:flex; flex-direction:column; }
+    .chat-messages { flex:1; overflow-y:auto; max-height:450px; margin-bottom:16px; padding:8px; scroll-behavior:smooth; }
+    .msg-bubble { max-width:70%; padding:12px 16px; border-radius:16px; animation:msgIn 0.3s ease; }
+    .msg-mine { background:var(--primary); color:white; border-bottom-right-radius:4px; }
+    .msg-theirs { background:var(--fo-bg-section); border-bottom-left-radius:4px; }
+    @keyframes msgIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    /* Typing indicator */
+    .typing-indicator { display:none; align-items:center; gap:6px; padding:4px 8px; }
+    .typing-indicator.active { display:flex; }
+    .typing-dot { width:7px; height:7px; border-radius:50%; background:var(--fo-text-secondary); opacity:0.4; animation:typingBounce 1.4s infinite ease-in-out; }
+    .typing-dot:nth-child(1) { animation-delay:0s; }
+    .typing-dot:nth-child(2) { animation-delay:0.2s; }
+    .typing-dot:nth-child(3) { animation-delay:0.4s; }
+    @keyframes typingBounce {
+        0%, 80%, 100% { transform:scale(0.6); opacity:0.3; }
+        40% { transform:scale(1); opacity:0.8; }
+    }
+    .typing-label { font-size:0.72rem; color:var(--fo-text-secondary); font-weight:500; }
+
+    /* New message pulse */
+    .chat-refresh-badge { display:none; position:absolute; top:8px; right:8px; padding:4px 10px; border-radius:20px; background:var(--primary); color:white; font-size:0.7rem; font-weight:700; cursor:pointer; animation:pulse 2s infinite; z-index:5; }
+    .chat-refresh-badge.show { display:block; }
+    @keyframes pulse { 0%, 100% { box-shadow:0 0 0 0 rgba(79,70,229,0.4); } 50% { box-shadow:0 0 0 8px rgba(79,70,229,0); } }
+</style>
+
 <div class="fo-page-header">
     <div class="container">
         <a href="{{ path('app_my_circle') }}" style="color:var(--primary);text-decoration:none;font-size:0.9rem;font-weight:500"><i class="bi bi-arrow-left me-1"></i> Mon Cercle</a>
-        <h1 class="mt-2">{{ otherUser.email }}</h1>
+        <div class="d-flex align-items-center gap-3 mt-2">
+            {% if otherUser.profile and otherUser.profile.profilePicturePath %}
+                <img src="{{ otherUser.profile.profilePicturePath }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(79,70,229,0.2)" alt="">
+            {% else %}
+                <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:0.9rem">
+                    {{ otherUser.email|first|upper }}
+                </div>
+            {% endif %}
+            <div>
+                <h1 style="font-size:1.3rem;margin:0">
+                    {% if otherUser.profile and otherUser.profile.firstName %}{{ otherUser.profile.fullName }}{% else %}{{ otherUser.email|split('@')[0] }}{% endif %}
+                </h1>
+                <div id="onlineStatus" style="font-size:0.75rem;color:var(--fo-text-secondary)">
+                    <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;margin-right:4px"></span>En ligne
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <section class="fo-section" style="padding-top:40px">
     <div class="container" style="max-width:700px">
-        <div class="fo-card" style="min-height:400px;display:flex;flex-direction:column">
-            <div style="flex:1;overflow-y:auto;max-height:450px;margin-bottom:16px;padding:8px">
+        <div class="fo-card chat-wrapper" style="position:relative">
+            <div class="chat-refresh-badge" id="newMsgBadge" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise me-1"></i>Nouveaux messages
+            </div>
+            <div class="chat-messages" id="chatMessages">
                 {% for msg in messages %}
                     <div class="mb-3 d-flex {{ msg.sender == app.user ? 'justify-content-end' : '' }}">
-                        <div style="max-width:70%;padding:12px 16px;border-radius:16px;
-                            {{ msg.sender == app.user ? 'background:var(--primary);color:white;border-bottom-right-radius:4px' : 'background:var(--fo-bg-section);border-bottom-left-radius:4px' }}">
+                        <div class="msg-bubble {{ msg.sender == app.user ? 'msg-mine' : 'msg-theirs' }}">
                             <div style="font-size:0.9rem">{{ msg.message }}</div>
                             <div style="font-size:0.7rem;opacity:0.7;margin-top:4px;text-align:right">{{ msg.createdAt ? msg.createdAt|date('H:i') : '' }}</div>
                         </div>
@@ -23,13 +68,62 @@
                     <p class="text-center" style="color:var(--fo-text-secondary)">Aucun message. Commencez la conversation !</p>
                 {% endfor %}
             </div>
-            <form method="post" action="{{ path('app_chat_send', {id: sync.id}) }}" class="fo-form">
+
+            {# Typing indicator #}
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <span class="typing-label">est en train d'écrire...</span>
+            </div>
+
+            <form method="post" action="{{ path('app_chat_send', {id: sync.id}) }}" class="fo-form" id="chatForm">
                 <div class="d-flex gap-2">
-                    <input type="text" name="message" class="form-control" placeholder="Écrire un message..." required autocomplete="off">
+                    <input type="text" name="message" id="chatInput" class="form-control" placeholder="Écrire un message..." required autocomplete="off">
                     <button type="submit" class="btn btn-primary-custom" style="white-space:nowrap;padding:10px 20px"><i class="bi bi-send"></i></button>
                 </div>
             </form>
         </div>
     </div>
 </section>
+
+<script>
+(function() {
+    // Auto-scroll to bottom
+    var chatBox = document.getElementById('chatMessages');
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    // Typing indicator — shows while user types, hides after 1.5s of inactivity
+    var typingEl = document.getElementById('typingIndicator');
+    var input = document.getElementById('chatInput');
+    var typingTimer = null;
+
+    input.addEventListener('input', function() {
+        typingEl.classList.add('active');
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(function() {
+            typingEl.classList.remove('active');
+        }, 1500);
+    });
+
+    // Auto-refresh: poll for new messages every 8 seconds
+    var currentCount = {{ messages|length }};
+    setInterval(function() {
+        fetch(window.location.href, { headers: {'X-Requested-With': 'XMLHttpRequest'} })
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+                var newMessages = doc.querySelectorAll('.msg-bubble');
+                if (newMessages.length > currentCount) {
+                    document.getElementById('newMsgBadge').classList.add('show');
+                }
+            })
+            .catch(function() {});
+    }, 8000);
+
+    // Focus input on load
+    input.focus();
+})();
+</script>
 {% endblock %}

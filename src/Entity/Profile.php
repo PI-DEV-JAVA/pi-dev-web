@@ -52,6 +52,9 @@ class Profile
     #[ORM\Column(name: 'cv_path', length: 500, nullable: true)]
     private ?string $cvPath = null;
 
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $skills = [];
+
     public function getId(): ?int
     {
         return $this->id;
@@ -180,5 +183,39 @@ class Profile
     {
         $this->cvPath = $cvPath;
         return $this;
+    }
+
+    public function getSkills(): array
+    {
+        return $this->skills ?? [];
+    }
+    public function setSkills(?array $skills): static
+    {
+        $this->skills = $skills ?? [];
+        return $this;
+    }
+
+    /**
+     * Calculate profile completion percentage (0-100).
+     */
+    public function getCompletionPercent(): int
+    {
+        $fields = [
+            $this->firstName,
+            $this->lastName,
+            $this->birthDate,
+            $this->phoneNumber,
+            $this->location,
+            $this->professionalTitle,
+            $this->yearsOfExperience !== null ? 'set' : null,
+            $this->summary,
+            $this->profilePicturePath,
+            $this->cvPath,
+        ];
+        $filled = 0;
+        foreach ($fields as $f) {
+            if ($f !== null && $f !== '' && $f !== []) $filled++;
+        }
+        return (int)round($filled / count($fields) * 100);
     }
 }
