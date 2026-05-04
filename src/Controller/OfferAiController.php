@@ -286,7 +286,7 @@ Respond ONLY with a valid JSON object (no text before/after, no markdown):
                     'X-Title'       => 'Talentos',
                 ],
                 'json' => [
-                    'model'       => 'openrouter/auto',
+                    'model'       => 'meta-llama/llama-3.3-70b-instruct:free',
                     'messages'    => [
                         ['role' => 'system', 'content' => 'You ALWAYS respond with pure valid JSON. No text, no markdown, no explanation.'],
                         ['role' => 'user', 'content' => $prompt],
