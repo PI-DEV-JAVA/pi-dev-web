@@ -298,50 +298,47 @@ IMPORTANT: The example above is for a DIFFERENT job. You MUST generate NEW quest
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  SHARED: OpenRouter AI Call Helper
-    //  Provider: OpenRouter.ai (aggregator for free LLMs)
-    //  Models used: openrouter/auto (auto-routes to best available
-    //               free model: Llama 3, Mistral, Gemma, etc.)
+    //  SHARED: Multi-Provider AI Race
+    //  Strategy: Fire Groq + OpenRouter requests IN PARALLEL
+    //  Groq (LPU) is typically 10x faster — wins almost every race
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     private function callAi(string $prompt, array $fallback): JsonResponse
     {
-        // Try OpenRouter first
-        if (!empty($this->apiKey) && str_starts_with($this->apiKey, 'sk-or')) {
-            $result = $this->callOpenRouter($prompt);
-            if ($result !== null) return $this->json($result);
-        }
-
-        // Try Gemini as fallback
-        $geminiKey = $_ENV['GEMINI_API_KEY'] ?? '';
-        if (!empty($geminiKey) && !str_starts_with($geminiKey, 'sk-or') && $geminiKey !== 'your_gemini_api_key_here') {
-            $result = $this->callGemini($prompt, $geminiKey);
-            if ($result !== null) return $this->json($result);
-        }
-
-        return $this->json($fallback);
-    }
-
-    private function callOpenRouter(string $prompt): ?array
-    {
-        // Fire requests to multiple free models IN PARALLEL — first valid response wins
-        $freeModels = [
-            'nvidia/nemotron-3-nano-30b-a3b:free',     // fastest
-            'openai/gpt-oss-20b:free',                  // fast
-            'nvidia/nemotron-3-super-120b-a12b:free',   // best quality
-        ];
-
         $responses = [];
-        foreach ($freeModels as $model) {
-            // Symfony HttpClient is async by default — requests fire immediately
-            $responses[$model] = $this->httpClient->request('POST', 'https://openrouter.ai/api/v1/chat/completions', [
+
+        // 1) Groq — ultra-fast LPU inference (~1-2s response time)
+        $groqKey = $_ENV['GROQ_API_KEY'] ?? '';
+        if (!empty($groqKey)) {
+            $responses['groq'] = $this->httpClient->request('POST', 'https://api.groq.com/openai/v1/chat/completions', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Authorization' => 'Bearer ' . $groqKey,
+                    'Content-Type'  => 'application/json',
+                ],
+                'json' => [
+                    'model'       => 'llama-3.3-70b-versatile',
+                    'messages'    => [
+                        ['role' => 'system', 'content' => 'You ALWAYS respond with pure valid JSON. No text, no markdown, no code fences, no explanation.'],
+                        ['role' => 'user', 'content' => $prompt],
+                    ],
+                    'temperature' => 0.7,
+                    'max_tokens'  => 400,
+                ],
+                'timeout' => 10,
+            ]);
+        }
+
+        // 2) OpenRouter — free models as backup
+        $orKey = $_ENV['GEMINI_API_KEY'] ?? '';
+        if (!empty($orKey) && str_starts_with($orKey, 'sk-or')) {
+            $responses['openrouter'] = $this->httpClient->request('POST', 'https://openrouter.ai/api/v1/chat/completions', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $orKey,
                     'Content-Type'  => 'application/json',
                     'HTTP-Referer'  => 'http://localhost:8000',
                     'X-Title'       => 'Talentos',
                 ],
                 'json' => [
-                    'model'       => $model,
+                    'model'       => 'nvidia/nemotron-3-nano-30b-a3b:free',
                     'messages'    => [
                         ['role' => 'system', 'content' => 'You ALWAYS respond with pure valid JSON. No text, no markdown, no explanation.'],
                         ['role' => 'user', 'content' => $prompt],
@@ -353,15 +350,20 @@ IMPORTANT: The example above is for a DIFFERENT job. You MUST generate NEW quest
             ]);
         }
 
-        // Stream responses — whichever completes first with valid data wins
+        if (empty($responses)) {
+            return $this->json($fallback);
+        }
+
+        // Race all providers — first valid JSON wins
         foreach ($this->httpClient->stream($responses, 12) as $response => $chunk) {
             try {
                 if ($chunk->isLast()) {
                     $body = $response->toArray(false);
+                    // Both Groq and OpenRouter use the same OpenAI-compatible response format
                     if (isset($body['choices'][0]['message']['content'])) {
                         $result = $this->parseJsonFromRaw($body['choices'][0]['message']['content']);
                         if ($result !== null) {
-                            return $result;
+                            return $this->json($result);
                         }
                     }
                 }
@@ -370,26 +372,7 @@ IMPORTANT: The example above is for a DIFFERENT job. You MUST generate NEW quest
             }
         }
 
-        return null;
-    }
-
-    private function callGemini(string $prompt, string $apiKey): ?array
-    {
-        try {
-            $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' . $apiKey;
-            $response = $this->httpClient->request('POST', $url, [
-                'json' => [
-                    'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
-                    'generationConfig' => ['temperature' => 0.8, 'maxOutputTokens' => 500],
-                ],
-                'timeout' => 15,
-            ]);
-            $body = $response->toArray(false);
-            if (isset($body['candidates'][0]['content']['parts'][0]['text'])) {
-                return $this->parseJsonFromRaw($body['candidates'][0]['content']['parts'][0]['text']);
-            }
-        } catch (\Exception $e) {}
-        return null;
+        return $this->json($fallback);
     }
 
     private function parseJsonFromRaw(string $raw): ?array
@@ -398,6 +381,9 @@ IMPORTANT: The example above is for a DIFFERENT job. You MUST generate NEW quest
         // Strip markdown code fences
         $raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);
         $raw = preg_replace('/\s*```\s*$/', '', $raw);
+        // Strip <think> reasoning blocks some models leak
+        $raw = preg_replace('/<think>[\s\S]*?<\/think>/i', '', $raw);
+        $raw = trim($raw);
         // Extract JSON object
         if (preg_match('/\{[\s\S]*\}/', $raw, $matches)) {
             $data = json_decode($matches[0], true);

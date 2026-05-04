@@ -61,7 +61,14 @@ EOT;
             return new JsonResponse(['success' => false, 'message' => 'Empty message.']);
         }
 
+        // Prefer Groq (fastest) > GEMINI_API_KEY (OpenRouter/Gemini)
+        $groqKey = $_ENV['GROQ_API_KEY'] ?? '';
         $apiKey = $_ENV['GEMINI_API_KEY'] ?? $_SERVER['GEMINI_API_KEY'] ?? '';
+        
+        if (!empty($groqKey)) {
+            $apiKey = $groqKey; // Groq is 10x faster
+        }
+        
         if (empty($apiKey) || $apiKey === 'your_gemini_api_key_here') {
             return new JsonResponse(['success' => false, 'message' => 'The Gemini API key has not been configured.']);
         }
@@ -96,7 +103,7 @@ EOT;
             $messages[] = ['role' => 'user', 'content' => $userMessage];
 
             $payloadArray = [
-                'model' => $isOpenRouter ? 'openrouter/free' : 'llama3-8b-8192',
+                'model' => $isOpenRouter ? 'openrouter/free' : 'llama-3.3-70b-versatile',
                 'messages' => $messages,
                 'temperature' => 0.7,
                 'max_tokens' => 400,
