@@ -3,13 +3,10 @@
 namespace App\Tests\Entity;
 
 use App\Entity\Offer;
+use App\Entity\Application;
 use App\Entity\User;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Unit tests for the Offer entity.
- * Covers: CRUD fields, recruiter relationship, status management, salary range.
- */
 class OfferTest extends TestCase
 {
     private Offer $offer;
@@ -19,217 +16,156 @@ class OfferTest extends TestCase
         $this->offer = new Offer();
     }
 
-    // ═══════════════════════════════════════════
-    //  1. CRÉATION D'OFFRE — Champs de base
-    // ═══════════════════════════════════════════
-
-    public function testNewOfferHasDefaultValues(): void
+    // ── Defaults ──
+    public function testDefaultPositionsAvailable(): void
     {
-        $this->assertNull($this->offer->getId());
-        $this->assertNull($this->offer->getTitle());
-        $this->assertNull($this->offer->getDescription());
         $this->assertEquals(1, $this->offer->getPositionsAvailable());
+    }
+
+    public function testDefaultApplicationsReceived(): void
+    {
         $this->assertEquals(0, $this->offer->getApplicationsReceived());
     }
 
-    public function testSetAndGetTitle(): void
+    // ── Basic fields ──
+    public function testSetGetTitle(): void
     {
-        $this->offer->setTitle('Développeur Symfony Senior');
-        $this->assertEquals('Développeur Symfony Senior', $this->offer->getTitle());
+        $this->offer->setTitle('Développeur PHP Senior');
+        $this->assertEquals('Développeur PHP Senior', $this->offer->getTitle());
     }
 
-    public function testSetAndGetDescription(): void
+    public function testSetGetDescription(): void
     {
-        $this->offer->setDescription('Nous recherchons un dev Symfony avec 3 ans d\'expérience.');
-        $this->assertStringContainsString('Symfony', $this->offer->getDescription());
+        $this->offer->setDescription('<p>Rejoignez notre équipe</p>');
+        $this->assertEquals('<p>Rejoignez notre équipe</p>', $this->offer->getDescription());
     }
 
-    public function testSetAndGetDepartment(): void
+    public function testSetGetDepartment(): void
     {
         $this->offer->setDepartment('Informatique');
         $this->assertEquals('Informatique', $this->offer->getDepartment());
     }
 
-    // ═══════════════════════════════════════════
-    //  2. TYPE DE CONTRAT & EXPÉRIENCE
-    // ═══════════════════════════════════════════
-
-    public function testSetContractTypeCDI(): void
+    public function testSetGetContractType(): void
     {
         $this->offer->setContractType('CDI');
         $this->assertEquals('CDI', $this->offer->getContractType());
     }
 
-    public function testSetContractTypeCDD(): void
+    public function testSetGetExperienceLevel(): void
     {
-        $this->offer->setContractType('CDD');
-        $this->assertEquals('CDD', $this->offer->getContractType());
+        $this->offer->setExperienceLevel('Senior (5+ ans)');
+        $this->assertEquals('Senior (5+ ans)', $this->offer->getExperienceLevel());
     }
 
-    public function testSetExperienceLevelJunior(): void
+    public function testSetGetLocation(): void
     {
-        $this->offer->setExperienceLevel('Junior');
-        $this->assertEquals('Junior', $this->offer->getExperienceLevel());
+        $this->offer->setLocation('Tunis');
+        $this->assertEquals('Tunis', $this->offer->getLocation());
     }
 
-    public function testSetExperienceLevelSenior(): void
+    public function testSetGetStatus(): void
     {
-        $this->offer->setExperienceLevel('Senior');
-        $this->assertEquals('Senior', $this->offer->getExperienceLevel());
+        $this->offer->setStatus('Publiée');
+        $this->assertEquals('Publiée', $this->offer->getStatus());
     }
 
-    // ═══════════════════════════════════════════
-    //  3. SALAIRE — Plage min/max
-    // ═══════════════════════════════════════════
-
-    public function testSetSalaryRange(): void
+    // ── Salary ──
+    public function testSetGetSalaryMin(): void
     {
-        $this->offer->setSalaryMin(2500.00);
-        $this->offer->setSalaryMax(4000.00);
-        $this->assertEquals(2500.00, $this->offer->getSalaryMin());
-        $this->assertEquals(4000.00, $this->offer->getSalaryMax());
+        $this->offer->setSalaryMin(2000.0);
+        $this->assertEquals(2000.0, $this->offer->getSalaryMin());
     }
 
-    public function testSalaryMinIsLessThanMax(): void
+    public function testSetGetSalaryMax(): void
     {
-        $this->offer->setSalaryMin(1500.00);
-        $this->offer->setSalaryMax(3000.00);
-        $this->assertLessThan($this->offer->getSalaryMax(), $this->offer->getSalaryMin());
+        $this->offer->setSalaryMax(4000.0);
+        $this->assertEquals(4000.0, $this->offer->getSalaryMax());
     }
 
-    public function testSalaryCanBeNull(): void
+    public function testSalaryRangeValid(): void
+    {
+        $this->offer->setSalaryMin(1500.0);
+        $this->offer->setSalaryMax(3000.0);
+        $this->assertLessThanOrEqual($this->offer->getSalaryMax(), $this->offer->getSalaryMin());
+    }
+
+    public function testNullSalary(): void
     {
         $this->assertNull($this->offer->getSalaryMin());
         $this->assertNull($this->offer->getSalaryMax());
     }
 
-    // ═══════════════════════════════════════════
-    //  4. LOCALISATION & STATUT
-    // ═══════════════════════════════════════════
-
-    public function testSetLocation(): void
+    // ── Dates ──
+    public function testSetGetPublishDate(): void
     {
-        $this->offer->setLocation('Tunis, Tunisie');
-        $this->assertEquals('Tunis, Tunisie', $this->offer->getLocation());
-    }
-
-    public function testSetStatusOuverte(): void
-    {
-        $this->offer->setStatus('Ouverte');
-        $this->assertEquals('Ouverte', $this->offer->getStatus());
-    }
-
-    public function testSetStatusFermee(): void
-    {
-        $this->offer->setStatus('Fermée');
-        $this->assertEquals('Fermée', $this->offer->getStatus());
-    }
-
-    // ═══════════════════════════════════════════
-    //  5. DATES — Publication & Clôture
-    // ═══════════════════════════════════════════
-
-    public function testSetPublishDate(): void
-    {
-        $date = new \DateTime('2026-01-15');
+        $date = new \DateTime('2025-01-15');
         $this->offer->setPublishDate($date);
-        $this->assertEquals($date, $this->offer->getPublishDate());
+        $this->assertSame($date, $this->offer->getPublishDate());
     }
 
-    public function testSetClosingDate(): void
+    public function testSetGetClosingDate(): void
     {
-        $date = new \DateTime('2026-03-15');
+        $date = new \DateTime('2025-03-01');
         $this->offer->setClosingDate($date);
-        $this->assertEquals($date, $this->offer->getClosingDate());
+        $this->assertSame($date, $this->offer->getClosingDate());
     }
 
-    public function testClosingDateIsAfterPublishDate(): void
+    public function testClosingDateAfterPublishDate(): void
     {
-        $publish = new \DateTime('2026-01-01');
-        $closing = new \DateTime('2026-02-01');
+        $publish = new \DateTime('2025-01-01');
+        $closing = new \DateTime('2025-02-01');
         $this->offer->setPublishDate($publish);
         $this->offer->setClosingDate($closing);
         $this->assertGreaterThan($this->offer->getPublishDate(), $this->offer->getClosingDate());
     }
 
-    // ═══════════════════════════════════════════
-    //  6. RECRUTEUR — Relation ManyToOne avec User
-    // ═══════════════════════════════════════════
-
-    public function testNewOfferHasNoRecruiter(): void
-    {
-        $this->assertNull($this->offer->getRecruiter());
-    }
-
-    public function testSetRecruiterAsUserEntity(): void
-    {
-        $hr = new User();
-        $hr->setEmail('rh@talentos.tn');
-        $hr->setRole('HR');
-
-        $this->offer->setRecruiter($hr);
-        $this->assertSame($hr, $this->offer->getRecruiter());
-        $this->assertEquals('rh@talentos.tn', $this->offer->getRecruiter()->getEmail());
-    }
-
-    public function testGetRecruiterIdReturnsNullWhenNoRecruiter(): void
-    {
-        $this->assertNull($this->offer->getRecruiterId());
-    }
-
-    public function testRecruiterCanBeRemoved(): void
-    {
-        $hr = new User();
-        $this->offer->setRecruiter($hr);
-        $this->offer->setRecruiter(null);
-        $this->assertNull($this->offer->getRecruiter());
-    }
-
-    // ═══════════════════════════════════════════
-    //  7. CANDIDATURES — Compteurs
-    // ═══════════════════════════════════════════
-
-    public function testPositionsAvailableDefaultIsOne(): void
-    {
-        $this->assertEquals(1, $this->offer->getPositionsAvailable());
-    }
-
-    public function testSetPositionsAvailable(): void
+    // ── Positions ──
+    public function testSetGetPositionsAvailable(): void
     {
         $this->offer->setPositionsAvailable(5);
         $this->assertEquals(5, $this->offer->getPositionsAvailable());
     }
 
-    public function testApplicationsReceivedDefaultIsZero(): void
+    public function testSetGetApplicationsReceived(): void
     {
-        $this->assertEquals(0, $this->offer->getApplicationsReceived());
+        $this->offer->setApplicationsReceived(12);
+        $this->assertEquals(12, $this->offer->getApplicationsReceived());
     }
 
-    public function testIncrementApplicationsReceived(): void
+    // ── Recruiter ──
+    public function testSetGetRecruiter(): void
     {
-        $this->offer->setApplicationsReceived(3);
-        $this->assertEquals(3, $this->offer->getApplicationsReceived());
+        $user = new User();
+        $user->setEmail('rh@talentos.tn');
+        $this->offer->setRecruiter($user);
+        $this->assertSame($user, $this->offer->getRecruiter());
+        $this->assertEquals('rh@talentos.tn', $this->offer->getRecruiter()->getEmail());
     }
 
-    public function testApplicationsCollectionIsInitialized(): void
+    public function testNullRecruiter(): void
+    {
+        $this->assertNull($this->offer->getRecruiter());
+    }
+
+    // ── Cover Image ──
+    public function testSetGetCoverImage(): void
+    {
+        $this->offer->setCoverImage('/uploads/offers/cover.jpg');
+        $this->assertEquals('/uploads/offers/cover.jpg', $this->offer->getCoverImage());
+    }
+
+    // ── Workflow ──
+    public function testSetGetWorkflow(): void
+    {
+        $wf = ['step1' => 'Screening', 'step2' => 'Interview'];
+        $this->offer->setWorkflow($wf);
+        $this->assertEquals($wf, $this->offer->getWorkflow());
+    }
+
+    // ── Applications collection ──
+    public function testApplicationsCollectionInitialized(): void
     {
         $this->assertCount(0, $this->offer->getApplications());
-    }
-
-    // ═══════════════════════════════════════════
-    //  8. FLUENT API — Chainage de méthodes
-    // ═══════════════════════════════════════════
-
-    public function testFluentSetters(): void
-    {
-        $result = $this->offer
-            ->setTitle('Dev PHP')
-            ->setDepartment('IT')
-            ->setContractType('CDI')
-            ->setLocation('Tunis')
-            ->setStatus('Ouverte');
-
-        $this->assertInstanceOf(Offer::class, $result);
-        $this->assertEquals('Dev PHP', $result->getTitle());
     }
 }

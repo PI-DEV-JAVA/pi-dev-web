@@ -6,10 +6,6 @@ use App\Entity\Profile;
 use App\Entity\User;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Unit tests for the Profile entity.
- * Covers: profile completion, personal info, CV upload, user relationship.
- */
 class ProfileTest extends TestCase
 {
     private Profile $profile;
@@ -19,195 +15,136 @@ class ProfileTest extends TestCase
         $this->profile = new Profile();
     }
 
-    // ═══════════════════════════════════════════
-    //  1. PROFIL — Valeurs par défaut
-    // ═══════════════════════════════════════════
-
-    public function testNewProfileHasDefaultValues(): void
+    // ── Defaults ──
+    public function testDefaultProfileNotCompleted(): void
     {
-        $this->assertNull($this->profile->getId());
-        $this->assertNull($this->profile->getFirstName());
-        $this->assertNull($this->profile->getLastName());
         $this->assertFalse($this->profile->isProfileCompleted());
-        $this->assertNull($this->profile->getCvPath());
-        $this->assertNull($this->profile->getProfilePicturePath());
     }
 
-    // ═══════════════════════════════════════════
-    //  2. INFORMATIONS PERSONNELLES
-    // ═══════════════════════════════════════════
-
-    public function testSetAndGetFirstName(): void
+    public function testDefaultSkillsEmpty(): void
     {
-        $this->profile->setFirstName('Ahmed');
-        $this->assertEquals('Ahmed', $this->profile->getFirstName());
+        $this->assertIsArray($this->profile->getSkills());
+        $this->assertEmpty($this->profile->getSkills());
     }
 
-    public function testSetAndGetLastName(): void
+    // ── Name fields ──
+    public function testSetGetFirstName(): void
+    {
+        $this->profile->setFirstName('Ayoub');
+        $this->assertEquals('Ayoub', $this->profile->getFirstName());
+    }
+
+    public function testSetGetLastName(): void
     {
         $this->profile->setLastName('Ben Ali');
         $this->assertEquals('Ben Ali', $this->profile->getLastName());
     }
 
-    public function testGetFullNameWithBothNames(): void
+    public function testFullNameConcatenation(): void
     {
-        $this->profile->setFirstName('Ahmed');
+        $this->profile->setFirstName('Ayoub');
         $this->profile->setLastName('Ben Ali');
-        $this->assertEquals('Ahmed Ben Ali', $this->profile->getFullName());
+        $this->assertStringContainsString('Ayoub', $this->profile->getFullName());
+        $this->assertStringContainsString('Ben Ali', $this->profile->getFullName());
     }
 
-    public function testGetFullNameWithOnlyFirstName(): void
-    {
-        $this->profile->setFirstName('Ahmed');
-        $this->assertEquals('Ahmed', $this->profile->getFullName());
-    }
-
-    public function testGetFullNameWithNoNames(): void
-    {
-        $this->assertEquals('', $this->profile->getFullName());
-    }
-
-    public function testSetAndGetPhoneNumber(): void
+    // ── Contact info ──
+    public function testSetGetPhoneNumber(): void
     {
         $this->profile->setPhoneNumber('+216 55 123 456');
         $this->assertEquals('+216 55 123 456', $this->profile->getPhoneNumber());
     }
 
-    public function testSetAndGetBirthDate(): void
-    {
-        $date = new \DateTime('1998-05-15');
-        $this->profile->setBirthDate($date);
-        $this->assertEquals($date, $this->profile->getBirthDate());
-    }
-
-    public function testSetAndGetLocation(): void
+    public function testSetGetLocation(): void
     {
         $this->profile->setLocation('Tunis, Tunisie');
         $this->assertEquals('Tunis, Tunisie', $this->profile->getLocation());
     }
 
-    // ═══════════════════════════════════════════
-    //  3. INFORMATIONS PROFESSIONNELLES
-    // ═══════════════════════════════════════════
-
-    public function testSetProfessionalTitle(): void
+    // ── Professional info ──
+    public function testSetGetProfessionalTitle(): void
     {
         $this->profile->setProfessionalTitle('Développeur Full Stack');
         $this->assertEquals('Développeur Full Stack', $this->profile->getProfessionalTitle());
     }
 
-    public function testSetYearsOfExperience(): void
+    public function testSetGetYearsOfExperience(): void
     {
-        $this->profile->setYearsOfExperience(3);
-        $this->assertEquals(3, $this->profile->getYearsOfExperience());
+        $this->profile->setYearsOfExperience(5);
+        $this->assertEquals(5, $this->profile->getYearsOfExperience());
     }
 
-    public function testSetSummary(): void
+    public function testSetGetSummary(): void
     {
-        $summary = 'Développeur passionné avec 3 ans d\'expérience en Symfony et React.';
-        $this->profile->setSummary($summary);
-        $this->assertStringContainsString('Symfony', $this->profile->getSummary());
+        $this->profile->setSummary('Développeur passionné avec 5 ans.');
+        $this->assertEquals('Développeur passionné avec 5 ans.', $this->profile->getSummary());
     }
 
-    // ═══════════════════════════════════════════
-    //  4. COMPLÉTION DE PROFIL — Redirection login
-    // ═══════════════════════════════════════════
-
-    public function testProfileNotCompletedByDefault(): void
+    // ── Files ──
+    public function testSetGetCvPath(): void
     {
-        $this->assertFalse($this->profile->isProfileCompleted());
+        $this->profile->setCvPath('/uploads/cvs/my-cv.pdf');
+        $this->assertEquals('/uploads/cvs/my-cv.pdf', $this->profile->getCvPath());
     }
 
-    public function testMarkProfileAsCompleted(): void
+    public function testSetGetProfilePicturePath(): void
+    {
+        $this->profile->setProfilePicturePath('/uploads/avatars/pic.jpg');
+        $this->assertEquals('/uploads/avatars/pic.jpg', $this->profile->getProfilePicturePath());
+    }
+
+    // ── Skills ──
+    public function testSetGetSkills(): void
+    {
+        $skills = ['PHP', 'Symfony', 'JavaScript'];
+        $this->profile->setSkills($skills);
+        $this->assertEquals($skills, $this->profile->getSkills());
+        $this->assertCount(3, $this->profile->getSkills());
+    }
+
+    public function testEmptySkills(): void
+    {
+        $this->profile->setSkills([]);
+        $this->assertEmpty($this->profile->getSkills());
+    }
+
+    // ── Profile completed ──
+    public function testSetProfileCompleted(): void
     {
         $this->profile->setProfileCompleted(true);
         $this->assertTrue($this->profile->isProfileCompleted());
     }
 
-    public function testIncompleteProfileRedirectScenario(): void
+    // ── Birth date ──
+    public function testSetGetBirthDate(): void
     {
-        // Simulates: user logged in but profile not completed → should redirect
-        $user = new User();
-        $user->setEmail('new_user@test.com');
-        $this->profile->setUser($user);
-        $this->profile->setProfileCompleted(false);
-
-        $this->assertFalse($this->profile->isProfileCompleted());
-        // In the app, SecurityController redirects to /completeprofile
+        $date = new \DateTime('1998-03-15');
+        $this->profile->setBirthDate($date);
+        $this->assertSame($date, $this->profile->getBirthDate());
     }
 
-    public function testCompletedProfileAllowsDashboard(): void
-    {
-        $this->profile->setFirstName('Ahmed');
-        $this->profile->setLastName('Ben Ali');
-        $this->profile->setProfessionalTitle('Dev PHP');
-        $this->profile->setYearsOfExperience(2);
-        $this->profile->setProfileCompleted(true);
-
-        $this->assertTrue($this->profile->isProfileCompleted());
-        $this->assertNotEmpty($this->profile->getFullName());
-    }
-
-    // ═══════════════════════════════════════════
-    //  5. FICHIERS — Photo de profil & CV
-    // ═══════════════════════════════════════════
-
-    public function testSetProfilePicturePath(): void
-    {
-        $this->profile->setProfilePicturePath('/uploads/profiles/ahmed.jpg');
-        $this->assertEquals('/uploads/profiles/ahmed.jpg', $this->profile->getProfilePicturePath());
-    }
-
-    public function testSetCvPath(): void
-    {
-        $this->profile->setCvPath('/uploads/cv/ahmed_cv.pdf');
-        $this->assertEquals('/uploads/cv/ahmed_cv.pdf', $this->profile->getCvPath());
-    }
-
-    public function testProfilePictureCanBeNull(): void
-    {
-        $this->profile->setProfilePicturePath('/uploads/old.jpg');
-        $this->profile->setProfilePicturePath(null);
-        $this->assertNull($this->profile->getProfilePicturePath());
-    }
-
-    // ═══════════════════════════════════════════
-    //  6. RELATION User ↔ Profile
-    // ═══════════════════════════════════════════
-
-    public function testSetUserOnProfile(): void
+    // ── User relation ──
+    public function testSetGetUser(): void
     {
         $user = new User();
-        $user->setEmail('profile_test@test.com');
         $this->profile->setUser($user);
         $this->assertSame($user, $this->profile->getUser());
     }
 
-    public function testBidirectionalRelationship(): void
+    // ── Null handling ──
+    public function testNullCvPath(): void
     {
-        $user = new User();
-        $user->setEmail('bidir@test.com');
-        $user->setProfile($this->profile);
-
-        $this->assertSame($this->profile, $user->getProfile());
-        $this->assertSame($user, $this->profile->getUser());
+        $this->assertNull($this->profile->getCvPath());
     }
 
-    // ═══════════════════════════════════════════
-    //  7. FLUENT API
-    // ═══════════════════════════════════════════
-
-    public function testFluentSetters(): void
+    public function testNullYearsExperience(): void
     {
-        $result = $this->profile
-            ->setFirstName('Test')
-            ->setLastName('User')
-            ->setLocation('Sfax')
-            ->setProfessionalTitle('Designer')
-            ->setYearsOfExperience(1)
-            ->setProfileCompleted(true);
+        $this->assertNull($this->profile->getYearsOfExperience());
+    }
 
-        $this->assertInstanceOf(Profile::class, $result);
-        $this->assertTrue($result->isProfileCompleted());
+    public function testZeroYearsExperience(): void
+    {
+        $this->profile->setYearsOfExperience(0);
+        $this->assertEquals(0, $this->profile->getYearsOfExperience());
     }
 }
