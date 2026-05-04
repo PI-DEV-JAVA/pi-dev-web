@@ -120,11 +120,7 @@ Respond ONLY with a valid JSON object (no text before/after, no markdown):
 
         return $this->callAi($prompt, [
             'salary_estimation' => $this->estimateFallbackSalary($level, $contract),
-            'interview_questions' => [
-                'Pouvez-vous décrire votre expérience la plus pertinente pour ce poste ?',
-                'Comment gérez-vous les situations de stress ou de deadlines serrées ?',
-                'Où vous voyez-vous dans 3 ans ?'
-            ]
+            'interview_questions' => $this->generateFallbackQuestions($title, $dept, $level)
         ]);
     }
 
@@ -144,6 +140,46 @@ Respond ONLY with a valid JSON object (no text before/after, no markdown):
             return '1 200 - 2 000 TND / mois';
         }
         return '1 800 - 3 000 TND / mois';
+    }
+
+    /**
+     * Generate job-specific fallback interview questions when AI is unavailable.
+     */
+    private function generateFallbackQuestions(string $title, string $dept, string $level): array
+    {
+        $titleLower = mb_strtolower($title);
+        $deptLower = mb_strtolower($dept);
+
+        // Technical question based on job title / department
+        $technical = 'Décrivez un projet technique que vous avez mené en lien avec ce poste.';
+        if (str_contains($titleLower, 'develop') || str_contains($titleLower, 'dev') || str_contains($deptLower, 'info')) {
+            $technical = 'Quelle architecture logicielle proposeriez-vous pour un projet « ' . $title . ' » et pourquoi ?';
+        } elseif (str_contains($titleLower, 'design') || str_contains($titleLower, 'ux')) {
+            $technical = 'Présentez votre processus de conception UX/UI pour un nouveau produit digital.';
+        } elseif (str_contains($titleLower, 'market') || str_contains($deptLower, 'market')) {
+            $technical = 'Comment mesureriez-vous le ROI d\'une campagne marketing pour ce type de poste ?';
+        } elseif (str_contains($titleLower, 'data') || str_contains($titleLower, 'analyst')) {
+            $technical = 'Décrivez votre approche pour nettoyer, analyser et visualiser un jeu de données complexe.';
+        } elseif (str_contains($titleLower, 'commercial') || str_contains($titleLower, 'vente')) {
+            $technical = 'Quelle stratégie de prospection adopteriez-vous pour atteindre vos objectifs commerciaux ?';
+        } elseif (str_contains($titleLower, 'rh') || str_contains($deptLower, 'ressources')) {
+            $technical = 'Comment géreriez-vous un processus de recrutement de A à Z pour ce département ?';
+        } elseif (str_contains($titleLower, 'comptab') || str_contains($deptLower, 'financ')) {
+            $technical = 'Décrivez votre expérience avec la clôture mensuelle et les normes comptables tunisiennes.';
+        }
+
+        // Behavioral question based on level
+        $behavioral = 'Racontez une situation où vous avez dû gérer un conflit au travail. Comment l\'avez-vous résolu ?';
+        if (str_contains(mb_strtolower($level), 'senior') || str_contains(mb_strtolower($level), 'manager')) {
+            $behavioral = 'Décrivez comment vous avez mené une équipe à travers un projet complexe avec des délais serrés.';
+        } elseif (str_contains(mb_strtolower($level), 'junior') || str_contains(mb_strtolower($level), 'stage')) {
+            $behavioral = 'Parlez-nous d\'un projet académique ou personnel qui démontre votre motivation pour le poste de ' . $title . '.';
+        }
+
+        // Situational question always specific to the role
+        $situational = 'Si vous rejoigniez notre équipe comme ' . $title . ', quelles seraient vos priorités durant les 90 premiers jours ?';
+
+        return [$technical, $behavioral, $situational];
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -218,10 +254,24 @@ Respond ONLY with a valid JSON object (no text before/after, no markdown):
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     private function callAi(string $prompt, array $fallback): JsonResponse
     {
-        if (empty($this->apiKey) || !str_starts_with($this->apiKey, 'sk-or')) {
-            return $this->json($fallback);
+        // Try OpenRouter first
+        if (!empty($this->apiKey) && str_starts_with($this->apiKey, 'sk-or')) {
+            $result = $this->callOpenRouter($prompt);
+            if ($result !== null) return $this->json($result);
         }
 
+        // Try Gemini as fallback
+        $geminiKey = $_ENV['GEMINI_API_KEY'] ?? '';
+        if (!empty($geminiKey) && !str_starts_with($geminiKey, 'sk-or') && $geminiKey !== 'your_gemini_api_key_here') {
+            $result = $this->callGemini($prompt, $geminiKey);
+            if ($result !== null) return $this->json($result);
+        }
+
+        return $this->json($fallback);
+    }
+
+    private function callOpenRouter(string $prompt): ?array
+    {
         try {
             $response = $this->httpClient->request('POST', 'https://openrouter.ai/api/v1/chat/completions', [
                 'headers' => [
@@ -233,36 +283,54 @@ Respond ONLY with a valid JSON object (no text before/after, no markdown):
                 'json' => [
                     'model'       => 'openrouter/auto',
                     'messages'    => [
-                        ['role' => 'system', 'content' => 'Tu réponds TOUJOURS en JSON pur. Jamais de texte, jamais de markdown.'],
+                        ['role' => 'system', 'content' => 'You ALWAYS respond with pure valid JSON. No text, no markdown, no explanation.'],
                         ['role' => 'user', 'content' => $prompt],
                     ],
-                    'temperature' => 0.3,
-                    'max_tokens'  => 400,
+                    'temperature' => 0.4,
+                    'max_tokens'  => 500,
                 ],
                 'timeout' => 15,
             ]);
-
             $body = $response->toArray(false);
-
             if (isset($body['choices'][0]['message']['content'])) {
-                $raw = trim($body['choices'][0]['message']['content']);
-
-                // Strip markdown code fences if model wraps in ```json ... ```
-                $raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);
-                $raw = preg_replace('/\s*```\s*$/', '', $raw);
-
-                // Try to extract JSON object from any surrounding text
-                if (preg_match('/\{[\s\S]*\}/', $raw, $matches)) {
-                    $data = json_decode($matches[0], true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        return $this->json($data);
-                    }
-                }
+                return $this->parseJsonFromRaw($body['choices'][0]['message']['content']);
             }
-        } catch (\Exception $e) {
-            // Silent fallback
-        }
+        } catch (\Exception $e) {}
+        return null;
+    }
 
-        return $this->json($fallback);
+    private function callGemini(string $prompt, string $apiKey): ?array
+    {
+        try {
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' . $apiKey;
+            $response = $this->httpClient->request('POST', $url, [
+                'json' => [
+                    'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
+                    'generationConfig' => ['temperature' => 0.4, 'maxOutputTokens' => 500],
+                ],
+                'timeout' => 15,
+            ]);
+            $body = $response->toArray(false);
+            if (isset($body['candidates'][0]['content']['parts'][0]['text'])) {
+                return $this->parseJsonFromRaw($body['candidates'][0]['content']['parts'][0]['text']);
+            }
+        } catch (\Exception $e) {}
+        return null;
+    }
+
+    private function parseJsonFromRaw(string $raw): ?array
+    {
+        $raw = trim($raw);
+        // Strip markdown code fences
+        $raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);
+        $raw = preg_replace('/\s*```\s*$/', '', $raw);
+        // Extract JSON object
+        if (preg_match('/\{[\s\S]*\}/', $raw, $matches)) {
+            $data = json_decode($matches[0], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $data;
+            }
+        }
+        return null;
     }
 }
