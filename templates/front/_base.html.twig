@@ -650,23 +650,30 @@
                             </span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" style="border-radius:12px;border:1px solid var(--fo-border);box-shadow:var(--fo-card-shadow-hover);padding:8px;min-width:220px">
+                            {% set _route = app.request.attributes.get('_route') %}
+                            {# ── Points (Candidate only) ── #}
                             {% if app.user.role == 'CANDIDATE' %}
                             <li>
-                                <a class="dropdown-item" href="{{ path('app_points_buy') }}" style="border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+                                <a class="dropdown-item" href="{{ path('app_points_buy') }}" style="border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;{{ _route == 'app_points_buy' ? 'background:rgba(79,70,229,0.06);color:var(--primary);font-weight:700' : '' }}">
                                     <span><i class="bi bi-coin me-2" style="color:#f59e0b"></i>Mes points</span>
                                     <span style="background:linear-gradient(135deg,#f59e0b,#f97316);color:white;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:8px">{{ app.user.pointsBalance }}</span>
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             {% endif %}
-                            <li><a class="dropdown-item" href="{{ path('app_account') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-grid me-2"></i>{{ 'nav.dashboard'|trans }}</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_candidate_calendar') }}" style="border-radius:8px;padding:10px 16px;{{ app.request.attributes.get('_route') == 'app_candidate_calendar' ? 'color:var(--primary)' : '' }}"><i class="bi bi-calendar3 me-2"></i>Mon Calendrier</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_interviews') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-camera-video me-2"></i>Mes Entretiens</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_profile') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-person me-2"></i>{{ 'nav.profile'|trans }}</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_my_applications') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-file-text me-2"></i>{{ 'nav.applications'|trans }}</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_my_bookmarks') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-bookmark-star me-2"></i>Mes favoris</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_activities') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-clipboard-data me-2"></i>{{ 'nav.activities'|trans }}</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_my_circle') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-people me-2"></i>{{ 'nav.my_circle'|trans }}</a></li>
+                            {# ── Account ── #}
+                            <li><a class="dropdown-item" href="{{ path('app_profile') }}" style="border-radius:8px;padding:10px 16px;{{ _route starts with 'app_profile' ? 'background:rgba(79,70,229,0.06);color:var(--primary);font-weight:700' : '' }}"><i class="bi bi-person me-2"></i>{{ 'nav.profile'|trans }}</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_account') }}" style="border-radius:8px;padding:10px 16px;{{ _route == 'app_account' ? 'background:rgba(79,70,229,0.06);color:var(--primary);font-weight:700' : '' }}"><i class="bi bi-grid me-2"></i>{{ 'nav.dashboard'|trans }}</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            {# ── Career ── #}
+                            <li><a class="dropdown-item" href="{{ path('app_my_applications') }}" style="border-radius:8px;padding:10px 16px;{{ _route == 'app_my_applications' ? 'background:rgba(79,70,229,0.06);color:var(--primary);font-weight:700' : '' }}"><i class="bi bi-file-text me-2"></i>{{ 'nav.applications'|trans }}</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_interviews') }}" style="border-radius:8px;padding:10px 16px;{{ _route == 'app_interviews' ? 'background:rgba(79,70,229,0.06);color:var(--primary);font-weight:700' : '' }}"><i class="bi bi-camera-video me-2"></i>Mes Entretiens</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_activities') }}" style="border-radius:8px;padding:10px 16px;{{ _route == 'app_activities' ? 'background:rgba(79,70,229,0.06);color:var(--primary);font-weight:700' : '' }}"><i class="bi bi-clipboard-data me-2"></i>{{ 'nav.activities'|trans }}</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            {# ── Social & More ── #}
+                            <li><a class="dropdown-item" href="{{ path('app_my_circle') }}" style="border-radius:8px;padding:10px 16px;{{ _route == 'app_my_circle' ? 'background:rgba(79,70,229,0.06);color:var(--primary);font-weight:700' : '' }}"><i class="bi bi-people me-2"></i>{{ 'nav.my_circle'|trans }}</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_my_bookmarks') }}" style="border-radius:8px;padding:10px 16px;{{ _route == 'app_my_bookmarks' ? 'background:rgba(79,70,229,0.06);color:var(--primary);font-weight:700' : '' }}"><i class="bi bi-bookmark-star me-2"></i>Mes favoris</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_candidate_calendar') }}" style="border-radius:8px;padding:10px 16px;{{ _route == 'app_candidate_calendar' ? 'background:rgba(79,70,229,0.06);color:var(--primary);font-weight:700' : '' }}"><i class="bi bi-calendar3 me-2"></i>Mon Calendrier</a></li>
                             {% if app.user.role in ['ADMIN', 'HR'] %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ path('admin_dashboard') }}" style="border-radius:8px;padding:10px 16px;color:var(--primary)"><i class="bi bi-gear me-2"></i>{{ 'nav.administration'|trans }}</a></li>
