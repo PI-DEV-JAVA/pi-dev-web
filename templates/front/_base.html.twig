@@ -743,56 +743,155 @@
 {# ── Footer ── #}
 <footer class="fo-footer">
     <div class="container">
-        <div class="row g-4">
+        {# ── Top row: 4 columns ── #}
+        <div class="row g-4 mb-4">
+            {# Brand + description #}
             <div class="col-lg-4 col-md-6">
-                <div style="font-size:1.5rem;font-weight:800;margin-bottom:16px">
-                    <span style="background:linear-gradient(135deg,var(--primary-light),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px">
-                        <img src="/images/logo.png" alt="" style="height:24px;width:auto">
-                        Talentos
-                    </span>
+                <div style="font-size:1.5rem;font-weight:800;margin-bottom:12px">
+                    <a href="{{ path('app_home') }}" style="display:flex;align-items:center;gap:8px;text-decoration:none">
+                        <img src="/images/logo.png" alt="" style="height:28px;width:auto">
+                        <span style="background:linear-gradient(135deg,var(--primary-light),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Talentos</span>
+                    </a>
                 </div>
-                <p style="font-size:0.9rem;line-height:1.7;color:#94a3b8">
-                    {{ 'footer.desc'|trans }}
+                <p style="font-size:0.85rem;line-height:1.7;color:#94a3b8;margin-bottom:16px">
+                    Plateforme intelligente de recrutement, de formation et de gestion RH.
+                    Connectez vos talents aux bonnes opportunités.
                 </p>
-                <div class="fo-footer-social mt-3">
-                    <a href="#"><i class="bi bi-linkedin"></i></a>
-                    <a href="#"><i class="bi bi-twitter-x"></i></a>
-                    <a href="#"><i class="bi bi-github"></i></a>
-                    <a href="#"><i class="bi bi-instagram"></i></a>
+                <div class="fo-footer-social">
+                    <a href="https://linkedin.com" target="_blank" rel="noopener" title="LinkedIn"><i class="bi bi-linkedin"></i></a>
+                    <a href="https://github.com/PI-DEV-JAVA/pi-dev-web" target="_blank" rel="noopener" title="GitHub"><i class="bi bi-github"></i></a>
+                    <a href="https://twitter.com" target="_blank" rel="noopener" title="X (Twitter)"><i class="bi bi-twitter-x"></i></a>
+                    <a href="https://instagram.com" target="_blank" rel="noopener" title="Instagram"><i class="bi bi-instagram"></i></a>
+                    <a href="https://facebook.com" target="_blank" rel="noopener" title="Facebook"><i class="bi bi-facebook"></i></a>
                 </div>
             </div>
-            <div class="col-lg-2 col-md-6">
+
+            {# Platform links #}
+            <div class="col-lg-2 col-md-3 col-6">
                 <h6>{{ 'footer.platform'|trans }}</h6>
-                <a href="{{ path('app_offers') }}">{{ 'footer.jobs'|trans }}</a>
-                <a href="{{ path('app_events') }}">{{ 'nav.events'|trans }}</a>
-                <a href="{{ path('app_courses') }}">{{ 'nav.courses'|trans }}</a>
+                <a href="{{ path('app_offers') }}"><i class="bi bi-briefcase me-1" style="font-size:0.7rem;opacity:0.5"></i>{{ 'footer.jobs'|trans }}</a>
+                <a href="{{ path('app_events') }}"><i class="bi bi-calendar-event me-1" style="font-size:0.7rem;opacity:0.5"></i>{{ 'nav.events'|trans }}</a>
+                <a href="{{ path('app_courses') }}"><i class="bi bi-mortarboard me-1" style="font-size:0.7rem;opacity:0.5"></i>{{ 'nav.courses'|trans }}</a>
+                <a href="{{ path('app_home') }}#features"><i class="bi bi-stars me-1" style="font-size:0.7rem;opacity:0.5"></i>Fonctionnalités</a>
             </div>
-            <div class="col-lg-2 col-md-6">
+
+            {# Account links #}
+            <div class="col-lg-2 col-md-3 col-6">
                 <h6>{{ 'footer.candidate'|trans }}</h6>
-                <a href="{{ path('app_register') }}">{{ 'footer.create_account'|trans }}</a>
-                <a href="{{ path('app_login') }}">{{ 'nav.login'|trans }}</a>
-                <a href="#">{{ 'footer.faq'|trans }}</a>
+                {% if app.user %}
+                    <a href="{{ path('app_account') }}"><i class="bi bi-grid me-1" style="font-size:0.7rem;opacity:0.5"></i>Mon espace</a>
+                    <a href="{{ path('app_profile') }}"><i class="bi bi-person me-1" style="font-size:0.7rem;opacity:0.5"></i>Mon profil</a>
+                    <a href="{{ path('app_my_applications') }}"><i class="bi bi-file-text me-1" style="font-size:0.7rem;opacity:0.5"></i>Candidatures</a>
+                    <a href="{{ path('app_support') }}"><i class="bi bi-headset me-1" style="font-size:0.7rem;opacity:0.5"></i>Support</a>
+                {% else %}
+                    <a href="{{ path('app_register') }}"><i class="bi bi-person-plus me-1" style="font-size:0.7rem;opacity:0.5"></i>{{ 'footer.create_account'|trans }}</a>
+                    <a href="{{ path('app_login') }}"><i class="bi bi-box-arrow-in-right me-1" style="font-size:0.7rem;opacity:0.5"></i>{{ 'nav.login'|trans }}</a>
+                    <a href="{{ path('app_home') }}#faq"><i class="bi bi-question-circle me-1" style="font-size:0.7rem;opacity:0.5"></i>{{ 'footer.faq'|trans }}</a>
+                {% endif %}
             </div>
+
+            {# Newsletter + Contact #}
             <div class="col-lg-4 col-md-6">
                 <h6>{{ 'footer.newsletter'|trans }}</h6>
-                <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:16px">{{ 'footer.newsletter_desc'|trans }}</p>
-                <div class="d-flex gap-2">
-                    <input type="email" placeholder="{{ 'footer.your_email'|trans }}" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(71,85,105,0.3);border-radius:10px;padding:10px 16px;color:white;font-size:0.9rem">
-                    <button class="btn-primary-custom" style="padding:10px 20px;white-space:nowrap;border-radius:10px">
-                        <i class="bi bi-send"></i>
-                    </button>
+                <p style="font-size:0.82rem;color:#94a3b8;margin-bottom:12px">{{ 'footer.newsletter_desc'|trans }}</p>
+                <form id="newsletterForm" onsubmit="return handleNewsletter(event)">
+                    <div class="d-flex gap-2" style="margin-bottom:16px">
+                        <input type="email" id="newsletterEmail" placeholder="{{ 'footer.your_email'|trans }}" required
+                               style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(71,85,105,0.3);border-radius:10px;padding:10px 16px;color:white;font-size:0.85rem;transition:border-color 0.2s">
+                        <button type="submit" class="btn-primary-custom" id="newsletterBtn" style="padding:10px 20px;white-space:nowrap;border-radius:10px;display:flex;align-items:center;gap:6px;font-size:0.82rem">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                    <div id="newsletterMsg" style="display:none;font-size:0.78rem;padding:8px 12px;border-radius:8px;margin-top:-8px;margin-bottom:8px"></div>
+                </form>
+
+                {# Contact info #}
+                <div style="margin-top:4px">
+                    <div style="font-size:0.78rem;color:#94a3b8;margin-bottom:6px">
+                        <i class="bi bi-envelope me-2" style="color:var(--primary)"></i>
+                        <a href="mailto:contact@talentos.tn" style="color:#cbd5e1;text-decoration:none">contact@talentos.tn</a>
+                    </div>
+                    <div style="font-size:0.78rem;color:#94a3b8;margin-bottom:6px">
+                        <i class="bi bi-geo-alt me-2" style="color:var(--primary)"></i>
+                        Esprit, Les Berges du Lac 2, Tunis
+                    </div>
+                    <div style="font-size:0.78rem;color:#94a3b8">
+                        <i class="bi bi-telephone me-2" style="color:var(--primary)"></i>
+                        <a href="tel:+21671000000" style="color:#cbd5e1;text-decoration:none">+216 71 000 000</a>
+                    </div>
                 </div>
             </div>
         </div>
+
+        {# ── Bottom bar ── #}
         <div class="fo-footer-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span>{{ 'footer.rights'|trans }}</span>
-            <div class="d-flex gap-3">
+            <span>© {{ "now"|date("Y") }} Talentos. {{ 'footer.rights'|trans }}</span>
+            <div class="d-flex align-items-center gap-3">
+                <a href="{{ path('app_home') }}" style="margin:0">Accueil</a>
+                <a href="{{ path('app_offers') }}" style="margin:0">Offres</a>
+                <a href="{{ path('app_support') }}" style="margin:0">Contact</a>
+                <span style="color:rgba(148,163,184,0.3)">|</span>
                 <a href="#" style="margin:0">{{ 'footer.privacy'|trans }}</a>
                 <a href="#" style="margin:0">{{ 'footer.terms'|trans }}</a>
             </div>
         </div>
     </div>
+
+    {# ── Back to top button ── #}
+    <button id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})"
+            style="display:none;position:fixed;bottom:90px;right:24px;width:40px;height:40px;border-radius:50%;border:none;background:var(--primary);color:white;font-size:1rem;cursor:pointer;box-shadow:0 4px 16px rgba(79,70,229,0.3);z-index:999;transition:all 0.3s;opacity:0"
+            title="Retour en haut">
+        <i class="bi bi-chevron-up"></i>
+    </button>
 </footer>
+
+<script>
+// Newsletter handler
+function handleNewsletter(e) {
+    e.preventDefault();
+    var email = document.getElementById('newsletterEmail').value;
+    var btn = document.getElementById('newsletterBtn');
+    var msg = document.getElementById('newsletterMsg');
+
+    btn.innerHTML = '<div style="width:14px;height:14px;border:2px solid white;border-top-color:transparent;border-radius:50%;animation:spin 0.6s linear infinite"></div>';
+    btn.disabled = true;
+
+    // Simulate subscription (no backend endpoint needed)
+    setTimeout(function() {
+        msg.style.display = 'block';
+        msg.style.background = 'rgba(16,185,129,0.1)';
+        msg.style.color = '#10b981';
+        msg.style.border = '1px solid rgba(16,185,129,0.2)';
+        msg.innerHTML = '<i class="bi bi-check-circle me-1"></i>Merci ! Vous recevrez nos actualités à ' + email;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        document.getElementById('newsletterEmail').value = '';
+
+        setTimeout(function() {
+            msg.style.display = 'none';
+            btn.innerHTML = '<i class="bi bi-send"></i>';
+            btn.disabled = false;
+        }, 4000);
+    }, 800);
+    return false;
+}
+
+// Back to top button visibility
+(function() {
+    var btn = document.getElementById('backToTop');
+    if (!btn) return;
+    window.addEventListener('scroll', function() {
+        if (window.scrollY > 400) {
+            btn.style.display = 'flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
+            setTimeout(function() { btn.style.opacity = '1'; }, 10);
+        } else {
+            btn.style.opacity = '0';
+            setTimeout(function() { if (window.scrollY <= 400) btn.style.display = 'none'; }, 300);
+        }
+    });
+})();
+</script>
 
 {# ── Navbar Scroll Effect ── #}
 {% block javascripts %}
