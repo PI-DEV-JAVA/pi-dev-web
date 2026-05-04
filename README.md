@@ -103,19 +103,120 @@
 
 ### 1. 👤 User & Profile (`User`, `Profile`, `ProfileView`)
 
-**Controllers:** `SecurityController`, `RegistrationController`, `ProfileController`, `GoogleController`, `ForgotPasswordController`, `EmailVerificationController`
+**Controllers:** `SecurityController`, `RegistrationController`, `ProfileController`, `GoogleController`, `ForgotPasswordController`, `EmailVerificationController`  
+**Subscriber:** `LoginSubscriber` (login failure/success event handling)
+
+#### 🔐 Authentication & Security
 
 | Feature | Details |
 |---------|---------|
-| **Registration** | Email/password with verification token, or Google OAuth 2.0 |
-| **Login** | Symfony security with failed attempts tracking + account lockout |
-| **Profile** | First/last name, phone, location, birth date, professional title, years of experience, summary |
-| **CV Upload** | PDF upload stored in `public/uploads/cvs/` |
-| **Profile Picture** | Image upload with preview |
-| **Skills** | JSON array with autocomplete from internal API (`/api/skills/search`) — 100+ tech & soft skills |
-| **Profile Views** | Track who viewed your profile (LinkedIn-style) |
-| **Password Reset** | Token-based reset flow with expiry |
-| **Points Balance** | Gamification currency used for premium courses |
+| **Registration** | Email/password with email verification token (OTP-style confirmation link) |
+| **Google OAuth 2.0** | One-click sign-in via Google — auto-creates account + profile on first login |
+| **Account Lockout** | After **5 failed login attempts**, account is automatically deactivated. User must use "Forgot Password" to unlock |
+| **Failed Attempts Tracking** | `LoginSubscriber` increments `failedAttempts` on each failure, shows remaining attempts warning |
+| **Auto-Reset on Success** | `failedAttempts` resets to 0 on successful login |
+| **Password Reset** | Token-based reset flow with expiry — also re-activates locked accounts |
+| **Email Verification** | Token sent at registration, account flagged `isVerified` once confirmed |
+| **Role-Based Access** | `CANDIDATE`, `RECRUITER`/`HR`, `ADMIN` — controls FO/BO access |
+
+#### 👤 Profile Management
+
+| Feature | Details |
+|---------|---------|
+| **Complete Profile** | First/last name, phone, location, birth date, professional title, years of experience, bio/summary |
+| **CV Upload** | PDF upload stored in `public/uploads/cvs/` with file validation |
+| **Profile Picture + AI Face Check** | Upload with **Cropper.js** for crop/zoom, then **face-api.js (TensorFlow.js)** runs client-side face detection — validates: face present, single face, confidence score, expression analysis. Rejects photos without a clear face |
+| **Skills Autocomplete** | JSON array with live search from internal API (`/api/skills/search`) — 100+ tech & soft skills with tag-style UI |
+| **Profile Completeness** | Percentage-based completeness indicator encouraging users to fill all fields |
+| **Profile Views** | Track who viewed your profile (LinkedIn-style `ProfileView` entity) |
+| **Public Profiles** | View other users' profiles in the Connect network |
+| **Profile Reset** | Clear all profile data and uploaded files |
+| **Points Balance** | Gamification currency (earned/purchased) used for premium courses |
+
+#### 🤖 AI Profile Photo Validation (face-api.js)
+
+```
+Upload Photo ──► Cropper.js (crop/zoom) ──► face-api.js (TensorFlow.js)
+                                                    │
+                                            ┌───────┴───────┐
+                                            │ TinyFaceDetector│
+                                            │ FaceExpression  │
+                                            └───────┬───────┘
+                                                    │
+                                    ✅ Face detected (confidence > threshold)
+                                    ❌ No face / multiple faces → rejected
+                                    📊 Expression analysis (smile, neutral, etc.)
+```
+- **100% client-side** — no API keys needed, runs in browser via TensorFlow.js
+- Models loaded from `/models/face-api/` (TinyFaceDetector + FaceExpressionNet)
+- Real-time feedback with visual overlay on detected face region
+
+#### 🌐 Connect / Sync — Social Network (`Sync`, `SyncMessage`)
+
+| Feature | Details |
+|---------|---------|
+| **People Discovery** | Browse all users with completed profiles — LinkedIn-style network |
+| **Connection Requests** | Send/accept/decline connection requests (like LinkedIn invitations) |
+| **My Circle** | View your accepted connections |
+| **Real-time Chat** | Messenger-style floating widget on every page — chat with connections |
+| **Message Bubbles** | Styled sent/received messages with timestamps |
+| **Unread Badges** | Badge counter on chat FAB button + per-contact unread indicators |
+| **Full-screen Mode** | Expand chat widget to dedicated messaging page |
+| **HR Messaging** | Admin/HR can message candidates directly from back office |
+| **Contact List** | Auto-populated from accepted connections with last message preview |
+
+#### 🔔 Real-time Notifications (JS Polling)
+
+| Feature | Details |
+|---------|---------|
+| **Notification Bell** | Animated bell icon with pulsing unread count badge |
+| **Dropdown Panel** | LinkedIn-style sliding panel with notification list |
+| **JS Polling** | `setInterval` fetches `/api/notifications` every 30s for real-time updates without WebSocket |
+| **Mark as Read** | Click individual notification or "Mark all as read" bulk action |
+| **Auto-trigger** | Notifications created for: new applications, interview scheduled, enrollment approved, connection request, etc. |
+| **Dual Streams** | Separate notification feeds for candidates (FO) and admins (BO) |
+
+#### 🎫 Support Tickets (`SupportTicket`, `TicketReply`)
+
+| Feature | Details |
+|---------|---------|
+| **Ticket Creation** | Category, priority (`LOW`/`MEDIUM`/`HIGH`/`URGENT`), description |
+| **Status Lifecycle** | `OPEN` → `IN_PROGRESS` → `RESOLVED` / `CLOSED` |
+| **Reply Thread** | Back-and-forth conversation between user and admin |
+| **Admin Dashboard** | View/filter all tickets by status and priority |
+
+#### 🎨 UI/UX Design System
+
+| Feature | Details |
+|---------|---------|
+| **Front Office** | Modern light theme — glassmorphism navbar (`backdrop-filter: blur`), gradient accents, card hover animations |
+| **Back Office** | Dark admin panel — slate background, sidebar navigation, glowing borders |
+| **Responsive** | Mobile-first breakpoints at 768px / 480px, collapsible navigation |
+| **Micro-animations** | Smooth transitions on all interactive elements, notification pulse, card lift on hover |
+| **Driver.js Guided Tours** | Interactive onboarding walkthrough on first visit — separate tours for FO and BO |
+| **Google Fonts** | Inter font family throughout |
+| **Bootstrap Icons** | Consistent icon system across all pages |
+
+#### 🌍 Internationalization (FR/EN)
+
+| Feature | Details |
+|---------|---------|
+| **Translation Files** | `translations/messages.fr.yaml` + `messages.en.yaml` (~750+ keys each) |
+| **Locale Switching** | FR/EN flag toggle in navbar and sidebar, stored in session |
+| **LocaleSubscriber** | Reads `_locale` from session on every request (priority 20) |
+| **Template Usage** | All UI text uses `{{ 'key'|trans }}` Twig filter |
+| **Flash Messages** | Translated success/error/warning messages |
+
+#### 🤖 AI Assistant Chatbot
+
+| Feature | Details |
+|---------|---------|
+| **Floating Widget** | AI avatar bubble on bottom-left of all FO pages with green "online" pulse |
+| **Context-Aware** | Answers questions about the platform, offers career advice, profile tips |
+| **Groq LPU** | Powered by Groq API for fast inference (~1-2s responses) |
+| **Chat UI** | Gradient message bubbles, typing animation (bouncing dots), smooth open/close |
+| **Rate Limiting** | Configurable daily message limit per user |
+| **Tooltip** | Auto-appearing tooltip "Besoin d'aide?" on first visit |
 
 ---
 
