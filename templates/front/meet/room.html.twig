@@ -406,8 +406,8 @@
 <script>
     // --- Global Config ---
     const ROOM_ID = '{{ meet.roomId }}';
-    const JANUS_SERVER = 'http://4.233.136.0:8088/janus'; // Standard HTTP REST API
-    const WS_CHAT_SERVER = 'ws://4.233.136.0:3000';
+    const JANUS_SERVER = 'https://talenttos.ddns.net/janus'; // Standard HTTP REST API
+    const WS_CHAT_SERVER = 'wss://talenttos.ddns.net/chat-ws';
     let DISPLAY_NAME = '{{ userName|escape('js') }}' || '';
     
     // Convert string Room ID to a numeric ID for Janus
