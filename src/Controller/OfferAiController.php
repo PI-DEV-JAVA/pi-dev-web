@@ -80,23 +80,70 @@ Réponds UNIQUEMENT avec un objet JSON valide (pas de texte avant/après, pas de
         $level = $offer->getExperienceLevel() ?: 'Junior/Intermédiaire';
         $location = $offer->getLocation() ?: 'Tunisie';
         $dept = $offer->getDepartment() ?: 'Informatique';
+        $contract = $offer->getContractType() ?: 'CDI';
         $desc = mb_substr(strip_tags($offer->getDescription() ?? ''), 0, 400);
 
-        $prompt = "Tu es un consultant RH expert du marché de l'emploi en Tunisie et au Maghreb. Analyse ce poste:
-Titre: $title | Niveau: $level | Lieu: $location | Secteur: $dept
-Description: $desc
+        // Build salary context based on offer data
+        $salaryHint = '';
+        if ($offer->getSalaryMin() && $offer->getSalaryMax()) {
+            $salaryHint = 'Le recruteur propose: ' . $offer->getSalaryMin() . ' - ' . $offer->getSalaryMax() . ' TND/mois. ';
+        }
 
-Réponds UNIQUEMENT avec un objet JSON valide (pas de texte avant/après, pas de ```json):
-{\"salary_estimation\": \"X - Y TND / mois\", \"interview_questions\": [\"Question technique probable 1?\", \"Question comportementale 2?\", \"Mise en situation 3?\"]}";
+        $prompt = "You are an HR salary expert specializing in the Tunisian job market.
+
+TASK: Estimate a realistic monthly salary range in TND (Tunisian Dinar) for this position, then suggest 3 likely interview questions.
+
+JOB DETAILS:
+- Title: $title
+- Level: $level
+- Location: $location
+- Sector: $dept
+- Contract: $contract
+- Description: $desc
+{$salaryHint}
+
+TUNISIAN SALARY REFERENCE (monthly net, 2024-2025):
+- Junior (0-2 yrs): 800-1500 TND for most sectors, 1200-2000 TND for IT/engineering
+- Mid (2-5 yrs): 1500-2500 TND general, 2000-3500 TND IT/engineering
+- Senior (5+ yrs): 2500-4000 TND general, 3000-6000 TND IT/engineering
+- Manager: 3500-7000+ TND
+- Internship (Stage): 300-800 TND
+
+RULES:
+- ALWAYS provide a concrete salary range in TND/mois. NEVER say 'non applicable' or refuse.
+- Adapt the range based on the job title, experience level, location, and sector.
+- Interview questions should be specific to this role (1 technical, 1 behavioral, 1 situational).
+- Reply in the SAME LANGUAGE as the job description.
+
+Respond ONLY with a valid JSON object (no text before/after, no markdown):
+{\"salary_estimation\": \"X - Y TND / mois\", \"interview_questions\": [\"Technical question?\", \"Behavioral question?\", \"Situational question?\"]}";
 
         return $this->callAi($prompt, [
-            'salary_estimation' => 'Selon profil et expérience',
+            'salary_estimation' => $this->estimateFallbackSalary($level, $contract),
             'interview_questions' => [
                 'Pouvez-vous décrire votre expérience la plus pertinente pour ce poste ?',
                 'Comment gérez-vous les situations de stress ou de deadlines serrées ?',
                 'Où vous voyez-vous dans 3 ans ?'
             ]
         ]);
+    }
+
+    /**
+     * Fallback salary estimation when AI is unavailable.
+     */
+    private function estimateFallbackSalary(string $level, string $contract): string
+    {
+        if (stripos($contract, 'Stage') !== false) {
+            return '300 - 800 TND / mois';
+        }
+        $level = mb_strtolower($level);
+        if (str_contains($level, 'senior') || str_contains($level, 'expert') || str_contains($level, '5+')) {
+            return '3 000 - 5 000 TND / mois';
+        }
+        if (str_contains($level, 'junior') || str_contains($level, 'débutant') || str_contains($level, '0-2')) {
+            return '1 200 - 2 000 TND / mois';
+        }
+        return '1 800 - 3 000 TND / mois';
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
