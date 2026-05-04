@@ -591,7 +591,6 @@
                 <a href="{{ path('app_courses') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_course' ? 'active' : '' }}">{{ 'nav.courses'|trans }}</a>
                 {% if app.user %}
                     <a href="{{ path('app_interviews') }}" class="nav-link {{ app.request.attributes.get('_route') == 'app_interviews' ? 'active' : '' }}">Mes Entretiens</a>
-                    <a href="{{ path('app_candidate_calendar') }}" class="nav-link {{ app.request.attributes.get('_route') == 'app_candidate_calendar' ? 'active' : '' }}">Calendrier</a>
                     <a href="{{ path('app_connect') }}" class="nav-link {{ app.request.attributes.get('_route') starts with 'app_connect' or app.request.attributes.get('_route') == 'app_user_profile' ? 'active' : '' }}">{{ 'nav.connect'|trans }}</a>
                 {% endif %}
             </div>
@@ -661,7 +660,7 @@
                             <li><hr class="dropdown-divider"></li>
                             {% endif %}
                             <li><a class="dropdown-item" href="{{ path('app_account') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-grid me-2"></i>{{ 'nav.dashboard'|trans }}</a></li>
-                            <li><a class="dropdown-item" href="{{ path('app_candidate_calendar') }}" style="border-radius:8px;padding:10px 16px;color:var(--primary)"><i class="bi bi-calendar3 me-2"></i>Mon Calendrier</a></li>
+                            <li><a class="dropdown-item" href="{{ path('app_candidate_calendar') }}" style="border-radius:8px;padding:10px 16px;{{ app.request.attributes.get('_route') == 'app_candidate_calendar' ? 'color:var(--primary)' : '' }}"><i class="bi bi-calendar3 me-2"></i>Mon Calendrier</a></li>
                             <li><a class="dropdown-item" href="{{ path('app_interviews') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-camera-video me-2"></i>Mes Entretiens</a></li>
                             <li><a class="dropdown-item" href="{{ path('app_profile') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-person me-2"></i>{{ 'nav.profile'|trans }}</a></li>
                             <li><a class="dropdown-item" href="{{ path('app_my_applications') }}" style="border-radius:8px;padding:10px 16px"><i class="bi bi-file-text me-2"></i>{{ 'nav.applications'|trans }}</a></li>
@@ -1138,81 +1137,113 @@ setInterval(showAiTooltip, 60000);
 // ═══════ INTERACTIVE USER GUIDE (ONBOARDING TOUR) ═══════
 {% if app.user %}
 document.addEventListener("DOMContentLoaded", function() {
-    // Check if the user has already seen the tour
     if (!localStorage.getItem('talentos_tour_done')) {
-        // Wait 1.5s for the page and animations to settle
         setTimeout(function() {
             const driver = window.driver.js.driver;
             const driverObj = driver({
                 showProgress: true,
                 allowClose: true,
                 animate: true,
-                overlayColor: 'rgba(15, 23, 42, 0.75)', // Dark blue-ish overlay matching the theme
-                doneBtnText: 'Terminer',
+                overlayColor: 'rgba(15, 23, 42, 0.75)',
+                doneBtnText: 'C\'est parti ! 🚀',
                 closeBtnText: 'Passer',
                 nextBtnText: 'Suivant &rarr;',
                 prevBtnText: '&larr; Précédent',
                 onDestroyed: () => {
-                    // Mark as seen so it doesn't show up again
                     localStorage.setItem('talentos_tour_done', 'true');
                 },
                 steps: [
                     {
                         popover: {
                             title: 'Bienvenue sur Talentos ! 👋',
-                            description: 'Nous sommes ravis de vous compter parmi nous. Faisons un tour rapide pour découvrir les fonctionnalités clés de la plateforme.',
-                            side: "bottom",
+                            description: 'Découvrez votre plateforme de recrutement et de formation en quelques étapes. C\'est rapide !',
+                            side: 'bottom',
                             align: 'center'
                         }
                     },
                     {
                         element: '.nav-link[href*="offers"]',
                         popover: {
-                            title: 'Trouvez votre voie',
-                            description: 'Explorez toutes nos offres d\'emploi. Utilisez nos filtres avancés pour dénicher le poste idéal.',
-                            side: "bottom",
+                            title: '💼 Offres d\'emploi',
+                            description: 'Parcourez les offres, postulez en un clic et suivez l\'état de vos candidatures depuis votre tableau de bord.',
+                            side: 'bottom',
                             align: 'start'
+                        }
+                    },
+                    {
+                        element: '.nav-link[href*="events"]',
+                        popover: {
+                            title: '📅 Événements',
+                            description: 'Participez à des événements de networking, salons de recrutement et workshops. Chaque événement montre qui sera présent !',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '.nav-link[href*="courses"]',
+                        popover: {
+                            title: '🎓 Formations & Quiz',
+                            description: 'Inscrivez-vous à des cours (gratuits ou payants via points), passez des quiz chronométrés avec anti-triche, et obtenez vos certificats.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '.nav-link[href*="interviews"]',
+                        popover: {
+                            title: '🎥 Entretiens',
+                            description: 'Consultez vos entretiens planifiés et rejoignez-les directement depuis la plateforme. Tout est centralisé ici.',
+                            side: 'bottom',
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#navPointsPill',
+                        popover: {
+                            title: '🪙 Vos Points',
+                            description: 'Achetez des points via Stripe pour accéder aux formations payantes. Gagnez-en aussi en réussissant les quiz (score > 15/20) !',
+                            side: 'bottom',
+                            align: 'end'
                         }
                     },
                     {
                         element: '#notifBellBtn',
                         popover: {
-                            title: 'Restez informé',
-                            description: 'C\'est ici que vous recevrez vos notifications (réponses des RH, invitations aux entretiens...).',
-                            side: "bottom",
+                            title: '🔔 Notifications',
+                            description: 'Réponses aux candidatures, inscriptions approuvées, nouveaux quiz… Tout arrive ici en temps réel.',
+                            side: 'bottom',
                             align: 'end'
                         }
                     },
                     {
                         element: '#aiFab',
                         popover: {
-                            title: 'Intelligence Artificielle 🤖',
-                            description: 'Bloqué(e) ? Cliquez ici pour parler avec Sara, notre assistante IA. Elle peut vous aider à rédiger votre CV ou préparer vos entretiens !',
-                            side: "top",
+                            title: '🤖 Assistante IA — Sara',
+                            description: 'Besoin d\'aide ? Sara peut rédiger votre CV, préparer vos entretiens et répondre à vos questions sur la plateforme.',
+                            side: 'top',
                             align: 'start'
                         }
                     },
                     {
                         element: '#chatFab',
                         popover: {
-                            title: 'Messagerie Instantanée',
-                            description: 'Discutez en direct avec les recruteurs ou les autres talents de votre réseau une fois connectés.',
-                            side: "top",
+                            title: '💬 Messagerie',
+                            description: 'Échangez directement avec les recruteurs et les membres de votre réseau professionnel.',
+                            side: 'top',
                             align: 'end'
                         }
                     },
                     {
                         element: '.user-menu-btn',
                         popover: {
-                            title: 'Votre Espace',
-                            description: 'Accédez à votre tableau de bord, complétez votre profil, et suivez vos candidatures à tout moment. Bon recrutement !',
-                            side: "bottom",
+                            title: '👤 Votre Espace',
+                            description: 'Dashboard, calendrier unifié, activités & projets, favoris, cercle professionnel… Tout est accessible ici. Bonne découverte !',
+                            side: 'bottom',
                             align: 'end'
                         }
                     }
                 ]
             });
-            
             driverObj.drive();
         }, 1500);
     }
